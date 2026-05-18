@@ -39,3 +39,4 @@ logs/
 api
 migrate
 worker
+FINAL_STATUS.md

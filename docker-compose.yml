@@ -1,0 +1,71 @@
+version: "3.8"
+
+services:
+  # PostgreSQL - Primary Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: azzet-postgres
+    environment:
+      POSTGRES_USER: azzet
+      POSTGRES_PASSWORD: azzet123
+      POSTGRES_DB: azzet
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U azzet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - azzet-network
+
+  # Redis - Cache & Asynq Backend
+  redis:
+    image: redis:7-alpine
+    container_name: azzet-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - azzet-network
+
+  # NATS JetStream - Event Streaming
+  nats:
+    image: nats:2.10-alpine
+    container_name: azzet-nats
+    command: 
+      - "-js"
+      - "-sd"
+      - "/data"
+      - "-m"
+      - "8222"
+    ports:
+      - "4222:4222"  # Client connections
+      - "8222:8222"  # HTTP monitoring
+      - "6222:6222"  # Cluster connections
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - azzet-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  nats_data:
+
+networks:
+  azzet-network:
+    driver: bridge
