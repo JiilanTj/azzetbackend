@@ -125,9 +125,9 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, email, whatsapp, password_hash, status, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at
+INSERT INTO users (id, email, whatsapp, password_hash, name, status, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at, name
 `
 
 type CreateUserParams struct {
@@ -135,6 +135,7 @@ type CreateUserParams struct {
 	Email        pgtype.Text `json:"email"`
 	Whatsapp     pgtype.Text `json:"whatsapp"`
 	PasswordHash pgtype.Text `json:"password_hash"`
+	Name         pgtype.Text `json:"name"`
 	Status       string      `json:"status"`
 	CreatedAt    time.Time   `json:"created_at"`
 	UpdatedAt    time.Time   `json:"updated_at"`
@@ -146,6 +147,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Email,
 		arg.Whatsapp,
 		arg.PasswordHash,
+		arg.Name,
 		arg.Status,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -163,6 +165,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.LastLoginIp,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
 	)
 	return i, err
 }
@@ -293,7 +296,7 @@ func (q *Queries) GetSessionByRefreshToken(ctx context.Context, refreshToken str
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at FROM users WHERE email = $1
+SELECT id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at, name FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email pgtype.Text) (User, error) {
@@ -311,12 +314,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email pgtype.Text) (User, 
 		&i.LastLoginIp,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at, name FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -334,12 +338,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.LastLoginIp,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
 	)
 	return i, err
 }
 
 const getUserByWhatsApp = `-- name: GetUserByWhatsApp :one
-SELECT id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at FROM users WHERE whatsapp = $1
+SELECT id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at, name FROM users WHERE whatsapp = $1
 `
 
 func (q *Queries) GetUserByWhatsApp(ctx context.Context, whatsapp pgtype.Text) (User, error) {
@@ -357,6 +362,7 @@ func (q *Queries) GetUserByWhatsApp(ctx context.Context, whatsapp pgtype.Text) (
 		&i.LastLoginIp,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
 	)
 	return i, err
 }

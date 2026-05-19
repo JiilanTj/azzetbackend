@@ -62,4 +62,5 @@ type User struct {
 	LastLoginIp      *netip.Addr `json:"last_login_ip"`
 	CreatedAt        time.Time   `json:"created_at"`
 	UpdatedAt        time.Time   `json:"updated_at"`
+	Name             pgtype.Text `json:"name"`
 }

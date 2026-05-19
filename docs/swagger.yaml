@@ -57,6 +57,9 @@ definitions:
       email:
         example: user@example.com
         type: string
+      name:
+        example: John Doe
+        type: string
       password:
         example: SecurePass123
         type: string
@@ -133,6 +136,9 @@ definitions:
         type: boolean
       id:
         example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      name:
+        example: John Doe
         type: string
       status:
         enum:

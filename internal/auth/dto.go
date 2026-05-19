@@ -11,6 +11,7 @@ import (
 // RegisterRequest represents the registration payload
 // @Description Registration request body. Either email or whatsapp is required. Password is always required.
 type RegisterRequest struct {
+	Name     string  `json:"name" example:"John Doe"`
 	Email    *string `json:"email,omitempty" example:"user@example.com"`
 	WhatsApp *string `json:"whatsapp,omitempty" example:"+628123456789"`
 	Password string  `json:"password" example:"SecurePass123"`
@@ -81,6 +82,7 @@ type RegisterResponse struct {
 // @Description User profile information
 type UserResponse struct {
 	ID               string  `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Name             *string `json:"name,omitempty" example:"John Doe"`
 	Email            *string `json:"email,omitempty" example:"user@example.com"`
 	WhatsApp         *string `json:"whatsapp,omitempty" example:"+628123456789"`
 	EmailVerified    bool    `json:"email_verified" example:"true"`

@@ -99,6 +99,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 		Email:        toPgText(req.Email),
 		Whatsapp:     toPgText(req.WhatsApp),
 		PasswordHash: pgtype.Text{String: hash, Valid: true},
+		Name:         toPgText(&req.Name),
 		Status:       StatusUnverified,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -487,7 +488,10 @@ func toPgText(s *string) pgtype.Text {
 }
 
 func UserToResponse(u *db.User) UserResponse {
-	var email, whatsapp *string
+	var name, email, whatsapp *string
+	if u.Name.Valid {
+		name = &u.Name.String
+	}
 	if u.Email.Valid {
 		email = &u.Email.String
 	}
@@ -497,6 +501,7 @@ func UserToResponse(u *db.User) UserResponse {
 
 	return UserResponse{
 		ID:               u.ID.String(),
+		Name:             name,
 		Email:            email,
 		WhatsApp:         whatsapp,
 		EmailVerified:    u.EmailVerified,

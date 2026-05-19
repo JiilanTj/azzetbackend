@@ -794,6 +794,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "user@example.com"
                 },
+                "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
                 "password": {
                     "type": "string",
                     "example": "SecurePass123"
@@ -899,6 +903,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "John Doe"
                 },
                 "status": {
                     "type": "string",
