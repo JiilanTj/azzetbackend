@@ -1,0 +1,646 @@
+basePath: /api/v1
+definitions:
+  codeberg_org_azzet_azzetbe_internal_auth.AuthResponse:
+    description: Authentication response with access token and user info. Refresh
+      token is set as HttpOnly cookie.
+    properties:
+      access_token:
+        example: eyJhbGciOiJIUzI1NiIs...
+        type: string
+      expires_in:
+        example: 900
+        type: integer
+      user:
+        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.UserResponse'
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.ChangePasswordRequest:
+    description: Change password (requires authentication)
+    properties:
+      new_password:
+        example: NewSecurePass456
+        type: string
+      old_password:
+        example: OldPass123
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.LoginEmailRequest:
+    description: Login with email and password
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: SecurePass123
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.LoginOTPRequest:
+    description: Login with WhatsApp number and OTP code
+    properties:
+      otp:
+        example: "123456"
+        type: string
+      whatsapp:
+        example: "+628123456789"
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.MessageResponse:
+    description: Simple message response
+    properties:
+      message:
+        example: Operation successful
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.RegisterRequest:
+    description: Registration request body. Either email or whatsapp is required.
+      Password is always required.
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: SecurePass123
+        type: string
+      whatsapp:
+        example: "+628123456789"
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.RegisterResponse:
+    description: Registration response with user info and verification message
+    properties:
+      message:
+        example: Registration successful. Please verify your account.
+        type: string
+      user:
+        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.UserResponse'
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.RequestOTPRequest:
+    description: Request an OTP code to be sent via WhatsApp
+    properties:
+      purpose:
+        enum:
+        - login
+        - verify_whatsapp
+        - reset_password
+        example: login
+        type: string
+      whatsapp:
+        example: "+628123456789"
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.ResetPasswordRequest:
+    description: Reset password using OTP verification
+    properties:
+      identifier:
+        example: "+628123456789"
+        type: string
+      new_password:
+        example: NewSecurePass456
+        type: string
+      otp:
+        example: "123456"
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.SessionResponse:
+    description: Active session information
+    properties:
+      created_at:
+        example: "2026-05-19T09:00:00Z"
+        type: string
+      device_name:
+        example: Chrome on MacOS
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      ip_address:
+        example: 192.168.1.1
+        type: string
+      last_used_at:
+        example: "2026-05-19T10:00:00Z"
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.UserResponse:
+    description: User profile information
+    properties:
+      created_at:
+        example: "2026-05-19T10:00:00Z"
+        type: string
+      email:
+        example: user@example.com
+        type: string
+      email_verified:
+        example: true
+        type: boolean
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      status:
+        enum:
+        - ACTIVE
+        - SUSPENDED
+        - UNVERIFIED
+        - DELETED
+        example: ACTIVE
+        type: string
+      whatsapp:
+        example: "+628123456789"
+        type: string
+      whatsapp_verified:
+        example: false
+        type: boolean
+    type: object
+  codeberg_org_azzet_azzetbe_internal_auth.VerifyOTPRequest:
+    description: Verify OTP to activate account
+    properties:
+      identifier:
+        example: "+628123456789"
+        type: string
+      otp:
+        example: "123456"
+        type: string
+      purpose:
+        enum:
+        - verify_whatsapp
+        - verify_email
+        example: verify_whatsapp
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_shared.APIError:
+    properties:
+      code:
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.FieldError'
+        type: array
+      domain:
+        type: string
+      message:
+        type: string
+      request_id:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_shared.APIResponse:
+    properties:
+      data: {}
+      meta: {}
+      success:
+        type: boolean
+    type: object
+  codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIError'
+      success:
+        type: boolean
+    type: object
+  codeberg_org_azzet_azzetbe_internal_shared.FieldError:
+    properties:
+      field:
+        type: string
+      message:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Enterprise-grade accounting, tax, and finance platform
+  title: Azzet API
+  version: "1.0"
+paths:
+  /auth/login/email:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate using email + password. Returns access token in body
+        and refresh token in HttpOnly cookie.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.LoginEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              description: refresh_token=<token>; Path=/api/v1/auth; HttpOnly; Secure;
+                SameSite=Strict
+              type: string
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.AuthResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Login with email and password
+      tags:
+      - Auth
+  /auth/login/otp:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate using WhatsApp number + OTP code. Request OTP first
+        via /auth/otp/request.
+      parameters:
+      - description: WhatsApp + OTP code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.LoginOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              description: refresh_token=<token>; Path=/api/v1/auth; HttpOnly; Secure;
+                SameSite=Strict
+              type: string
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.AuthResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Login with WhatsApp OTP
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      description: Blacklist the access token and delete the current session. Clears
+        refresh token cookie.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout current session
+      tags:
+      - Auth
+  /auth/logout-all:
+    post:
+      description: Blacklist the access token and delete ALL sessions for the user.
+        Clears refresh token cookie.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout all sessions
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      description: Returns the authenticated user's profile information.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.UserResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - Auth
+  /auth/otp/request:
+    post:
+      consumes:
+      - application/json
+      description: Send a 6-digit OTP to the user's WhatsApp number via Zenziva. Valid
+        for 5 minutes, max 3 attempts.
+      parameters:
+      - description: WhatsApp number and purpose
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.RequestOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Request OTP code via WhatsApp
+      tags:
+      - Auth
+  /auth/password/change:
+    post:
+      consumes:
+      - application/json
+      description: Change the authenticated user's password. Requires old password
+        for verification.
+      parameters:
+      - description: Password change data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - Auth
+  /auth/password/reset:
+    post:
+      consumes:
+      - application/json
+      description: Reset password using an OTP code sent to email or WhatsApp. No
+        authentication required.
+      parameters:
+      - description: Reset password data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Reset password with OTP
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      description: Exchange refresh token (from HttpOnly cookie) for a new access
+        token + rotated refresh token.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              description: refresh_token=<new_token>; Path=/api/v1/auth; HttpOnly;
+                Secure; SameSite=Strict
+              type: string
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.AuthResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new account with email or whatsapp. Password is always
+        required as fallback.
+      parameters:
+      - description: Registration data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.RegisterResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - Auth
+  /auth/sessions:
+    get:
+      description: Returns all active sessions for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.SessionResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List active sessions
+      tags:
+      - Auth
+  /auth/sessions/{id}:
+    delete:
+      description: Delete a specific session by ID. The user can only revoke their
+        own sessions.
+      parameters:
+      - description: Session ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke a specific session
+      tags:
+      - Auth
+  /auth/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verify an OTP code to activate the user account (email or whatsapp
+        verification).
+      parameters:
+      - description: Verification data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.VerifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Verify OTP code
+      tags:
+      - Auth
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
