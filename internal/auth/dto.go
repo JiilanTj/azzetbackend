@@ -1,6 +1,10 @@
 package auth
 
-import "time"
+import (
+	"time"
+
+	"codeberg.org/azzet/azzetbe/internal/db"
+)
 
 // --- Request DTOs ---
 
@@ -23,10 +27,6 @@ type LoginOTPRequest struct {
 type RequestOTPRequest struct {
 	WhatsApp string `json:"whatsapp"`
 	Purpose  string `json:"purpose"` // "login", "verify_whatsapp"
-}
-
-type RefreshTokenRequest struct {
-	// Refresh token comes from HttpOnly cookie, not body
 }
 
 type ChangePasswordRequest struct {
@@ -76,48 +76,6 @@ type MessageResponse struct {
 	Message string `json:"message"`
 }
 
-// --- Domain Models ---
-
-type User struct {
-	ID               string
-	Email            *string
-	WhatsApp         *string
-	PasswordHash     *string
-	EmailVerified    bool
-	WhatsAppVerified bool
-	Status           string
-	LastLoginAt      *time.Time
-	LastLoginIP      *string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-}
-
-type Session struct {
-	ID           string
-	UserID       string
-	RefreshToken string
-	DeviceName   *string
-	DeviceType   *string
-	IPAddress    *string
-	UserAgent    *string
-	ExpiresAt    time.Time
-	LastUsedAt   time.Time
-	CreatedAt    time.Time
-}
-
-type OTPRecord struct {
-	ID             string
-	Identifier     string
-	IdentifierType string
-	Code           string
-	Purpose        string
-	Attempts       int
-	MaxAttempts    int
-	ExpiresAt      time.Time
-	UsedAt         *time.Time
-	CreatedAt      time.Time
-}
-
 // --- Constants ---
 
 const (
@@ -129,30 +87,29 @@ const (
 	IdentifierTypeEmail = "email"
 	IdentifierTypeWA    = "whatsapp"
 
-	OTPPurposeLogin     = "login"
-	OTPPurposeRegister  = "register"
-	OTPPurposeResetPass = "reset_password"
-	OTPPurposeVerifyWA  = "verify_whatsapp"
+	OTPPurposeLogin       = "login"
+	OTPPurposeRegister    = "register"
+	OTPPurposeResetPass   = "reset_password"
+	OTPPurposeVerifyWA    = "verify_whatsapp"
 	OTPPurposeVerifyEmail = "verify_email"
 )
 
-func (u *User) ToResponse() UserResponse {
-	return UserResponse{
-		ID:               u.ID,
-		Email:            u.Email,
-		WhatsApp:         u.WhatsApp,
-		EmailVerified:    u.EmailVerified,
-		WhatsAppVerified: u.WhatsAppVerified,
-		Status:           u.Status,
-		CreatedAt:        u.CreatedAt.Format(time.RFC3339),
-	}
-}
+// --- Converters ---
 
-func (s *Session) ToResponse() SessionResponse {
+func SessionToResponse(s *db.Session) SessionResponse {
+	var deviceName, ipAddress *string
+	if s.DeviceName.Valid {
+		deviceName = &s.DeviceName.String
+	}
+	if s.IpAddress != nil {
+		addr := s.IpAddress.String()
+		ipAddress = &addr
+	}
+
 	return SessionResponse{
-		ID:         s.ID,
-		DeviceName: s.DeviceName,
-		IPAddress:  s.IPAddress,
+		ID:         s.ID.String(),
+		DeviceName: deviceName,
+		IPAddress:  ipAddress,
 		LastUsedAt: s.LastUsedAt.Format(time.RFC3339),
 		CreatedAt:  s.CreatedAt.Format(time.RFC3339),
 	}

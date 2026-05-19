@@ -68,18 +68,10 @@ CREATE TABLE IF NOT EXISTS otp_codes (
 CREATE INDEX IF NOT EXISTS idx_otp_codes_lookup ON otp_codes(identifier, purpose)
     WHERE used_at IS NULL;
 
--- Blacklisted tokens table
-CREATE TABLE IF NOT EXISTS blacklisted_tokens (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    token_jti VARCHAR(255) NOT NULL UNIQUE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    reason VARCHAR(50) NOT NULL DEFAULT 'logout',
-    expires_at TIMESTAMPTZ NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_blacklisted_tokens_jti ON blacklisted_tokens(token_jti);
-CREATE INDEX IF NOT EXISTS idx_blacklisted_tokens_expires_at ON blacklisted_tokens(expires_at);
+-- Token blacklist is handled by Redis (not PostgreSQL)
+-- Key format: blacklist:{jti}
+-- Value: user_id
+-- TTL: access_token_expiry (auto-expire)
 
 -- Audit logs table
 CREATE TABLE IF NOT EXISTS audit_logs (

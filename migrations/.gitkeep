@@ -1,9 +1,0 @@
--- Initial schema for Azzet Backend
--- This is a placeholder migration file
--- Add your actual schema here
-
--- Example: Create schema_migrations table (handled by migrate tool)
--- CREATE TABLE IF NOT EXISTS schema_migrations (
---     version INTEGER PRIMARY KEY,
---     applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
--- );

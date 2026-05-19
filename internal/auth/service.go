@@ -6,14 +6,18 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgtype"
 
+	"codeberg.org/azzet/azzetbe/internal/db"
+	rdb "codeberg.org/azzet/azzetbe/internal/redis"
 	"codeberg.org/azzet/azzetbe/internal/shared"
 )
 
 type Service struct {
-	DB      *pgxpool.Pool
+	Queries *db.Queries
+	Redis   *rdb.Redis
 	JWT     *shared.JWTService
 	OTP     *shared.OTPService
 	Zenziva *shared.ZenzivaClient
@@ -28,9 +32,10 @@ type ServiceConfig struct {
 	OTPMaxAttempts     int
 }
 
-func NewService(db *pgxpool.Pool, jwt *shared.JWTService, otp *shared.OTPService, zenziva *shared.ZenzivaClient, email *shared.EmailOTPSender, cfg *ServiceConfig) *Service {
+func NewService(queries *db.Queries, redis *rdb.Redis, jwt *shared.JWTService, otp *shared.OTPService, zenziva *shared.ZenzivaClient, email *shared.EmailOTPSender, cfg *ServiceConfig) *Service {
 	return &Service{
-		DB:      db,
+		Queries: queries,
+		Redis:   redis,
 		JWT:     jwt,
 		OTP:     otp,
 		Zenziva: zenziva,
@@ -40,7 +45,7 @@ func NewService(db *pgxpool.Pool, jwt *shared.JWTService, otp *shared.OTPService
 }
 
 // Register creates a new user with email or whatsapp + password (always required)
-func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*User, error) {
+func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User, error) {
 	if req.Email == nil && req.WhatsApp == nil {
 		return nil, fmt.Errorf("email or whatsapp is required")
 	}
@@ -53,8 +58,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*User, er
 
 	// Check duplicates
 	if req.Email != nil && *req.Email != "" {
-		var exists bool
-		err := s.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, *req.Email).Scan(&exists)
+		exists, err := s.Queries.ExistsByEmail(ctx, pgtype.Text{String: *req.Email, Valid: true})
 		if err != nil {
 			return nil, fmt.Errorf("failed to check email: %w", err)
 		}
@@ -63,8 +67,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*User, er
 		}
 	}
 	if req.WhatsApp != nil && *req.WhatsApp != "" {
-		var exists bool
-		err := s.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE whatsapp = $1)`, *req.WhatsApp).Scan(&exists)
+		exists, err := s.Queries.ExistsByWhatsApp(ctx, pgtype.Text{String: *req.WhatsApp, Valid: true})
 		if err != nil {
 			return nil, fmt.Errorf("failed to check whatsapp: %w", err)
 		}
@@ -78,24 +81,20 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*User, er
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	id := shared.GenerateUUID()
 	now := time.Now()
-
-	_, err = s.DB.Exec(ctx, `
-		INSERT INTO users (id, email, whatsapp, password_hash, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, id, req.Email, req.WhatsApp, hash, StatusUnverified, now, now)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create user: %w", err)
+	params := db.CreateUserParams{
+		ID:           uuid.New(),
+		Email:        toPgText(req.Email),
+		Whatsapp:     toPgText(req.WhatsApp),
+		PasswordHash: pgtype.Text{String: hash, Valid: true},
+		Status:       StatusUnverified,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
-	user := &User{
-		ID:        id,
-		Email:     req.Email,
-		WhatsApp:  req.WhatsApp,
-		Status:    StatusUnverified,
-		CreatedAt: now,
-		UpdatedAt: now,
+	user, err := s.Queries.CreateUser(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
 	// Send verification OTP (non-blocking errors)
@@ -112,23 +111,27 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*User, er
 		}
 	}
 
-	return user, nil
+	return &user, nil
 }
 
 // LoginWithEmail authenticates user with email + password
 func (s *Service) LoginWithEmail(ctx context.Context, req *LoginEmailRequest) (*AuthResponse, string, error) {
-	user, err := s.getUserByEmail(ctx, req.Email)
-	if err != nil || user == nil {
-		return nil, "", fmt.Errorf("invalid credentials")
+	user, err := s.Queries.GetUserByEmail(ctx, pgtype.Text{String: req.Email, Valid: true})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, "", fmt.Errorf("invalid credentials")
+		}
+		return nil, "", err
 	}
-	if user.PasswordHash == nil || !shared.VerifyPassword(*user.PasswordHash, req.Password) {
+
+	if !user.PasswordHash.Valid || !shared.VerifyPassword(user.PasswordHash.String, req.Password) {
 		return nil, "", fmt.Errorf("invalid credentials")
 	}
 	if user.Status == StatusSuspended {
 		return nil, "", fmt.Errorf("account is suspended")
 	}
 
-	return s.createTokenPair(ctx, user)
+	return s.createTokenPair(ctx, &user)
 }
 
 // LoginWithOTP authenticates user with whatsapp + OTP code
@@ -137,22 +140,28 @@ func (s *Service) LoginWithOTP(ctx context.Context, req *LoginOTPRequest) (*Auth
 		return nil, "", err
 	}
 
-	user, err := s.getUserByWhatsApp(ctx, req.WhatsApp)
-	if err != nil || user == nil {
-		return nil, "", fmt.Errorf("user not found")
+	user, err := s.Queries.GetUserByWhatsApp(ctx, pgtype.Text{String: req.WhatsApp, Valid: true})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, "", fmt.Errorf("user not found")
+		}
+		return nil, "", err
 	}
 	if user.Status == StatusSuspended {
 		return nil, "", fmt.Errorf("account is suspended")
 	}
 
-	return s.createTokenPair(ctx, user)
+	return s.createTokenPair(ctx, &user)
 }
 
 // RequestOTP sends an OTP to the user's whatsapp
 func (s *Service) RequestOTP(ctx context.Context, req *RequestOTPRequest) error {
-	user, err := s.getUserByWhatsApp(ctx, req.WhatsApp)
-	if err != nil || user == nil {
-		return fmt.Errorf("user not found")
+	_, err := s.Queries.GetUserByWhatsApp(ctx, pgtype.Text{String: req.WhatsApp, Valid: true})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("user not found")
+		}
+		return err
 	}
 
 	code := s.OTP.Generate()
@@ -170,42 +179,49 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (*AuthR
 		return nil, "", fmt.Errorf("invalid refresh token")
 	}
 
-	// Verify session exists and is valid
-	var expiresAt time.Time
-	err = s.DB.QueryRow(ctx, `
-		SELECT expires_at FROM sessions WHERE id = $1 AND user_id = $2 AND refresh_token = $3
-	`, claims.SessionID, claims.UserID, refreshToken).Scan(&expiresAt)
+	sessionID, err := uuid.Parse(claims.SessionID)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid session")
+	}
+
+	// Verify session
+	session, err := s.Queries.GetSessionByID(ctx, sessionID)
 	if err != nil {
 		return nil, "", fmt.Errorf("session not found")
 	}
-	if time.Now().After(expiresAt) {
+	if time.Now().After(session.ExpiresAt) {
 		return nil, "", fmt.Errorf("session expired")
+	}
+	if session.RefreshToken != refreshToken {
+		return nil, "", fmt.Errorf("invalid refresh token")
 	}
 
 	// Get user
-	user, err := s.getUserByID(ctx, claims.UserID)
-	if err != nil || user == nil {
+	user, err := s.Queries.GetUserByID(ctx, session.UserID)
+	if err != nil {
 		return nil, "", fmt.Errorf("user not found")
 	}
 
 	// Delete old session
-	_, _ = s.DB.Exec(ctx, `DELETE FROM sessions WHERE id = $1`, claims.SessionID)
+	_ = s.Queries.DeleteSessionByID(ctx, sessionID)
 
 	// Create new token pair
-	return s.createTokenPair(ctx, user)
+	return s.createTokenPair(ctx, &user)
 }
 
-// Logout blacklists the access token and deletes the session
+// Logout blacklists the access token (Redis) and deletes the session
 func (s *Service) Logout(ctx context.Context, accessToken, refreshToken string) error {
 	claims, err := s.JWT.ValidateAccessToken(accessToken)
 	if err != nil {
 		return fmt.Errorf("invalid access token")
 	}
 
-	_ = s.blacklistToken(ctx, claims.JTI, claims.UserID, s.Config.AccessTokenExpiry)
+	// Blacklist access token in Redis (auto-expires)
+	_ = s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry)
 
+	// Delete session
 	if refreshToken != "" {
-		_, _ = s.DB.Exec(ctx, `DELETE FROM sessions WHERE refresh_token = $1`, refreshToken)
+		_ = s.Queries.DeleteSessionByRefreshToken(ctx, refreshToken)
 	}
 
 	return nil
@@ -218,51 +234,58 @@ func (s *Service) LogoutAll(ctx context.Context, accessToken string) error {
 		return fmt.Errorf("invalid access token")
 	}
 
-	_ = s.blacklistToken(ctx, claims.JTI, claims.UserID, s.Config.AccessTokenExpiry)
-	_, _ = s.DB.Exec(ctx, `DELETE FROM sessions WHERE user_id = $1`, claims.UserID)
+	// Blacklist access token in Redis
+	_ = s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry)
+
+	// Delete all sessions
+	userID, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		return err
+	}
+	_ = s.Queries.DeleteUserSessions(ctx, userID)
 
 	return nil
 }
 
 // GetMe returns the current user
-func (s *Service) GetMe(ctx context.Context, userID string) (*User, error) {
-	return s.getUserByID(ctx, userID)
+func (s *Service) GetMe(ctx context.Context, userID string) (*db.User, error) {
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id")
+	}
+	user, err := s.Queries.GetUserByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
 }
 
 // GetSessions returns all active sessions for a user
-func (s *Service) GetSessions(ctx context.Context, userID string) ([]Session, error) {
-	rows, err := s.DB.Query(ctx, `
-		SELECT id, user_id, refresh_token, device_name, device_type, ip_address, user_agent, expires_at, last_used_at, created_at
-		FROM sessions WHERE user_id = $1 AND expires_at > NOW()
-		ORDER BY last_used_at DESC
-	`, userID)
+func (s *Service) GetSessions(ctx context.Context, userID string) ([]db.Session, error) {
+	id, err := uuid.Parse(userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid user id")
 	}
-	defer rows.Close()
-
-	var sessions []Session
-	for rows.Next() {
-		var sess Session
-		err := rows.Scan(&sess.ID, &sess.UserID, &sess.RefreshToken, &sess.DeviceName, &sess.DeviceType, &sess.IPAddress, &sess.UserAgent, &sess.ExpiresAt, &sess.LastUsedAt, &sess.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		sessions = append(sessions, sess)
-	}
-	return sessions, nil
+	return s.Queries.GetUserSessions(ctx, id)
 }
 
 // RevokeSession deletes a specific session
 func (s *Service) RevokeSession(ctx context.Context, userID, sessionID string) error {
-	result, err := s.DB.Exec(ctx, `DELETE FROM sessions WHERE id = $1 AND user_id = $2`, sessionID, userID)
+	uid, err := uuid.Parse(userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid user id")
 	}
-	if result.RowsAffected() == 0 {
-		return fmt.Errorf("session not found")
+	sid, err := uuid.Parse(sessionID)
+	if err != nil {
+		return fmt.Errorf("invalid session id")
 	}
-	return nil
+	return s.Queries.DeleteSession(ctx, db.DeleteSessionParams{
+		ID:     sid,
+		UserID: uid,
+	})
 }
 
 // VerifyOTP verifies an OTP and activates the user
@@ -273,22 +296,25 @@ func (s *Service) VerifyOTP(ctx context.Context, req *VerifyOTPRequest) error {
 
 	switch req.Purpose {
 	case OTPPurposeVerifyWA:
-		_, err := s.DB.Exec(ctx, `UPDATE users SET whatsapp_verified = TRUE, status = $1, updated_at = NOW() WHERE whatsapp = $2`, StatusActive, req.Identifier)
-		return err
+		return s.Queries.VerifyUserWhatsApp(ctx, pgtype.Text{String: req.Identifier, Valid: true})
 	case OTPPurposeVerifyEmail:
-		_, err := s.DB.Exec(ctx, `UPDATE users SET email_verified = TRUE, status = $1, updated_at = NOW() WHERE email = $2`, StatusActive, req.Identifier)
-		return err
+		return s.Queries.VerifyUserEmail(ctx, pgtype.Text{String: req.Identifier, Valid: true})
 	}
 	return nil
 }
 
 // ChangePassword changes the user's password
 func (s *Service) ChangePassword(ctx context.Context, userID string, req *ChangePasswordRequest) error {
-	user, err := s.getUserByID(ctx, userID)
-	if err != nil || user == nil {
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user id")
+	}
+
+	user, err := s.Queries.GetUserByID(ctx, id)
+	if err != nil {
 		return fmt.Errorf("user not found")
 	}
-	if user.PasswordHash == nil || !shared.VerifyPassword(*user.PasswordHash, req.OldPassword) {
+	if !user.PasswordHash.Valid || !shared.VerifyPassword(user.PasswordHash.String, req.OldPassword) {
 		return fmt.Errorf("invalid old password")
 	}
 	if len(req.NewPassword) < 8 {
@@ -300,8 +326,10 @@ func (s *Service) ChangePassword(ctx context.Context, userID string, req *Change
 		return err
 	}
 
-	_, err = s.DB.Exec(ctx, `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, hash, userID)
-	return err
+	return s.Queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		ID:           id,
+		PasswordHash: pgtype.Text{String: hash, Valid: true},
+	})
 }
 
 // ResetPassword resets password using OTP
@@ -318,111 +346,82 @@ func (s *Service) ResetPassword(ctx context.Context, req *ResetPasswordRequest) 
 		return err
 	}
 
-	_, err = s.DB.Exec(ctx, `
-		UPDATE users SET password_hash = $1, updated_at = NOW() 
-		WHERE email = $2 OR whatsapp = $2
-	`, hash, req.Identifier)
-	return err
+	return s.Queries.ResetPasswordByIdentifier(ctx, db.ResetPasswordByIdentifierParams{
+		Email:        pgtype.Text{String: req.Identifier, Valid: true},
+		PasswordHash: pgtype.Text{String: hash, Valid: true},
+	})
+}
+
+// IsTokenBlacklisted checks Redis for blacklisted token
+func (s *Service) IsTokenBlacklisted(ctx context.Context, jti string) (bool, error) {
+	return s.Redis.Exists(ctx, "blacklist:"+jti)
 }
 
 // --- Private helpers ---
 
-func (s *Service) createTokenPair(ctx context.Context, user *User) (*AuthResponse, string, error) {
-	sessionID := shared.GenerateUUID()
+func (s *Service) createTokenPair(ctx context.Context, user *db.User) (*AuthResponse, string, error) {
+	sessionID := uuid.New()
 
-	accessToken, err := s.JWT.GenerateAccessToken(user.ID, sessionID)
+	accessToken, err := s.JWT.GenerateAccessToken(user.ID.String(), sessionID.String())
 	if err != nil {
 		return nil, "", err
 	}
 
-	refreshToken, err := s.JWT.GenerateRefreshToken(user.ID, sessionID)
+	refreshToken, err := s.JWT.GenerateRefreshToken(user.ID.String(), sessionID.String())
 	if err != nil {
 		return nil, "", err
 	}
 
-	_, err = s.DB.Exec(ctx, `
-		INSERT INTO sessions (id, user_id, refresh_token, expires_at, last_used_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, sessionID, user.ID, refreshToken, time.Now().Add(s.Config.RefreshTokenExpiry), time.Now(), time.Now())
+	now := time.Now()
+	_, err = s.Queries.CreateSession(ctx, db.CreateSessionParams{
+		ID:           sessionID,
+		UserID:       user.ID,
+		RefreshToken: refreshToken,
+		ExpiresAt:    now.Add(s.Config.RefreshTokenExpiry),
+		LastUsedAt:   now,
+		CreatedAt:    now,
+	})
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create session: %w", err)
 	}
 
-	_, _ = s.DB.Exec(ctx, `UPDATE users SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1`, user.ID)
+	// Update last login
+	_ = s.Queries.UpdateUserLastLogin(ctx, db.UpdateUserLastLoginParams{
+		ID: user.ID,
+	})
 
 	resp := &AuthResponse{
 		AccessToken: accessToken,
 		ExpiresIn:   int(s.Config.AccessTokenExpiry.Seconds()),
-		User:        user.ToResponse(),
+		User:        UserToResponse(user),
 	}
 
 	return resp, refreshToken, nil
 }
 
-func (s *Service) getUserByID(ctx context.Context, id string) (*User, error) {
-	var u User
-	err := s.DB.QueryRow(ctx, `
-		SELECT id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at
-		FROM users WHERE id = $1
-	`, id).Scan(&u.ID, &u.Email, &u.WhatsApp, &u.PasswordHash, &u.EmailVerified, &u.WhatsAppVerified, &u.Status, &u.LastLoginAt, &u.LastLoginIP, &u.CreatedAt, &u.UpdatedAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &u, nil
-}
-
-func (s *Service) getUserByEmail(ctx context.Context, email string) (*User, error) {
-	var u User
-	err := s.DB.QueryRow(ctx, `
-		SELECT id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at
-		FROM users WHERE email = $1
-	`, email).Scan(&u.ID, &u.Email, &u.WhatsApp, &u.PasswordHash, &u.EmailVerified, &u.WhatsAppVerified, &u.Status, &u.LastLoginAt, &u.LastLoginIP, &u.CreatedAt, &u.UpdatedAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &u, nil
-}
-
-func (s *Service) getUserByWhatsApp(ctx context.Context, whatsapp string) (*User, error) {
-	var u User
-	err := s.DB.QueryRow(ctx, `
-		SELECT id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at
-		FROM users WHERE whatsapp = $1
-	`, whatsapp).Scan(&u.ID, &u.Email, &u.WhatsApp, &u.PasswordHash, &u.EmailVerified, &u.WhatsAppVerified, &u.Status, &u.LastLoginAt, &u.LastLoginIP, &u.CreatedAt, &u.UpdatedAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &u, nil
-}
-
 func (s *Service) storeOTP(ctx context.Context, identifier, identifierType, purpose, code string) error {
-	id := shared.GenerateUUID()
-	_, err := s.DB.Exec(ctx, `
-		INSERT INTO otp_codes (id, identifier, identifier_type, code, purpose, attempts, max_attempts, expires_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8)
-	`, id, identifier, identifierType, code, purpose, s.Config.OTPMaxAttempts, time.Now().Add(s.Config.OTPExpiry), time.Now())
-	return err
+	return s.Queries.CreateOTP(ctx, db.CreateOTPParams{
+		ID:             uuid.New(),
+		Identifier:     identifier,
+		IdentifierType: identifierType,
+		Code:           code,
+		Purpose:        purpose,
+		MaxAttempts:    int32(s.Config.OTPMaxAttempts),
+		ExpiresAt:      time.Now().Add(s.Config.OTPExpiry),
+		CreatedAt:      time.Now(),
+	})
 }
 
 func (s *Service) validateOTP(ctx context.Context, identifier, code, purpose string) error {
-	var otp OTPRecord
-	err := s.DB.QueryRow(ctx, `
-		SELECT id, code, attempts, max_attempts, expires_at
-		FROM otp_codes
-		WHERE identifier = $1 AND purpose = $2 AND used_at IS NULL AND expires_at > NOW()
-		ORDER BY created_at DESC LIMIT 1
-	`, identifier, purpose).Scan(&otp.ID, &otp.Code, &otp.Attempts, &otp.MaxAttempts, &otp.ExpiresAt)
+	otp, err := s.Queries.GetValidOTP(ctx, db.GetValidOTPParams{
+		Identifier: identifier,
+		Purpose:    purpose,
+	})
 	if err != nil {
-		return fmt.Errorf("invalid or expired OTP")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("invalid or expired OTP")
+		}
+		return err
 	}
 
 	if otp.Attempts >= otp.MaxAttempts {
@@ -430,18 +429,39 @@ func (s *Service) validateOTP(ctx context.Context, identifier, code, purpose str
 	}
 
 	if otp.Code != code {
-		_, _ = s.DB.Exec(ctx, `UPDATE otp_codes SET attempts = attempts + 1 WHERE id = $1`, otp.ID)
+		_ = s.Queries.IncrementOTPAttempts(ctx, otp.ID)
 		return fmt.Errorf("invalid OTP")
 	}
 
-	_, _ = s.DB.Exec(ctx, `UPDATE otp_codes SET used_at = NOW() WHERE id = $1`, otp.ID)
+	_ = s.Queries.MarkOTPUsed(ctx, otp.ID)
 	return nil
 }
 
-func (s *Service) blacklistToken(ctx context.Context, jti, userID string, expiry time.Duration) error {
-	_, err := s.DB.Exec(ctx, `
-		INSERT INTO blacklisted_tokens (id, token_jti, user_id, reason, expires_at, created_at)
-		VALUES ($1, $2, $3, 'logout', $4, $5)
-	`, shared.GenerateUUID(), jti, userID, time.Now().Add(expiry), time.Now())
-	return err
+// --- Helpers ---
+
+func toPgText(s *string) pgtype.Text {
+	if s == nil || *s == "" {
+		return pgtype.Text{Valid: false}
+	}
+	return pgtype.Text{String: *s, Valid: true}
+}
+
+func UserToResponse(u *db.User) UserResponse {
+	var email, whatsapp *string
+	if u.Email.Valid {
+		email = &u.Email.String
+	}
+	if u.Whatsapp.Valid {
+		whatsapp = &u.Whatsapp.String
+	}
+
+	return UserResponse{
+		ID:               u.ID.String(),
+		Email:            email,
+		WhatsApp:         whatsapp,
+		EmailVerified:    u.EmailVerified,
+		WhatsAppVerified: u.WhatsappVerified,
+		Status:           u.Status,
+		CreatedAt:        u.CreatedAt.Format(time.RFC3339),
+	}
 }
