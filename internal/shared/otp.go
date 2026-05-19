@@ -2,6 +2,8 @@ package shared
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -19,6 +21,7 @@ func NewOTPService(length int) *OTPService {
 	return &OTPService{Length: length}
 }
 
+// Generate creates a cryptographically random OTP code
 func (s *OTPService) Generate() string {
 	max := new(big.Int)
 	max.Exp(big.NewInt(10), big.NewInt(int64(s.Length)), nil)
@@ -31,6 +34,17 @@ func (s *OTPService) Generate() string {
 
 	format := fmt.Sprintf("%%0%dd", s.Length)
 	return fmt.Sprintf(format, n.Int64())
+}
+
+// HashOTP hashes an OTP code with SHA256 for secure storage
+func HashOTP(code string) string {
+	h := sha256.Sum256([]byte(code))
+	return hex.EncodeToString(h[:])
+}
+
+// VerifyOTP compares a plaintext OTP against a stored hash
+func VerifyOTP(code, hash string) bool {
+	return HashOTP(code) == hash
 }
 
 func GenerateUUID() string {

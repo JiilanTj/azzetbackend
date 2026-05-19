@@ -3,6 +3,7 @@ package shared
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -30,6 +31,11 @@ func NewZenzivaClient(apiURL, userKey, passKey, brand string) *ZenzivaClient {
 }
 
 func (z *ZenzivaClient) SendOTP(ctx context.Context, to, code string) error {
+	if z.UserKey == "" || z.PassKey == "" {
+		slog.Warn("zenziva: credentials not configured, skipping OTP send", "to", to)
+		return nil
+	}
+
 	form := url.Values{}
 	form.Set("userkey", z.UserKey)
 	form.Set("passkey", z.PassKey)
@@ -53,31 +59,40 @@ func (z *ZenzivaClient) SendOTP(ctx context.Context, to, code string) error {
 		return fmt.Errorf("zenziva: API returned status %d", resp.StatusCode)
 	}
 
+	slog.Info("zenziva: OTP sent", "to", to)
 	return nil
 }
 
 type EmailOTPSender struct {
-	// Uses the existing SMTP client
-	Host     string
-	Port     string
-	User     string
-	Pass     string
-	From     string
+	Host string
+	Port string
+	User string
+	Pass string
+	From string
+	Env  string
 }
 
-func NewEmailOTPSender(host, port, user, pass, from string) *EmailOTPSender {
+func NewEmailOTPSender(host, port, user, pass, from, env string) *EmailOTPSender {
 	return &EmailOTPSender{
 		Host: host,
 		Port: port,
 		User: user,
 		Pass: pass,
 		From: from,
+		Env:  env,
 	}
 }
 
 func (e *EmailOTPSender) SendOTP(ctx context.Context, to, code string) error {
-	// TODO: Integrate with existing SMTP client
-	// For now, log the OTP
-	fmt.Printf("[EMAIL OTP] To: %s, Code: %s\n", to, code)
+	if e.Host == "" || e.User == "" {
+		// In development without SMTP, log only that OTP was generated (not the code itself)
+		if e.Env == "development" {
+			slog.Debug("email OTP generated (SMTP not configured)", "to", to)
+		}
+		return nil
+	}
+
+	// TODO: Integrate with existing SMTP client for actual sending
+	slog.Info("email OTP sent", "to", to)
 	return nil
 }

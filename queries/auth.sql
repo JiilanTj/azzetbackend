@@ -76,7 +76,8 @@ VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8);
 SELECT * FROM otp_codes
 WHERE identifier = $1 AND purpose = $2 AND used_at IS NULL AND expires_at > NOW()
 ORDER BY created_at DESC
-LIMIT 1;
+LIMIT 1
+FOR UPDATE SKIP LOCKED;
 
 -- name: MarkOTPUsed :exec
 UPDATE otp_codes SET used_at = NOW() WHERE id = $1;

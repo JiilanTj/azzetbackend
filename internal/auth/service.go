@@ -2,8 +2,11 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/netip"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +17,8 @@ import (
 	rdb "codeberg.org/azzet/azzetbe/internal/redis"
 	"codeberg.org/azzet/azzetbe/internal/shared"
 )
+
+var ErrUserNotFound = errors.New("user not found")
 
 type Service struct {
 	Queries *db.Queries
@@ -30,6 +35,13 @@ type ServiceConfig struct {
 	RefreshTokenExpiry time.Duration
 	OTPExpiry          time.Duration
 	OTPMaxAttempts     int
+}
+
+// LoginContext carries request metadata for session tracking
+type LoginContext struct {
+	IPAddress string
+	UserAgent string
+	DeviceName string
 }
 
 func NewService(queries *db.Queries, redis *rdb.Redis, jwt *shared.JWTService, otp *shared.OTPService, zenziva *shared.ZenzivaClient, email *shared.EmailOTPSender, cfg *ServiceConfig) *Service {
@@ -56,29 +68,29 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 		return nil, fmt.Errorf("password must be at least 8 characters")
 	}
 
-	// Check duplicates
+	// Check duplicates (generic error to prevent enumeration)
 	if req.Email != nil && *req.Email != "" {
 		exists, err := s.Queries.ExistsByEmail(ctx, pgtype.Text{String: *req.Email, Valid: true})
 		if err != nil {
-			return nil, fmt.Errorf("failed to check email: %w", err)
+			return nil, fmt.Errorf("registration failed")
 		}
 		if exists {
-			return nil, fmt.Errorf("email already registered")
+			return nil, fmt.Errorf("registration failed")
 		}
 	}
 	if req.WhatsApp != nil && *req.WhatsApp != "" {
 		exists, err := s.Queries.ExistsByWhatsApp(ctx, pgtype.Text{String: *req.WhatsApp, Valid: true})
 		if err != nil {
-			return nil, fmt.Errorf("failed to check whatsapp: %w", err)
+			return nil, fmt.Errorf("registration failed")
 		}
 		if exists {
-			return nil, fmt.Errorf("whatsapp already registered")
+			return nil, fmt.Errorf("registration failed")
 		}
 	}
 
 	hash, err := shared.HashPassword(req.Password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", err)
+		return nil, fmt.Errorf("registration failed")
 	}
 
 	now := time.Now()
@@ -94,7 +106,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 
 	user, err := s.Queries.CreateUser(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user: %w", err)
+		return nil, fmt.Errorf("registration failed")
 	}
 
 	// Send verification OTP (non-blocking errors)
@@ -115,13 +127,10 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 }
 
 // LoginWithEmail authenticates user with email + password
-func (s *Service) LoginWithEmail(ctx context.Context, req *LoginEmailRequest) (*AuthResponse, string, error) {
+func (s *Service) LoginWithEmail(ctx context.Context, req *LoginEmailRequest, lc *LoginContext) (*AuthResponse, string, error) {
 	user, err := s.Queries.GetUserByEmail(ctx, pgtype.Text{String: req.Email, Valid: true})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, "", fmt.Errorf("invalid credentials")
-		}
-		return nil, "", err
+		return nil, "", fmt.Errorf("invalid credentials")
 	}
 
 	if !user.PasswordHash.Valid || !shared.VerifyPassword(user.PasswordHash.String, req.Password) {
@@ -131,49 +140,49 @@ func (s *Service) LoginWithEmail(ctx context.Context, req *LoginEmailRequest) (*
 		return nil, "", fmt.Errorf("account is suspended")
 	}
 
-	return s.createTokenPair(ctx, &user)
+	return s.createTokenPair(ctx, &user, lc)
 }
 
 // LoginWithOTP authenticates user with whatsapp + OTP code
-func (s *Service) LoginWithOTP(ctx context.Context, req *LoginOTPRequest) (*AuthResponse, string, error) {
+func (s *Service) LoginWithOTP(ctx context.Context, req *LoginOTPRequest, lc *LoginContext) (*AuthResponse, string, error) {
 	if err := s.validateOTP(ctx, req.WhatsApp, req.OTP, OTPPurposeLogin); err != nil {
 		return nil, "", err
 	}
 
 	user, err := s.Queries.GetUserByWhatsApp(ctx, pgtype.Text{String: req.WhatsApp, Valid: true})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, "", fmt.Errorf("user not found")
-		}
-		return nil, "", err
+		return nil, "", fmt.Errorf("invalid credentials")
 	}
 	if user.Status == StatusSuspended {
 		return nil, "", fmt.Errorf("account is suspended")
 	}
 
-	return s.createTokenPair(ctx, &user)
+	return s.createTokenPair(ctx, &user, lc)
 }
 
 // RequestOTP sends an OTP to the user's whatsapp
 func (s *Service) RequestOTP(ctx context.Context, req *RequestOTPRequest) error {
+	// Validate purpose
+	if req.Purpose != OTPPurposeLogin && req.Purpose != OTPPurposeVerifyWA && req.Purpose != OTPPurposeResetPass {
+		return fmt.Errorf("invalid OTP purpose")
+	}
+
 	_, err := s.Queries.GetUserByWhatsApp(ctx, pgtype.Text{String: req.WhatsApp, Valid: true})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("user not found")
-		}
-		return err
+		// Generic error to prevent enumeration
+		return fmt.Errorf("OTP request failed")
 	}
 
 	code := s.OTP.Generate()
 	if err := s.storeOTP(ctx, req.WhatsApp, IdentifierTypeWA, req.Purpose, code); err != nil {
-		return err
+		return fmt.Errorf("OTP request failed")
 	}
 
 	return s.Zenziva.SendOTP(ctx, req.WhatsApp, code)
 }
 
 // RefreshToken rotates the refresh token and issues new access token
-func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (*AuthResponse, string, error) {
+func (s *Service) RefreshToken(ctx context.Context, refreshToken string, lc *LoginContext) (*AuthResponse, string, error) {
 	claims, err := s.JWT.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return nil, "", fmt.Errorf("invalid refresh token")
@@ -184,7 +193,7 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (*AuthR
 		return nil, "", fmt.Errorf("invalid session")
 	}
 
-	// Verify session
+	// Verify session by hashed refresh token
 	session, err := s.Queries.GetSessionByID(ctx, sessionID)
 	if err != nil {
 		return nil, "", fmt.Errorf("session not found")
@@ -192,7 +201,7 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (*AuthR
 	if time.Now().After(session.ExpiresAt) {
 		return nil, "", fmt.Errorf("session expired")
 	}
-	if session.RefreshToken != refreshToken {
+	if session.RefreshToken != hashToken(refreshToken) {
 		return nil, "", fmt.Errorf("invalid refresh token")
 	}
 
@@ -206,7 +215,7 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (*AuthR
 	_ = s.Queries.DeleteSessionByID(ctx, sessionID)
 
 	// Create new token pair
-	return s.createTokenPair(ctx, &user)
+	return s.createTokenPair(ctx, &user, lc)
 }
 
 // Logout blacklists the access token (Redis) and deletes the session
@@ -219,9 +228,9 @@ func (s *Service) Logout(ctx context.Context, accessToken, refreshToken string) 
 	// Blacklist access token in Redis (auto-expires)
 	_ = s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry)
 
-	// Delete session
+	// Delete session by hashed refresh token
 	if refreshToken != "" {
-		_ = s.Queries.DeleteSessionByRefreshToken(ctx, refreshToken)
+		_ = s.Queries.DeleteSessionByRefreshToken(ctx, hashToken(refreshToken))
 	}
 
 	return nil
@@ -234,10 +243,8 @@ func (s *Service) LogoutAll(ctx context.Context, accessToken string) error {
 		return fmt.Errorf("invalid access token")
 	}
 
-	// Blacklist access token in Redis
 	_ = s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry)
 
-	// Delete all sessions
 	userID, err := uuid.Parse(claims.UserID)
 	if err != nil {
 		return err
@@ -251,12 +258,12 @@ func (s *Service) LogoutAll(ctx context.Context, accessToken string) error {
 func (s *Service) GetMe(ctx context.Context, userID string) (*db.User, error) {
 	id, err := uuid.Parse(userID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user id")
+		return nil, ErrUserNotFound
 	}
 	user, err := s.Queries.GetUserByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -290,6 +297,11 @@ func (s *Service) RevokeSession(ctx context.Context, userID, sessionID string) e
 
 // VerifyOTP verifies an OTP and activates the user
 func (s *Service) VerifyOTP(ctx context.Context, req *VerifyOTPRequest) error {
+	// Validate purpose
+	if req.Purpose != OTPPurposeVerifyWA && req.Purpose != OTPPurposeVerifyEmail {
+		return fmt.Errorf("invalid verification purpose")
+	}
+
 	if err := s.validateOTP(ctx, req.Identifier, req.OTP, req.Purpose); err != nil {
 		return err
 	}
@@ -307,12 +319,12 @@ func (s *Service) VerifyOTP(ctx context.Context, req *VerifyOTPRequest) error {
 func (s *Service) ChangePassword(ctx context.Context, userID string, req *ChangePasswordRequest) error {
 	id, err := uuid.Parse(userID)
 	if err != nil {
-		return fmt.Errorf("invalid user id")
+		return ErrUserNotFound
 	}
 
 	user, err := s.Queries.GetUserByID(ctx, id)
 	if err != nil {
-		return fmt.Errorf("user not found")
+		return ErrUserNotFound
 	}
 	if !user.PasswordHash.Valid || !shared.VerifyPassword(user.PasswordHash.String, req.OldPassword) {
 		return fmt.Errorf("invalid old password")
@@ -359,7 +371,7 @@ func (s *Service) IsTokenBlacklisted(ctx context.Context, jti string) (bool, err
 
 // --- Private helpers ---
 
-func (s *Service) createTokenPair(ctx context.Context, user *db.User) (*AuthResponse, string, error) {
+func (s *Service) createTokenPair(ctx context.Context, user *db.User, lc *LoginContext) (*AuthResponse, string, error) {
 	sessionID := uuid.New()
 
 	accessToken, err := s.JWT.GenerateAccessToken(user.ID.String(), sessionID.String())
@@ -373,22 +385,43 @@ func (s *Service) createTokenPair(ctx context.Context, user *db.User) (*AuthResp
 	}
 
 	now := time.Now()
-	_, err = s.Queries.CreateSession(ctx, db.CreateSessionParams{
+	sessionParams := db.CreateSessionParams{
 		ID:           sessionID,
 		UserID:       user.ID,
-		RefreshToken: refreshToken,
+		RefreshToken: hashToken(refreshToken), // Store hash, not plaintext
 		ExpiresAt:    now.Add(s.Config.RefreshTokenExpiry),
 		LastUsedAt:   now,
 		CreatedAt:    now,
-	})
+	}
+
+	// Populate device/IP info if available
+	if lc != nil {
+		if lc.IPAddress != "" {
+			if addr, err := netip.ParseAddr(lc.IPAddress); err == nil {
+				sessionParams.IpAddress = &addr
+			}
+		}
+		if lc.UserAgent != "" {
+			sessionParams.UserAgent = pgtype.Text{String: lc.UserAgent, Valid: true}
+		}
+		if lc.DeviceName != "" {
+			sessionParams.DeviceName = pgtype.Text{String: lc.DeviceName, Valid: true}
+		}
+	}
+
+	_, err = s.Queries.CreateSession(ctx, sessionParams)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create session: %w", err)
 	}
 
-	// Update last login
-	_ = s.Queries.UpdateUserLastLogin(ctx, db.UpdateUserLastLoginParams{
-		ID: user.ID,
-	})
+	// Update last login with IP
+	loginParams := db.UpdateUserLastLoginParams{ID: user.ID}
+	if lc != nil && lc.IPAddress != "" {
+		if addr, err := netip.ParseAddr(lc.IPAddress); err == nil {
+			loginParams.LastLoginIp = &addr
+		}
+	}
+	_ = s.Queries.UpdateUserLastLogin(ctx, loginParams)
 
 	resp := &AuthResponse{
 		AccessToken: accessToken,
@@ -404,7 +437,7 @@ func (s *Service) storeOTP(ctx context.Context, identifier, identifierType, purp
 		ID:             uuid.New(),
 		Identifier:     identifier,
 		IdentifierType: identifierType,
-		Code:           code,
+		Code:           shared.HashOTP(code), // Store hash, not plaintext
 		Purpose:        purpose,
 		MaxAttempts:    int32(s.Config.OTPMaxAttempts),
 		ExpiresAt:      time.Now().Add(s.Config.OTPExpiry),
@@ -421,20 +454,27 @@ func (s *Service) validateOTP(ctx context.Context, identifier, code, purpose str
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("invalid or expired OTP")
 		}
-		return err
+		return fmt.Errorf("invalid or expired OTP")
 	}
 
 	if otp.Attempts >= otp.MaxAttempts {
 		return fmt.Errorf("too many failed attempts")
 	}
 
-	if otp.Code != code {
+	// Compare hashed OTP
+	if !shared.VerifyOTP(code, otp.Code) {
 		_ = s.Queries.IncrementOTPAttempts(ctx, otp.ID)
 		return fmt.Errorf("invalid OTP")
 	}
 
 	_ = s.Queries.MarkOTPUsed(ctx, otp.ID)
 	return nil
+}
+
+// hashToken creates a SHA256 hash of a token for secure storage
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
 }
 
 // --- Helpers ---

@@ -403,6 +403,7 @@ SELECT id, identifier, identifier_type, code, purpose, attempts, max_attempts, e
 WHERE identifier = $1 AND purpose = $2 AND used_at IS NULL AND expires_at > NOW()
 ORDER BY created_at DESC
 LIMIT 1
+FOR UPDATE SKIP LOCKED
 `
 
 type GetValidOTPParams struct {

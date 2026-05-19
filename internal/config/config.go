@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -17,35 +18,46 @@ type Config struct {
 	RedisURL    string
 	NatsURL     string
 
+	// CORS
+	CORSAllowedOrigins []string
+
+	// Auth
+	RefreshTokenSecret       string
+	AccessTokenExpiryMinutes int
+	RefreshTokenExpiryDays   int
+
+	// Cloudflare R2
 	R2AccountID       string
 	R2AccessKeyID     string
 	R2SecretAccessKey string
 	R2BucketName      string
 	R2Endpoint        string
 
+	// AI
 	OpenAIApiKey string
 	OpenAIModel  string
 
+	// Zenziva WhatsApp OTP
 	ZenzivaURL     string
 	ZenzivaUserKey string
 	ZenzivaPassKey string
 	ZenzivaBrand   string
 
+	// Xendit Payment
 	XenditAPIKey        string
 	XenditWebhookSecret string
 	XenditCallbackURL   string
 	XenditSuccessURL    string
 	XenditFailureURL    string
 
+	// SMTP
 	SMTPHost string
 	SMTPPort string
 	SMTPUser string
 	SMTPPass string
 	SMTPFrom string
 
-	AccessTokenExpiryMinutes int
-	RefreshTokenExpiryDays   int
-
+	// Worker
 	WorkerConcurrency int
 }
 
@@ -59,8 +71,14 @@ func Load() (*Config, error) {
 		AppPort:     getEnv("APP_PORT", "8080"),
 		AppSecret:   getEnv("APP_SECRET", ""),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
-		RedisURL:    getEnv("REDIS_URL", "localhost:6379"),
+		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
 		NatsURL:     getEnv("NATS_URL", "nats://localhost:4222"),
+
+		CORSAllowedOrigins: getEnvSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000"}),
+
+		RefreshTokenSecret:       getEnv("REFRESH_TOKEN_SECRET", ""),
+		AccessTokenExpiryMinutes: getEnvInt("ACCESS_TOKEN_EXPIRY_MINUTES", 15),
+		RefreshTokenExpiryDays:   getEnvInt("REFRESH_TOKEN_EXPIRY_DAYS", 7),
 
 		R2AccountID:       getEnv("R2_ACCOUNT_ID", ""),
 		R2AccessKeyID:     getEnv("R2_ACCESS_KEY_ID", ""),
@@ -88,9 +106,6 @@ func Load() (*Config, error) {
 		SMTPPass: getEnv("SMTP_PASS", ""),
 		SMTPFrom: getEnv("SMTP_FROM", "noreply@azzet.com"),
 
-		AccessTokenExpiryMinutes: getEnvInt("ACCESS_TOKEN_EXPIRY_MINUTES", 15),
-		RefreshTokenExpiryDays:   getEnvInt("REFRESH_TOKEN_EXPIRY_DAYS", 7),
-
 		WorkerConcurrency: getEnvInt("WORKER_CONCURRENCY", 50),
 	}
 
@@ -100,8 +115,27 @@ func Load() (*Config, error) {
 	if cfg.DatabaseURL == "" {
 		return nil, errors.New("DATABASE_URL is required")
 	}
+	if cfg.RefreshTokenSecret == "" {
+		return nil, errors.New("REFRESH_TOKEN_SECRET is required")
+	}
 
 	return cfg, nil
+}
+
+// RedisAddr returns the host:port for Redis (used by asynq)
+func (c *Config) RedisAddr() string {
+	url := c.RedisURL
+	url = strings.TrimPrefix(url, "redis://")
+	url = strings.TrimPrefix(url, "rediss://")
+	// Remove auth if present (user:pass@host:port)
+	if idx := strings.LastIndex(url, "@"); idx != -1 {
+		url = url[idx+1:]
+	}
+	// Remove path/db if present
+	if idx := strings.Index(url, "/"); idx != -1 {
+		url = url[:idx]
+	}
+	return url
 }
 
 func getEnv(key, fallback string) string {
@@ -115,6 +149,23 @@ func getEnvInt(key string, fallback int) int {
 	if v := os.Getenv(key); v != "" {
 		if i, err := strconv.Atoi(v); err == nil {
 			return i
+		}
+	}
+	return fallback
+}
+
+func getEnvSlice(key string, fallback []string) []string {
+	if v := os.Getenv(key); v != "" {
+		parts := strings.Split(v, ",")
+		var result []string
+		for _, p := range parts {
+			trimmed := strings.TrimSpace(p)
+			if trimmed != "" {
+				result = append(result, trimmed)
+			}
+		}
+		if len(result) > 0 {
+			return result
 		}
 	}
 	return fallback
