@@ -144,3 +144,18 @@ func InternalError(w http.ResponseWriter, r *http.Request, domain, message strin
 func Conflict(w http.ResponseWriter, r *http.Request, domain, message string) {
 	Error(w, r, http.StatusConflict, CodeConflict, domain, message)
 }
+
+// BadRequest writes a 400 error response.
+func BadRequest(w http.ResponseWriter, r *http.Request, domain, message string) {
+	Error(w, r, http.StatusBadRequest, CodeBadRequest, domain, message)
+}
+
+// OK writes a 200 success response.
+func OK(w http.ResponseWriter, r *http.Request, data interface{}) {
+	Success(w, http.StatusOK, data)
+}
+
+// Created writes a 201 success response.
+func Created(w http.ResponseWriter, r *http.Request, data interface{}) {
+	Success(w, http.StatusCreated, data)
+}

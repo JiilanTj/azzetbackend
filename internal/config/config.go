@@ -15,6 +15,7 @@ type Config struct {
 	AppSecret   string
 	DatabaseURL string
 	RedisURL    string
+	NatsURL     string
 
 	R2AccountID       string
 	R2AccessKeyID     string
@@ -25,8 +26,10 @@ type Config struct {
 	OpenAIApiKey string
 	OpenAIModel  string
 
-	WAAPIKey string
-	WAAPIURL string
+	ZenzivaURL     string
+	ZenzivaUserKey string
+	ZenzivaPassKey string
+	ZenzivaBrand   string
 
 	XenditAPIKey        string
 	XenditWebhookSecret string
@@ -56,19 +59,22 @@ func Load() (*Config, error) {
 		AppPort:     getEnv("APP_PORT", "8080"),
 		AppSecret:   getEnv("APP_SECRET", ""),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
-		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
+		RedisURL:    getEnv("REDIS_URL", "localhost:6379"),
+		NatsURL:     getEnv("NATS_URL", "nats://localhost:4222"),
 
 		R2AccountID:       getEnv("R2_ACCOUNT_ID", ""),
 		R2AccessKeyID:     getEnv("R2_ACCESS_KEY_ID", ""),
 		R2SecretAccessKey: getEnv("R2_SECRET_ACCESS_KEY", ""),
-		R2BucketName:      getEnv("R2_BUCKET_NAME", "azzet-cvs"),
+		R2BucketName:      getEnv("R2_BUCKET_NAME", "azzet-documents"),
 		R2Endpoint:        getEnv("R2_ENDPOINT", ""),
 
 		OpenAIApiKey: getEnv("OPENAI_API_KEY", ""),
-		OpenAIModel:  getEnv("OPENAI_MODEL", "gpt-4.1-mini"),
+		OpenAIModel:  getEnv("OPENAI_MODEL", "gpt-4-turbo"),
 
-		WAAPIKey: getEnv("WA_API_KEY", ""),
-		WAAPIURL: getEnv("WA_API_URL", "https://api.whatsapp.com"),
+		ZenzivaURL:     getEnv("ZENZIVA_URL", "https://console.zenziva.net/waofficial/api/sendWAOfficial/"),
+		ZenzivaUserKey: getEnv("ZENZIVA_USERKEY", ""),
+		ZenzivaPassKey: getEnv("ZENZIVA_PASSKEY", ""),
+		ZenzivaBrand:   getEnv("ZENZIVA_BRAND", "Azzet"),
 
 		XenditAPIKey:        getEnv("XENDIT_API_KEY", ""),
 		XenditWebhookSecret: getEnv("XENDIT_WEBHOOK_SECRET", ""),
@@ -80,7 +86,7 @@ func Load() (*Config, error) {
 		SMTPPort: getEnv("SMTP_PORT", "587"),
 		SMTPUser: getEnv("SMTP_USER", ""),
 		SMTPPass: getEnv("SMTP_PASS", ""),
-		SMTPFrom: getEnv("SMTP_FROM", "noreply@azzet.ai"),
+		SMTPFrom: getEnv("SMTP_FROM", "noreply@azzet.com"),
 
 		AccessTokenExpiryMinutes: getEnvInt("ACCESS_TOKEN_EXPIRY_MINUTES", 15),
 		RefreshTokenExpiryDays:   getEnvInt("REFRESH_TOKEN_EXPIRY_DAYS", 7),
