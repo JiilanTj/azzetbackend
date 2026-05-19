@@ -624,6 +624,412 @@
                 }
             }
         },
+        "/admin/plans": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all plans including inactive. SUPER_ADMIN/ENGINEER only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Plans"
+                ],
+                "summary": "List all plans (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new plan. SUPER_ADMIN/ENGINEER only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Plans"
+                ],
+                "summary": "Create plan",
+                "parameters": [
+                    {
+                        "description": "Plan data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.CreatePlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/plans/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a plan with all its features by ID. SUPER_ADMIN/ENGINEER only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Plans"
+                ],
+                "summary": "Get plan by ID (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Plan ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Soft-delete a plan (sets is_active = false). SUPER_ADMIN/ENGINEER only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Plans"
+                ],
+                "summary": "Delete plan",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Plan ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing plan. SUPER_ADMIN/ENGINEER only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Plans"
+                ],
+                "summary": "Update plan",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Plan ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.UpdatePlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/plans/{id}/features": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Add or update a feature on a plan. SUPER_ADMIN/ENGINEER only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Plans"
+                ],
+                "summary": "Set plan feature",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Plan ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Feature data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.SetFeatureRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/plans/{id}/features/{feature_key}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a feature from a plan. SUPER_ADMIN/ENGINEER only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Plans"
+                ],
+                "summary": "Remove plan feature",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Plan ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Feature key",
+                        "name": "feature_key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login/email": {
             "post": {
                 "description": "Authenticate using email + password. Returns access token in body and refresh token in HttpOnly cookie.",
@@ -1323,6 +1729,88 @@
                     }
                 }
             }
+        },
+        "/plans": {
+            "get": {
+                "description": "Returns all active plans sorted by tier. Public endpoint (no auth required).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Plans"
+                ],
+                "summary": "List active plans",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/plans/{slug}": {
+            "get": {
+                "description": "Returns a plan with all its features. Public endpoint (no auth required).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Plans"
+                ],
+                "summary": "Get plan by slug",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Plan slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1765,6 +2253,287 @@
                         "verify_email"
                     ],
                     "example": "verify_whatsapp"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_plan.CreatePlanRequest": {
+            "description": "Create a new plan (SUPER_ADMIN/ENGINEER only)",
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Best for growing businesses"
+                },
+                "is_trial": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Professional"
+                },
+                "price_monthly": {
+                    "type": "number",
+                    "example": 299000
+                },
+                "price_yearly": {
+                    "type": "number",
+                    "example": 2990000
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "professional"
+                },
+                "tier": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "trial_days": {
+                    "type": "integer",
+                    "example": 14
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "free",
+                        "paid"
+                    ],
+                    "example": "paid"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse": {
+            "description": "Feature permission/quota for a plan",
+            "type": "object",
+            "properties": {
+                "feature_key": {
+                    "type": "string",
+                    "example": "max_transactions_monthly"
+                },
+                "feature_type": {
+                    "type": "string",
+                    "example": "quota"
+                },
+                "value_bool": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "value_int": {
+                    "type": "integer",
+                    "example": 1000
+                },
+                "value_text": {
+                    "type": "string",
+                    "example": "advanced"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_plan.MessageResponse": {
+            "description": "Simple message response",
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Operation successful"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse": {
+            "description": "Plan summary for listing",
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-19T10:00:00Z"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Best for growing businesses"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "is_trial": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Professional"
+                },
+                "price_monthly": {
+                    "type": "number",
+                    "example": 299000
+                },
+                "price_yearly": {
+                    "type": "number",
+                    "example": 2990000
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "professional"
+                },
+                "tier": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "trial_days": {
+                    "type": "integer",
+                    "example": 14
+                },
+                "type": {
+                    "type": "string",
+                    "example": "paid"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_plan.PlanResponse": {
+            "description": "Plan information with feature list",
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-19T10:00:00Z"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Best for growing businesses"
+                },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse"
+                    }
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "is_trial": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Professional"
+                },
+                "price_monthly": {
+                    "type": "number",
+                    "example": 299000
+                },
+                "price_yearly": {
+                    "type": "number",
+                    "example": 2990000
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "professional"
+                },
+                "tier": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "trial_days": {
+                    "type": "integer",
+                    "example": 14
+                },
+                "type": {
+                    "type": "string",
+                    "example": "paid"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-05-19T10:00:00Z"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_plan.SetFeatureRequest": {
+            "description": "Set a feature permission on a plan. Use value_bool for boolean features, value_int for quotas (-1 = unlimited).",
+            "type": "object",
+            "properties": {
+                "feature_key": {
+                    "type": "string",
+                    "example": "max_transactions_monthly"
+                },
+                "feature_type": {
+                    "type": "string",
+                    "enum": [
+                        "boolean",
+                        "quota",
+                        "tier"
+                    ],
+                    "example": "quota"
+                },
+                "value_bool": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "value_int": {
+                    "type": "integer",
+                    "example": 1000
+                },
+                "value_text": {
+                    "type": "string",
+                    "example": "advanced"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_plan.UpdatePlanRequest": {
+            "description": "Update an existing plan",
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Updated description"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "is_trial": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Professional Plus"
+                },
+                "price_monthly": {
+                    "type": "number",
+                    "example": 399000
+                },
+                "price_yearly": {
+                    "type": "number",
+                    "example": 3990000
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "professional-plus"
+                },
+                "tier": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "trial_days": {
+                    "type": "integer",
+                    "example": 14
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "free",
+                        "paid"
+                    ],
+                    "example": "paid"
                 }
             }
         },

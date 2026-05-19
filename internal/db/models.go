@@ -37,6 +37,33 @@ type OtpCode struct {
 	CreatedAt      time.Time  `json:"created_at"`
 }
 
+type Plan struct {
+	ID           uuid.UUID      `json:"id"`
+	Name         string         `json:"name"`
+	Slug         string         `json:"slug"`
+	Description  pgtype.Text    `json:"description"`
+	Type         string         `json:"type"`
+	PriceMonthly pgtype.Numeric `json:"price_monthly"`
+	PriceYearly  pgtype.Numeric `json:"price_yearly"`
+	IsTrial      bool           `json:"is_trial"`
+	TrialDays    int32          `json:"trial_days"`
+	Tier         int32          `json:"tier"`
+	IsActive     bool           `json:"is_active"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+}
+
+type PlanFeature struct {
+	ID          uuid.UUID   `json:"id"`
+	PlanID      uuid.UUID   `json:"plan_id"`
+	FeatureKey  string      `json:"feature_key"`
+	FeatureType string      `json:"feature_type"`
+	ValueBool   pgtype.Bool `json:"value_bool"`
+	ValueInt    pgtype.Int4 `json:"value_int"`
+	ValueText   pgtype.Text `json:"value_text"`
+	CreatedAt   time.Time   `json:"created_at"`
+}
+
 type PlatformAdmin struct {
 	ID           uuid.UUID   `json:"id"`
 	Email        string      `json:"email"`

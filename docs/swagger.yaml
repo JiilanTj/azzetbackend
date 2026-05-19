@@ -326,6 +326,214 @@ definitions:
         example: verify_whatsapp
         type: string
     type: object
+  codeberg_org_azzet_azzetbe_internal_plan.CreatePlanRequest:
+    description: Create a new plan (SUPER_ADMIN/ENGINEER only)
+    properties:
+      description:
+        example: Best for growing businesses
+        type: string
+      is_trial:
+        example: true
+        type: boolean
+      name:
+        example: Professional
+        type: string
+      price_monthly:
+        example: 299000
+        type: number
+      price_yearly:
+        example: 2990000
+        type: number
+      slug:
+        example: professional
+        type: string
+      tier:
+        example: 2
+        type: integer
+      trial_days:
+        example: 14
+        type: integer
+      type:
+        enum:
+        - free
+        - paid
+        example: paid
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse:
+    description: Feature permission/quota for a plan
+    properties:
+      feature_key:
+        example: max_transactions_monthly
+        type: string
+      feature_type:
+        example: quota
+        type: string
+      value_bool:
+        example: true
+        type: boolean
+      value_int:
+        example: 1000
+        type: integer
+      value_text:
+        example: advanced
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_plan.MessageResponse:
+    description: Simple message response
+    properties:
+      message:
+        example: Operation successful
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse:
+    description: Plan summary for listing
+    properties:
+      created_at:
+        example: "2026-05-19T10:00:00Z"
+        type: string
+      description:
+        example: Best for growing businesses
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      is_trial:
+        example: true
+        type: boolean
+      name:
+        example: Professional
+        type: string
+      price_monthly:
+        example: 299000
+        type: number
+      price_yearly:
+        example: 2990000
+        type: number
+      slug:
+        example: professional
+        type: string
+      tier:
+        example: 2
+        type: integer
+      trial_days:
+        example: 14
+        type: integer
+      type:
+        example: paid
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_plan.PlanResponse:
+    description: Plan information with feature list
+    properties:
+      created_at:
+        example: "2026-05-19T10:00:00Z"
+        type: string
+      description:
+        example: Best for growing businesses
+        type: string
+      features:
+        items:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse'
+        type: array
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      is_trial:
+        example: true
+        type: boolean
+      name:
+        example: Professional
+        type: string
+      price_monthly:
+        example: 299000
+        type: number
+      price_yearly:
+        example: 2990000
+        type: number
+      slug:
+        example: professional
+        type: string
+      tier:
+        example: 2
+        type: integer
+      trial_days:
+        example: 14
+        type: integer
+      type:
+        example: paid
+        type: string
+      updated_at:
+        example: "2026-05-19T10:00:00Z"
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_plan.SetFeatureRequest:
+    description: Set a feature permission on a plan. Use value_bool for boolean features,
+      value_int for quotas (-1 = unlimited).
+    properties:
+      feature_key:
+        example: max_transactions_monthly
+        type: string
+      feature_type:
+        enum:
+        - boolean
+        - quota
+        - tier
+        example: quota
+        type: string
+      value_bool:
+        example: true
+        type: boolean
+      value_int:
+        example: 1000
+        type: integer
+      value_text:
+        example: advanced
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_plan.UpdatePlanRequest:
+    description: Update an existing plan
+    properties:
+      description:
+        example: Updated description
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      is_trial:
+        example: true
+        type: boolean
+      name:
+        example: Professional Plus
+        type: string
+      price_monthly:
+        example: 399000
+        type: number
+      price_yearly:
+        example: 3990000
+        type: number
+      slug:
+        example: professional-plus
+        type: string
+      tier:
+        example: 3
+        type: integer
+      trial_days:
+        example: 14
+        type: integer
+      type:
+        enum:
+        - free
+        - paid
+        example: paid
+        type: string
+    type: object
   codeberg_org_azzet_azzetbe_internal_shared.APIError:
     properties:
       code:
@@ -740,6 +948,247 @@ paths:
       summary: Refresh admin access token
       tags:
       - Admin Auth
+  /admin/plans:
+    get:
+      description: Returns all plans including inactive. SUPER_ADMIN/ENGINEER only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all plans (admin)
+      tags:
+      - Admin Plans
+    post:
+      consumes:
+      - application/json
+      description: Create a new plan. SUPER_ADMIN/ENGINEER only.
+      parameters:
+      - description: Plan data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.CreatePlanRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create plan
+      tags:
+      - Admin Plans
+  /admin/plans/{id}:
+    delete:
+      description: Soft-delete a plan (sets is_active = false). SUPER_ADMIN/ENGINEER
+        only.
+      parameters:
+      - description: Plan ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete plan
+      tags:
+      - Admin Plans
+    get:
+      description: Returns a plan with all its features by ID. SUPER_ADMIN/ENGINEER
+        only.
+      parameters:
+      - description: Plan ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get plan by ID (admin)
+      tags:
+      - Admin Plans
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing plan. SUPER_ADMIN/ENGINEER only.
+      parameters:
+      - description: Plan ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.UpdatePlanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update plan
+      tags:
+      - Admin Plans
+  /admin/plans/{id}/features:
+    post:
+      consumes:
+      - application/json
+      description: Add or update a feature on a plan. SUPER_ADMIN/ENGINEER only.
+      parameters:
+      - description: Plan ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Feature data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.SetFeatureRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set plan feature
+      tags:
+      - Admin Plans
+  /admin/plans/{id}/features/{feature_key}:
+    delete:
+      description: Remove a feature from a plan. SUPER_ADMIN/ENGINEER only.
+      parameters:
+      - description: Plan ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Feature key
+        in: path
+        name: feature_key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove plan feature
+      tags:
+      - Admin Plans
   /auth/login/email:
     post:
       consumes:
@@ -1167,6 +1616,56 @@ paths:
       summary: Verify OTP code
       tags:
       - Auth
+  /plans:
+    get:
+      description: Returns all active plans sorted by tier. Public endpoint (no auth
+        required).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse'
+                  type: array
+              type: object
+      summary: List active plans
+      tags:
+      - Plans
+  /plans/{slug}:
+    get:
+      description: Returns a plan with all its features. Public endpoint (no auth
+        required).
+      parameters:
+      - description: Plan slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Get plan by slug
+      tags:
+      - Plans
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.
