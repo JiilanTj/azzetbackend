@@ -19,7 +19,8 @@ type Config struct {
 	NatsURL     string
 
 	// CORS
-	CORSAllowedOrigins []string
+	CORSAllowedOrigins      []string
+	AdminCORSAllowedOrigins []string
 
 	// Auth
 	RefreshTokenSecret       string
@@ -74,7 +75,8 @@ func Load() (*Config, error) {
 		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
 		NatsURL:     getEnv("NATS_URL", "nats://localhost:4222"),
 
-		CORSAllowedOrigins: getEnvSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000"}),
+		CORSAllowedOrigins:      getEnvSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000"}),
+		AdminCORSAllowedOrigins: getEnvSlice("ADMIN_CORS_ALLOWED_ORIGINS", []string{"http://localhost:4000"}),
 
 		RefreshTokenSecret:       getEnv("REFRESH_TOKEN_SECRET", ""),
 		AccessTokenExpiryMinutes: getEnvInt("ACCESS_TOKEN_EXPIRY_MINUTES", 15),

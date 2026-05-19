@@ -15,6 +15,621 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/admins": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all platform admins. SUPER_ADMIN only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Management"
+                ],
+                "summary": "List all admins",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new platform admin account. SUPER_ADMIN only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Management"
+                ],
+                "summary": "Invite new admin",
+                "parameters": [
+                    {
+                        "description": "New admin data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.InviteAdminRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/admins/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Soft-delete an admin account. SUPER_ADMIN only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Management"
+                ],
+                "summary": "Deactivate admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update admin role or status. SUPER_ADMIN only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Management"
+                ],
+                "summary": "Update admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.UpdateAdminRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/auth/login": {
+            "post": {
+                "description": "Authenticate admin with email + password. If MFA enabled, returns mfa_token for step 2.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Auth"
+                ],
+                "summary": "Admin login (step 1)",
+                "parameters": [
+                    {
+                        "description": "Admin credentials",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.LoginResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Blacklist the admin access token and clear refresh cookie.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Auth"
+                ],
+                "summary": "Admin logout",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated admin's profile.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Auth"
+                ],
+                "summary": "Get current admin profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/auth/mfa/confirm": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Confirm MFA setup by providing the first TOTP code from authenticator app. Enables MFA and issues tokens.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Auth"
+                ],
+                "summary": "Confirm MFA setup",
+                "parameters": [
+                    {
+                        "description": "First TOTP code",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFASetupConfirmRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "headers": {
+                            "Set-Cookie": {
+                                "type": "string",
+                                "description": "admin_refresh_token=\u003ctoken\u003e; Path=/admin; HttpOnly; Secure; SameSite=Strict"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/auth/mfa/setup": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate TOTP secret and QR code URL. Admin must confirm with first code.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Auth"
+                ],
+                "summary": "Setup MFA (first time)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFASetupResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/auth/mfa/verify": {
+            "post": {
+                "description": "Verify TOTP code after password authentication. Returns access token and sets refresh cookie.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Auth"
+                ],
+                "summary": "Verify MFA code (step 2)",
+                "parameters": [
+                    {
+                        "description": "MFA token + TOTP code",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFAVerifyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "headers": {
+                            "Set-Cookie": {
+                                "type": "string",
+                                "description": "admin_refresh_token=\u003ctoken\u003e; Path=/admin; HttpOnly; Secure; SameSite=Strict"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/auth/refresh": {
+            "post": {
+                "description": "Exchange refresh token (from HttpOnly cookie) for new tokens.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Auth"
+                ],
+                "summary": "Refresh admin access token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "headers": {
+                            "Set-Cookie": {
+                                "type": "string",
+                                "description": "admin_refresh_token=\u003cnew_token\u003e; Path=/admin; HttpOnly; Secure; SameSite=Strict"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login/email": {
             "post": {
                 "description": "Authenticate using email + password. Returns access token in body and refresh token in HttpOnly cookie.",
@@ -717,6 +1332,215 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "codeberg_org_azzet_azzetbe_internal_admin.AdminResponse": {
+            "description": "Platform admin profile information",
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-19T09:00:00Z"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "admin@azzet.com"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "last_login": {
+                    "type": "string",
+                    "example": "2026-05-19T10:00:00Z"
+                },
+                "mfa_enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Azzet Admin"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "SUPER_ADMIN",
+                        "SUPPORT",
+                        "REVIEWER",
+                        "ENGINEER"
+                    ],
+                    "example": "SUPER_ADMIN"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "ACTIVE",
+                        "SUSPENDED",
+                        "DELETED"
+                    ],
+                    "example": "ACTIVE"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_admin.AuthResponse": {
+            "description": "Full auth response after MFA verification",
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIs..."
+                },
+                "admin": {
+                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse"
+                },
+                "expires_in": {
+                    "type": "integer",
+                    "example": 600
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_admin.InviteAdminRequest": {
+            "description": "Invite a new platform admin (SUPER_ADMIN only)",
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "support@azzet.com"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Support Agent"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "TempPass123!"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "SUPER_ADMIN",
+                        "SUPPORT",
+                        "REVIEWER",
+                        "ENGINEER"
+                    ],
+                    "example": "SUPPORT"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_admin.LoginRequest": {
+            "description": "Admin login with email and password",
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "admin@azzet.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "SuperSecure123!"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_admin.LoginResponse": {
+            "description": "Response after password verification. If MFA enabled, requires second step.",
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "description": "Only set if MFA is not enabled (first login, needs setup)",
+                    "type": "string"
+                },
+                "admin": {
+                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse"
+                },
+                "expires_in": {
+                    "type": "integer",
+                    "example": 600
+                },
+                "mfa_token": {
+                    "type": "string",
+                    "example": "temp-mfa-token-uuid"
+                },
+                "requires_mfa": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_admin.MFASetupConfirmRequest": {
+            "description": "Confirm MFA setup by providing the first TOTP code from authenticator app",
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "123456"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_admin.MFASetupResponse": {
+            "description": "MFA setup response with QR code URL and secret",
+            "type": "object",
+            "properties": {
+                "qr_code": {
+                    "type": "string",
+                    "example": "otpauth://totp/Azzet:admin@azzet.com?secret=JBSWY3DPEHPK3PXP\u0026issuer=Azzet"
+                },
+                "secret": {
+                    "type": "string",
+                    "example": "JBSWY3DPEHPK3PXP"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_admin.MFAVerifyRequest": {
+            "description": "Verify TOTP code after password authentication",
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "123456"
+                },
+                "mfa_token": {
+                    "type": "string",
+                    "example": "temp-mfa-token-uuid"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_admin.MessageResponse": {
+            "description": "Simple message response",
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Operation successful"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_admin.UpdateAdminRequest": {
+            "description": "Update admin role or status",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Updated Name"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "SUPER_ADMIN",
+                        "SUPPORT",
+                        "REVIEWER",
+                        "ENGINEER"
+                    ],
+                    "example": "REVIEWER"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "ACTIVE",
+                        "SUSPENDED"
+                    ],
+                    "example": "SUSPENDED"
+                }
+            }
+        },
         "codeberg_org_azzet_azzetbe_internal_auth.AuthResponse": {
             "description": "Authentication response with access token and user info. Refresh token is set as HttpOnly cookie.",
             "type": "object",

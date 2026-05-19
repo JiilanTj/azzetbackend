@@ -37,6 +37,21 @@ type OtpCode struct {
 	CreatedAt      time.Time  `json:"created_at"`
 }
 
+type PlatformAdmin struct {
+	ID           uuid.UUID   `json:"id"`
+	Email        string      `json:"email"`
+	PasswordHash string      `json:"password_hash"`
+	Name         string      `json:"name"`
+	Role         string      `json:"role"`
+	MfaSecret    pgtype.Text `json:"mfa_secret"`
+	MfaEnabled   bool        `json:"mfa_enabled"`
+	Status       string      `json:"status"`
+	LastLoginAt  *time.Time  `json:"last_login_at"`
+	LastLoginIp  *netip.Addr `json:"last_login_ip"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
+}
+
 type Session struct {
 	ID           uuid.UUID   `json:"id"`
 	UserID       uuid.UUID   `json:"user_id"`

@@ -1,5 +1,160 @@
 basePath: /api/v1
 definitions:
+  codeberg_org_azzet_azzetbe_internal_admin.AdminResponse:
+    description: Platform admin profile information
+    properties:
+      created_at:
+        example: "2026-05-19T09:00:00Z"
+        type: string
+      email:
+        example: admin@azzet.com
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      last_login:
+        example: "2026-05-19T10:00:00Z"
+        type: string
+      mfa_enabled:
+        example: true
+        type: boolean
+      name:
+        example: Azzet Admin
+        type: string
+      role:
+        enum:
+        - SUPER_ADMIN
+        - SUPPORT
+        - REVIEWER
+        - ENGINEER
+        example: SUPER_ADMIN
+        type: string
+      status:
+        enum:
+        - ACTIVE
+        - SUSPENDED
+        - DELETED
+        example: ACTIVE
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_admin.AuthResponse:
+    description: Full auth response after MFA verification
+    properties:
+      access_token:
+        example: eyJhbGciOiJIUzI1NiIs...
+        type: string
+      admin:
+        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse'
+      expires_in:
+        example: 600
+        type: integer
+    type: object
+  codeberg_org_azzet_azzetbe_internal_admin.InviteAdminRequest:
+    description: Invite a new platform admin (SUPER_ADMIN only)
+    properties:
+      email:
+        example: support@azzet.com
+        type: string
+      name:
+        example: Support Agent
+        type: string
+      password:
+        example: TempPass123!
+        type: string
+      role:
+        enum:
+        - SUPER_ADMIN
+        - SUPPORT
+        - REVIEWER
+        - ENGINEER
+        example: SUPPORT
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_admin.LoginRequest:
+    description: Admin login with email and password
+    properties:
+      email:
+        example: admin@azzet.com
+        type: string
+      password:
+        example: SuperSecure123!
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_admin.LoginResponse:
+    description: Response after password verification. If MFA enabled, requires second
+      step.
+    properties:
+      access_token:
+        description: Only set if MFA is not enabled (first login, needs setup)
+        type: string
+      admin:
+        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse'
+      expires_in:
+        example: 600
+        type: integer
+      mfa_token:
+        example: temp-mfa-token-uuid
+        type: string
+      requires_mfa:
+        example: true
+        type: boolean
+    type: object
+  codeberg_org_azzet_azzetbe_internal_admin.MFASetupConfirmRequest:
+    description: Confirm MFA setup by providing the first TOTP code from authenticator
+      app
+    properties:
+      code:
+        example: "123456"
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_admin.MFASetupResponse:
+    description: MFA setup response with QR code URL and secret
+    properties:
+      qr_code:
+        example: otpauth://totp/Azzet:admin@azzet.com?secret=JBSWY3DPEHPK3PXP&issuer=Azzet
+        type: string
+      secret:
+        example: JBSWY3DPEHPK3PXP
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_admin.MFAVerifyRequest:
+    description: Verify TOTP code after password authentication
+    properties:
+      code:
+        example: "123456"
+        type: string
+      mfa_token:
+        example: temp-mfa-token-uuid
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_admin.MessageResponse:
+    description: Simple message response
+    properties:
+      message:
+        example: Operation successful
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_admin.UpdateAdminRequest:
+    description: Update admin role or status
+    properties:
+      name:
+        example: Updated Name
+        type: string
+      role:
+        enum:
+        - SUPER_ADMIN
+        - SUPPORT
+        - REVIEWER
+        - ENGINEER
+        example: REVIEWER
+        type: string
+      status:
+        enum:
+        - ACTIVE
+        - SUSPENDED
+        example: SUSPENDED
+        type: string
+    type: object
   codeberg_org_azzet_azzetbe_internal_auth.AuthResponse:
     description: Authentication response with access token and user info. Refresh
       token is set as HttpOnly cookie.
@@ -216,6 +371,375 @@ info:
   title: Azzet API
   version: "1.0"
 paths:
+  /admin/admins:
+    get:
+      description: Returns all platform admins. SUPER_ADMIN only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all admins
+      tags:
+      - Admin Management
+    post:
+      consumes:
+      - application/json
+      description: Create a new platform admin account. SUPER_ADMIN only.
+      parameters:
+      - description: New admin data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.InviteAdminRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Invite new admin
+      tags:
+      - Admin Management
+  /admin/admins/{id}:
+    delete:
+      description: Soft-delete an admin account. SUPER_ADMIN only.
+      parameters:
+      - description: Admin ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Deactivate admin
+      tags:
+      - Admin Management
+    patch:
+      consumes:
+      - application/json
+      description: Update admin role or status. SUPER_ADMIN only.
+      parameters:
+      - description: Admin ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.UpdateAdminRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update admin
+      tags:
+      - Admin Management
+  /admin/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate admin with email + password. If MFA enabled, returns
+        mfa_token for step 2.
+      parameters:
+      - description: Admin credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.LoginResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Admin login (step 1)
+      tags:
+      - Admin Auth
+  /admin/auth/logout:
+    post:
+      description: Blacklist the admin access token and clear refresh cookie.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Admin logout
+      tags:
+      - Admin Auth
+  /admin/auth/me:
+    get:
+      description: Returns the authenticated admin's profile.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current admin profile
+      tags:
+      - Admin Auth
+  /admin/auth/mfa/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Confirm MFA setup by providing the first TOTP code from authenticator
+        app. Enables MFA and issues tokens.
+      parameters:
+      - description: First TOTP code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFASetupConfirmRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              description: admin_refresh_token=<token>; Path=/admin; HttpOnly; Secure;
+                SameSite=Strict
+              type: string
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Confirm MFA setup
+      tags:
+      - Admin Auth
+  /admin/auth/mfa/setup:
+    post:
+      description: Generate TOTP secret and QR code URL. Admin must confirm with first
+        code.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFASetupResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Setup MFA (first time)
+      tags:
+      - Admin Auth
+  /admin/auth/mfa/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verify TOTP code after password authentication. Returns access
+        token and sets refresh cookie.
+      parameters:
+      - description: MFA token + TOTP code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFAVerifyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              description: admin_refresh_token=<token>; Path=/admin; HttpOnly; Secure;
+                SameSite=Strict
+              type: string
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Verify MFA code (step 2)
+      tags:
+      - Admin Auth
+  /admin/auth/refresh:
+    post:
+      description: Exchange refresh token (from HttpOnly cookie) for new tokens.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              description: admin_refresh_token=<new_token>; Path=/admin; HttpOnly;
+                Secure; SameSite=Strict
+              type: string
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Refresh admin access token
+      tags:
+      - Admin Auth
   /auth/login/email:
     post:
       consumes:
