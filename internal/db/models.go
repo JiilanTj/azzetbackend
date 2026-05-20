@@ -62,6 +62,21 @@ type EntityRelation struct {
 	UpdatedAt    time.Time   `json:"updated_at"`
 }
 
+type Invoice struct {
+	ID             uuid.UUID      `json:"id"`
+	WorkspaceID    uuid.UUID      `json:"workspace_id"`
+	SubscriptionID uuid.UUID      `json:"subscription_id"`
+	InvoiceNumber  string         `json:"invoice_number"`
+	Amount         pgtype.Numeric `json:"amount"`
+	Currency       string         `json:"currency"`
+	Status         string         `json:"status"`
+	Description    pgtype.Text    `json:"description"`
+	DueDate        time.Time      `json:"due_date"`
+	PaidAt         *time.Time     `json:"paid_at"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
+}
+
 type MasterRole struct {
 	ID          uuid.UUID   `json:"id"`
 	Name        string      `json:"name"`
@@ -81,6 +96,24 @@ type OtpCode struct {
 	ExpiresAt      time.Time  `json:"expires_at"`
 	UsedAt         *time.Time `json:"used_at"`
 	CreatedAt      time.Time  `json:"created_at"`
+}
+
+type Payment struct {
+	ID                 uuid.UUID      `json:"id"`
+	InvoiceID          uuid.UUID      `json:"invoice_id"`
+	WorkspaceID        uuid.UUID      `json:"workspace_id"`
+	XenditInvoiceID    pgtype.Text    `json:"xendit_invoice_id"`
+	XenditPaymentUrl   pgtype.Text    `json:"xendit_payment_url"`
+	Amount             pgtype.Numeric `json:"amount"`
+	Currency           string         `json:"currency"`
+	Status             string         `json:"status"`
+	PaymentMethod      pgtype.Text    `json:"payment_method"`
+	PaidAt             *time.Time     `json:"paid_at"`
+	ExpiredAt          *time.Time     `json:"expired_at"`
+	FailureReason      pgtype.Text    `json:"failure_reason"`
+	XenditCallbackData []byte         `json:"xendit_callback_data"`
+	CreatedAt          time.Time      `json:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at"`
 }
 
 type Plan struct {

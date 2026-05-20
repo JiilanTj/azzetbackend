@@ -326,6 +326,103 @@ definitions:
         example: verify_whatsapp
         type: string
     type: object
+  codeberg_org_azzet_azzetbe_internal_billing.CreatePaymentRequest:
+    description: Initiate payment for a subscription invoice
+    properties:
+      invoice_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse:
+    description: Invoice information
+    properties:
+      amount:
+        example: 299000
+        type: number
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      currency:
+        example: IDR
+        type: string
+      description:
+        example: Professional Plan - Monthly
+        type: string
+      due_date:
+        example: "2026-06-20T00:00:00Z"
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      invoice_number:
+        example: INV-2026-0001
+        type: string
+      paid_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      status:
+        enum:
+        - pending
+        - paid
+        - failed
+        - expired
+        - refunded
+        example: pending
+        type: string
+      subscription_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      workspace_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_billing.MessageResponse:
+    description: Simple message response
+    properties:
+      message:
+        example: Operation successful
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_billing.PaymentResponse:
+    description: Payment attempt information
+    properties:
+      amount:
+        example: 299000
+        type: number
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      currency:
+        example: IDR
+        type: string
+      expires_at:
+        example: "2026-05-21T10:00:00Z"
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      invoice_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      paid_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      payment_method:
+        example: BANK_TRANSFER
+        type: string
+      payment_url:
+        example: https://checkout.xendit.co/...
+        type: string
+      status:
+        enum:
+        - pending
+        - paid
+        - failed
+        - expired
+        - refunded
+        example: pending
+        type: string
+    type: object
   codeberg_org_azzet_azzetbe_internal_entity.CreateEntityRequest:
     description: Create a new entity (personal or business)
     properties:
@@ -1341,6 +1438,46 @@ paths:
       summary: Refresh admin access token
       tags:
       - Admin Auth
+  /admin/billing/invoices:
+    get:
+      description: Returns all invoices across all workspaces. SUPER_ADMIN/ENGINEER
+        only.
+      parameters:
+      - description: Limit (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all invoices (admin)
+      tags:
+      - Admin Billing
   /admin/plans:
     get:
       description: Returns all plans including inactive with full features. SUPER_ADMIN/ENGINEER
@@ -2050,6 +2187,159 @@ paths:
       summary: Verify OTP code
       tags:
       - Auth
+  /billing/invoices:
+    get:
+      description: Returns all invoices for the current workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Limit (default 20)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List invoices
+      tags:
+      - Billing
+  /billing/invoices/{id}:
+    get:
+      description: Returns invoice detail by ID.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Invoice ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get invoice
+      tags:
+      - Billing
+  /billing/pay:
+    post:
+      consumes:
+      - application/json
+      description: Initiate payment for an invoice via Xendit. Returns payment URL.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Payment data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.CreatePaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.PaymentResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Pay invoice
+      tags:
+      - Billing
+  /billing/payments:
+    get:
+      description: Returns all payment attempts for the current workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Limit (default 20)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.PaymentResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List payments
+      tags:
+      - Billing
   /entities:
     get:
       description: Returns all entities owned by the authenticated user.
@@ -2565,6 +2855,41 @@ paths:
       summary: Get usage summary
       tags:
       - Subscription
+  /webhooks/xendit:
+    post:
+      consumes:
+      - application/json
+      description: Receives payment status callbacks from Xendit. Verified by x-callback-token
+        header.
+      parameters:
+      - description: Xendit webhook verification token
+        in: header
+        name: x-callback-token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      summary: Xendit payment webhook
+      tags:
+      - Webhooks
   /workspaces:
     get:
       description: Returns all workspaces the authenticated user has access to.

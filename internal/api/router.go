@@ -14,6 +14,7 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/api/handler"
 	"codeberg.org/azzet/azzetbe/internal/api/middleware"
 	"codeberg.org/azzet/azzetbe/internal/auth"
+	"codeberg.org/azzet/azzetbe/internal/billing"
 	"codeberg.org/azzet/azzetbe/internal/config"
 	"codeberg.org/azzet/azzetbe/internal/database"
 	"codeberg.org/azzet/azzetbe/internal/db"
@@ -99,6 +100,11 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	// --- Subscription ---
 	subscriptionService := subscription.NewService(queries)
 	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
+
+	// --- Billing ---
+	xenditClient := billing.NewXenditClient(cfg.XenditAPIKey, cfg.XenditWebhookSecret, cfg.XenditCallbackURL, cfg.XenditSuccessURL, cfg.XenditFailureURL)
+	billingService := billing.NewService(queries, xenditClient)
+	billingHandler := handler.NewBillingHandler(billingService)
 
 	// --- Entity & Workspace Handlers ---
 	entityHandler := handler.NewEntityHandler(entityService)
@@ -196,6 +202,19 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			r.Get("/usage", subscriptionHandler.GetUsage)
 		})
 
+		// Billing routes (workspace-scoped)
+		r.Route("/billing", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Use(workspaceMiddleware.RequireWorkspace)
+			r.Get("/invoices", billingHandler.ListInvoices)
+			r.Get("/invoices/{id}", billingHandler.GetInvoice)
+			r.Post("/pay", billingHandler.PayInvoice)
+			r.Get("/payments", billingHandler.ListPayments)
+		})
+
+		// Xendit webhook (public, verified by x-callback-token)
+		r.Post("/webhooks/xendit", billingHandler.XenditWebhook)
+
 		// Roles (authenticated, public read)
 		r.Route("/roles", func(r chi.Router) {
 			r.Use(authMiddleware.Authenticate)
@@ -259,6 +278,13 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			r.Use(adminMiddleware.Authenticate)
 			r.Use(adminMiddleware.RequireRole(admin.RoleSuperAdmin, admin.RoleEngineer))
 			r.Get("/", subscriptionHandler.AdminListSubscriptions)
+		})
+
+		// Billing management (SUPER_ADMIN + ENGINEER)
+		r.Route("/billing", func(r chi.Router) {
+			r.Use(adminMiddleware.Authenticate)
+			r.Use(adminMiddleware.RequireRole(admin.RoleSuperAdmin, admin.RoleEngineer))
+			r.Get("/invoices", billingHandler.AdminListInvoices)
 		})
 
 		// TODO: User management (SUPPORT+)
