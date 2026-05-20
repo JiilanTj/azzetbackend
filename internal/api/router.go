@@ -17,9 +17,11 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/config"
 	"codeberg.org/azzet/azzetbe/internal/database"
 	"codeberg.org/azzet/azzetbe/internal/db"
+	"codeberg.org/azzet/azzetbe/internal/entity"
 	"codeberg.org/azzet/azzetbe/internal/plan"
 	rdb "codeberg.org/azzet/azzetbe/internal/redis"
 	"codeberg.org/azzet/azzetbe/internal/shared"
+	"codeberg.org/azzet/azzetbe/internal/workspace"
 )
 
 func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis) http.Handler {
@@ -44,6 +46,10 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	zenzivaClient := shared.NewZenzivaClient(cfg.ZenzivaURL, cfg.ZenzivaUserKey, cfg.ZenzivaPassKey, cfg.ZenzivaBrand)
 	emailSender := shared.NewEmailOTPSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom, cfg.AppEnv)
 
+	// --- Entity & Workspace ---
+	entityService := entity.NewService(queries)
+	workspaceService := workspace.NewService(queries, entityService)
+
 	// --- User Auth ---
 	userAccessExpiry := time.Duration(cfg.AccessTokenExpiryMinutes) * time.Minute
 	userRefreshExpiry := time.Duration(cfg.RefreshTokenExpiryDays) * 24 * time.Hour
@@ -55,6 +61,9 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		OTPExpiry:          5 * time.Minute,
 		OTPMaxAttempts:     3,
 	})
+	// Inject entity + workspace services for auto-creation on register
+	authService.EntityService = entityService
+	authService.WorkspaceService = workspaceService
 
 	userIsBlacklisted := func(ctx context.Context, jti string) (bool, error) {
 		return authService.IsTokenBlacklisted(ctx, jti)
@@ -86,6 +95,13 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	planService := plan.NewService(queries)
 	planHandler := handler.NewPlanHandler(planService)
 
+	// --- Entity & Workspace Handlers ---
+	entityHandler := handler.NewEntityHandler(entityService)
+	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
+
+	// --- Workspace Middleware ---
+	workspaceMiddleware := middleware.NewWorkspaceMiddleware(workspaceService.VerifyWorkspaceAccess)
+
 	// ═══════════════════════════════════════════════════════════════
 	// USER API ROUTES (/api/v1)
 	// ═══════════════════════════════════════════════════════════════
@@ -93,7 +109,7 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		r.Use(cors.Handler(cors.Options{
 			AllowedOrigins:   cfg.CORSAllowedOrigins,
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-API-Key", "X-Device-Name"},
+			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-API-Key", "X-Device-Name", "X-Workspace-ID"},
 			AllowCredentials: true,
 			MaxAge:           300,
 		}))
@@ -126,6 +142,47 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 				r.Get("/sessions", authHandler.GetSessions)
 				r.Delete("/sessions/{id}", authHandler.RevokeSession)
 			})
+		})
+
+		// Entity routes (authenticated)
+		r.Route("/entities", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Post("/", entityHandler.CreateEntity)
+			r.Get("/", entityHandler.ListMyEntities)
+			r.Get("/search", entityHandler.SearchEntities)
+			r.Get("/{id}", entityHandler.GetEntity)
+			r.Patch("/{id}", entityHandler.UpdateEntity)
+			r.Patch("/{id}/meta", entityHandler.UpdateEntityMeta)
+		})
+
+		// Workspace routes (authenticated)
+		r.Route("/workspaces", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Post("/", workspaceHandler.CreateWorkspace)
+			r.Get("/", workspaceHandler.ListMyWorkspaces)
+
+			// Workspace-scoped routes (requires X-Workspace-ID header)
+			r.Group(func(r chi.Router) {
+				r.Use(workspaceMiddleware.RequireWorkspace)
+
+				r.Route("/members", func(r chi.Router) {
+					r.Post("/", workspaceHandler.InviteMember)
+					r.Get("/", workspaceHandler.ListMembers)
+					r.Patch("/{id}", workspaceHandler.UpdateMember)
+					r.Delete("/{id}", workspaceHandler.RemoveMember)
+				})
+
+				r.Route("/counterparties", func(r chi.Router) {
+					r.Post("/", workspaceHandler.AddCounterparty)
+					r.Get("/", workspaceHandler.ListCounterparties)
+				})
+			})
+		})
+
+		// Roles (authenticated, public read)
+		r.Route("/roles", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Get("/", workspaceHandler.ListRoles)
 		})
 	})
 

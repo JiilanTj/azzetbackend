@@ -14,20 +14,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"codeberg.org/azzet/azzetbe/internal/db"
+	"codeberg.org/azzet/azzetbe/internal/entity"
 	rdb "codeberg.org/azzet/azzetbe/internal/redis"
 	"codeberg.org/azzet/azzetbe/internal/shared"
+	"codeberg.org/azzet/azzetbe/internal/workspace"
 )
 
 var ErrUserNotFound = errors.New("user not found")
 
 type Service struct {
-	Queries *db.Queries
-	Redis   *rdb.Redis
-	JWT     *shared.JWTService
-	OTP     *shared.OTPService
-	Zenziva *shared.ZenzivaClient
-	Email   *shared.EmailOTPSender
-	Config  *ServiceConfig
+	Queries          *db.Queries
+	Redis            *rdb.Redis
+	JWT              *shared.JWTService
+	OTP              *shared.OTPService
+	Zenziva          *shared.ZenzivaClient
+	Email            *shared.EmailOTPSender
+	Config           *ServiceConfig
+	EntityService    *entity.Service
+	WorkspaceService *workspace.Service
 }
 
 type ServiceConfig struct {
@@ -121,6 +125,18 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 		code := s.OTP.Generate()
 		if err := s.storeOTP(ctx, *req.Email, IdentifierTypeEmail, OTPPurposeVerifyEmail, code); err == nil {
 			_ = s.Email.SendOTP(ctx, *req.Email, code)
+		}
+	}
+
+	// Auto-create personal entity + workspace (Option A - will be refactored to event-driven in Phase 6)
+	if s.EntityService != nil && s.WorkspaceService != nil {
+		name := req.Name
+		if name == "" {
+			name = "Personal"
+		}
+		personalEntity, err := s.EntityService.CreatePersonalEntity(ctx, user.ID, name)
+		if err == nil {
+			_ = s.WorkspaceService.CreatePersonalWorkspace(ctx, personalEntity.ID)
 		}
 	}
 

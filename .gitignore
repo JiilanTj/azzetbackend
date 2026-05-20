@@ -9,6 +9,7 @@ dist/
 /api
 /migrate
 /worker
+/plan-seed
 
 # Go
 *.test

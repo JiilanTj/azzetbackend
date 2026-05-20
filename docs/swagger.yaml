@@ -326,6 +326,128 @@ definitions:
         example: verify_whatsapp
         type: string
     type: object
+  codeberg_org_azzet_azzetbe_internal_entity.CreateEntityRequest:
+    description: Create a new entity (personal or business)
+    properties:
+      alamat_lengkap:
+        example: Jl. Sudirman No. 1, Jakarta
+        type: string
+      entity_type:
+        enum:
+        - ORANG_PRIBADI
+        - BADAN_USAHA
+        example: BADAN_USAHA
+        type: string
+      nama_utama:
+        example: PT Maju Jaya
+        type: string
+      nik_npwp:
+        example: 01.234.567.8-901.000
+        type: string
+      nomor_wa:
+        example: "+628123456789"
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_entity.EntityMetaResponse:
+    description: Entity meta/administrative information
+    properties:
+      bidang_usaha:
+        example: Konstruksi
+        type: string
+      description:
+        example: Perusahaan konstruksi terkemuka
+        type: string
+      email:
+        example: info@majujaya.co.id
+        type: string
+      logo_url:
+        example: https://r2.azzet.com/logos/abc.png
+        type: string
+      website:
+        example: https://majujaya.co.id
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_entity.EntityResponse:
+    description: Entity information
+    properties:
+      alamat_lengkap:
+        example: Jl. Sudirman No. 1
+        type: string
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      entity_type:
+        example: BADAN_USAHA
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_shadow:
+        example: false
+        type: boolean
+      meta:
+        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityMetaResponse'
+      nama_utama:
+        example: PT Maju Jaya
+        type: string
+      nik_npwp:
+        example: 01.234.567.8-901.000
+        type: string
+      nomor_wa:
+        example: "+628123456789"
+        type: string
+      status:
+        example: ACTIVE
+        type: string
+      updated_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      user_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_entity.MessageResponse:
+    description: Simple message response
+    properties:
+      message:
+        example: Operation successful
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityMetaRequest:
+    description: Update entity administrative data
+    properties:
+      bidang_usaha:
+        example: Konstruksi
+        type: string
+      description:
+        example: Perusahaan konstruksi terkemuka
+        type: string
+      email:
+        example: info@majujaya.co.id
+        type: string
+      logo_url:
+        example: https://r2.azzet.com/logos/abc.png
+        type: string
+      website:
+        example: https://majujaya.co.id
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityRequest:
+    description: Update an existing entity
+    properties:
+      alamat_lengkap:
+        example: Jl. Sudirman No. 1, Jakarta
+        type: string
+      nama_utama:
+        example: PT Maju Jaya Sejahtera
+        type: string
+      nik_npwp:
+        example: 01.234.567.8-901.000
+        type: string
+      nomor_wa:
+        example: "+628123456789"
+        type: string
+    type: object
   codeberg_org_azzet_azzetbe_internal_plan.CreatePlanRequest:
     description: Create a new plan (SUPER_ADMIN/ENGINEER only)
     properties:
@@ -570,6 +692,194 @@ definitions:
       field:
         type: string
       message:
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.AddCounterpartyRequest:
+    description: Add a counterparty (customer/vendor) to workspace. Creates shadow
+      entity if needed.
+    properties:
+      custom_alias:
+        example: Toko Maju
+        type: string
+      entity_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      entity_type:
+        enum:
+        - ORANG_PRIBADI
+        - BADAN_USAHA
+        example: BADAN_USAHA
+        type: string
+      nama_utama:
+        description: 'If entity_id is nil, create shadow entity from these fields:'
+        example: Toko Maju
+        type: string
+      nik_npwp:
+        example: 01.234.567.8-901.000
+        type: string
+      nomor_wa:
+        example: "+628123456789"
+        type: string
+      relation_type:
+        enum:
+        - PELANGGAN
+        - VENDOR
+        example: PELANGGAN
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse:
+    description: Counterparty (customer/vendor) information
+    properties:
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      custom_alias:
+        example: Toko Maju Cabang Utara
+        type: string
+      entity_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      entity_name:
+        example: Toko Maju
+        type: string
+      entity_type:
+        example: BADAN_USAHA
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_shadow:
+        example: true
+        type: boolean
+      relation_type:
+        example: PELANGGAN
+        type: string
+      status:
+        example: ACTIVE
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.CreateWorkspaceRequest:
+    description: Create a workspace from an existing entity
+    properties:
+      entity_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.InviteMemberRequest:
+    description: Invite a member to the workspace
+    properties:
+      custom_alias:
+        example: Andi Accounting
+        type: string
+      entity_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      role:
+        enum:
+        - AKUNTAN
+        - KASIR
+        - VIEWER
+        example: KASIR
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.MemberResponse:
+    description: Workspace member information
+    properties:
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      custom_alias:
+        example: Andi Accounting
+        type: string
+      entity_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      entity_name:
+        example: Andi
+        type: string
+      entity_type:
+        example: ORANG_PRIBADI
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      relation_type:
+        example: KARYAWAN
+        type: string
+      role:
+        example: KASIR
+        type: string
+      status:
+        example: ACTIVE
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse:
+    description: Simple message response
+    properties:
+      message:
+        example: Operation successful
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse:
+    description: Available role
+    properties:
+      description:
+        example: Transaction entry only
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      name:
+        example: KASIR
+        type: string
+      permissions:
+        example:
+        - '["transaction:create"'
+        - '"transaction:read"]'
+        items:
+          type: string
+        type: array
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.UpdateMemberRequest:
+    description: Update member role or status
+    properties:
+      custom_alias:
+        example: Updated Alias
+        type: string
+      role:
+        enum:
+        - AKUNTAN
+        - KASIR
+        - VIEWER
+        example: AKUNTAN
+        type: string
+      status:
+        enum:
+        - ACTIVE
+        - INACTIVE
+        example: INACTIVE
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.WorkspaceResponse:
+    description: Workspace information
+    properties:
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      entity_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      entity_name:
+        example: PT Maju Jaya
+        type: string
+      entity_type:
+        example: BADAN_USAHA
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      role:
+        example: PEMILIK
         type: string
     type: object
 host: localhost:8080
@@ -1617,6 +1927,223 @@ paths:
       summary: Verify OTP code
       tags:
       - Auth
+  /entities:
+    get:
+      description: Returns all entities owned by the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List my entities
+      tags:
+      - Entities
+    post:
+      consumes:
+      - application/json
+      description: Create a new entity (personal or business) linked to the authenticated
+        user.
+      parameters:
+      - description: Entity data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.CreateEntityRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create entity
+      tags:
+      - Entities
+  /entities/{id}:
+    get:
+      description: Returns entity detail with meta information.
+      parameters:
+      - description: Entity ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get entity by ID
+      tags:
+      - Entities
+    patch:
+      consumes:
+      - application/json
+      description: Update an entity's basic information. Only the owner can update.
+      parameters:
+      - description: Entity ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update entity
+      tags:
+      - Entities
+  /entities/{id}/meta:
+    patch:
+      consumes:
+      - application/json
+      description: Update entity administrative/compliance data. Only the owner can
+        update.
+      parameters:
+      - description: Entity ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Meta data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityMetaRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update entity meta
+      tags:
+      - Entities
+  /entities/search:
+    get:
+      description: Search entities by name. Returns active entities matching the query.
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Limit (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search entities
+      tags:
+      - Entities
   /plans:
     get:
       description: Returns all active plans sorted by tier. Public endpoint (no auth
@@ -1667,6 +2194,349 @@ paths:
       summary: Get plan by slug
       tags:
       - Plans
+  /roles:
+    get:
+      description: Returns all available roles that can be assigned to workspace members.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List available roles
+      tags:
+      - Workspaces
+  /workspaces:
+    get:
+      description: Returns all workspaces the authenticated user has access to.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.WorkspaceResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List my workspaces
+      tags:
+      - Workspaces
+    post:
+      consumes:
+      - application/json
+      description: Create a workspace from an existing entity. The user becomes PEMILIK
+        (owner).
+      parameters:
+      - description: Workspace data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateWorkspaceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.WorkspaceResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create workspace
+      tags:
+      - Workspaces
+  /workspaces/counterparties:
+    get:
+      description: Returns all counterparties (PELANGGAN + VENDOR) of the current
+        workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List counterparties
+      tags:
+      - Workspace Counterparties
+    post:
+      consumes:
+      - application/json
+      description: Add a counterparty (customer/vendor) to workspace. Creates shadow
+        entity if entity_id is not provided.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Counterparty data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AddCounterpartyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add counterparty
+      tags:
+      - Workspace Counterparties
+  /workspaces/members:
+    get:
+      description: Returns all members (PEMILIK + KARYAWAN) of the current workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MemberResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List workspace members
+      tags:
+      - Workspace Members
+    post:
+      consumes:
+      - application/json
+      description: Invite a member (entity) to the current workspace with a specific
+        role.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Member data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteMemberRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MemberResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Invite member to workspace
+      tags:
+      - Workspace Members
+  /workspaces/members/{id}:
+    delete:
+      description: Remove a member from the workspace. Cannot remove the owner.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Relation ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove workspace member
+      tags:
+      - Workspace Members
+    patch:
+      consumes:
+      - application/json
+      description: Update a member's role, alias, or status.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Relation ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.UpdateMemberRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update workspace member
+      tags:
+      - Workspace Members
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

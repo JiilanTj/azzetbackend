@@ -24,6 +24,52 @@ type AuditLog struct {
 	CreatedAt    time.Time   `json:"created_at"`
 }
 
+type Entity struct {
+	ID            uuid.UUID   `json:"id"`
+	UserID        pgtype.UUID `json:"user_id"`
+	EntityType    string      `json:"entity_type"`
+	NamaUtama     string      `json:"nama_utama"`
+	NikNpwp       pgtype.Text `json:"nik_npwp"`
+	NomorWa       pgtype.Text `json:"nomor_wa"`
+	AlamatLengkap pgtype.Text `json:"alamat_lengkap"`
+	IsShadow      bool        `json:"is_shadow"`
+	Status        string      `json:"status"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+}
+
+type EntityMetum struct {
+	ID          uuid.UUID   `json:"id"`
+	EntityID    uuid.UUID   `json:"entity_id"`
+	BidangUsaha pgtype.Text `json:"bidang_usaha"`
+	LogoUrl     pgtype.Text `json:"logo_url"`
+	Website     pgtype.Text `json:"website"`
+	Email       pgtype.Text `json:"email"`
+	Description pgtype.Text `json:"description"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+}
+
+type EntityRelation struct {
+	ID           uuid.UUID   `json:"id"`
+	ObjectID     uuid.UUID   `json:"object_id"`
+	SubjectID    uuid.UUID   `json:"subject_id"`
+	RelationType string      `json:"relation_type"`
+	CustomAlias  pgtype.Text `json:"custom_alias"`
+	RoleID       pgtype.UUID `json:"role_id"`
+	Status       string      `json:"status"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
+}
+
+type MasterRole struct {
+	ID          uuid.UUID   `json:"id"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+	Permissions []byte      `json:"permissions"`
+	CreatedAt   time.Time   `json:"created_at"`
+}
+
 type OtpCode struct {
 	ID             uuid.UUID  `json:"id"`
 	Identifier     string     `json:"identifier"`
