@@ -227,7 +227,7 @@ func (s *Service) Logout(ctx context.Context, accessToken, refreshToken string) 
 	}
 
 	// Blacklist access token in Redis (auto-expires)
-	_ = s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry)
+	_ = s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry).Err()
 
 	// Delete session by hashed refresh token
 	if refreshToken != "" {
@@ -244,7 +244,7 @@ func (s *Service) LogoutAll(ctx context.Context, accessToken string) error {
 		return fmt.Errorf("invalid access token")
 	}
 
-	_ = s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry)
+	_ = s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry).Err()
 
 	userID, err := uuid.Parse(claims.UserID)
 	if err != nil {

@@ -53,7 +53,7 @@ func (s *Service) Login(ctx context.Context, req *LoginRequest, ip string) (*Log
 	if admin.MfaEnabled {
 		// Generate temp MFA token (stored in Redis, 5 min TTL)
 		mfaToken := uuid.New().String()
-		err := s.Redis.Set(ctx, "mfa:"+mfaToken, admin.ID.String(), 5*time.Minute)
+		err := s.Redis.Set(ctx, "mfa:"+mfaToken, admin.ID.String(), 5*time.Minute).Err()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create MFA session")
 		}
@@ -194,7 +194,7 @@ func (s *Service) Logout(ctx context.Context, accessToken string) error {
 	if err != nil {
 		return fmt.Errorf("invalid access token")
 	}
-	_ = s.Redis.Set(ctx, "admin:blacklist:"+claims.JTI, claims.UserID, AdminAccessTokenExpiry)
+	_ = s.Redis.Set(ctx, "admin:blacklist:"+claims.JTI, claims.UserID, AdminAccessTokenExpiry).Err()
 	return nil
 }
 
@@ -354,7 +354,7 @@ func (s *Service) issueTokens(ctx context.Context, admin *db.PlatformAdmin) (*Au
 
 	// Store refresh token hash in Redis (admin sessions are simpler)
 	tokenHash := shared.HashOTP(refreshToken)
-	_ = s.Redis.Set(ctx, "admin:session:"+admin.ID.String(), tokenHash, AdminRefreshTokenExpiry)
+	_ = s.Redis.Set(ctx, "admin:session:"+admin.ID.String(), tokenHash, AdminRefreshTokenExpiry).Err()
 
 	resp := &AuthResponse{
 		AccessToken: accessToken,
