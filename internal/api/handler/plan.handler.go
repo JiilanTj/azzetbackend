@@ -61,11 +61,11 @@ func (h *PlanHandler) GetPlanBySlug(w http.ResponseWriter, r *http.Request) {
 
 // AdminListPlans godoc
 // @Summary      List all plans (admin)
-// @Description  Returns all plans including inactive. SUPER_ADMIN/ENGINEER only.
+// @Description  Returns all plans including inactive with full features. SUPER_ADMIN/ENGINEER only.
 // @Tags         Admin Plans
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200  {object}  shared.APIResponse{data=[]plan.PlanListResponse}
+// @Success      200  {object}  shared.APIResponse{data=[]plan.PlanResponse}
 // @Failure      401  {object}  shared.ErrorResponse
 // @Failure      403  {object}  shared.ErrorResponse
 // @Router       /admin/plans [get]

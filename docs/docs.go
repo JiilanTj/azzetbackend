@@ -637,7 +637,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns all plans including inactive. SUPER_ADMIN/ENGINEER only.",
+                "description": "Returns all plans including inactive with full features. SUPER_ADMIN/ENGINEER only.",
                 "produces": [
                     "application/json"
                 ],
@@ -659,7 +659,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse"
+                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse"
                                             }
                                         }
                                     }

@@ -110,6 +110,14 @@ generate: sqlc swag
 migrate:
 	go run ./cmd/migrate
 
+seed-admin:
+	go run ./cmd/admin-seed
+
+seed-plans:
+	go run ./cmd/plan-seed
+
+seed-all: seed-admin seed-plans
+
 # ─────────────────────────────────────────────────────────────────
 # Docker
 # ─────────────────────────────────────────────────────────────────

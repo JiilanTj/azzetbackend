@@ -129,19 +129,23 @@ func (s *Service) ListPlans(ctx context.Context) ([]PlanListResponse, error) {
 	return resp, nil
 }
 
-// ListAllPlans returns all plans including inactive (admin)
-func (s *Service) ListAllPlans(ctx context.Context) ([]PlanListResponse, error) {
+// ListAllPlans returns all plans including inactive with features (admin)
+func (s *Service) ListAllPlans(ctx context.Context) ([]PlanResponse, error) {
 	plans, err := s.Queries.ListAllPlans(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp []PlanListResponse
+	var resp []PlanResponse
 	for i := range plans {
-		resp = append(resp, planToListResponse(&plans[i]))
+		features, err := s.Queries.GetPlanFeatures(ctx, plans[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		resp = append(resp, *s.planToResponse(&plans[i], features))
 	}
 	if resp == nil {
-		resp = []PlanListResponse{}
+		resp = []PlanResponse{}
 	}
 	return resp, nil
 }
