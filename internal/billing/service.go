@@ -66,7 +66,7 @@ func (s *Service) CreateInvoice(ctx context.Context, workspaceID, subscriptionID
 		return nil, fmt.Errorf("failed to create invoice: %w", err)
 	}
 
-	return invoiceToResponse(&invoice), nil
+	return InvoiceToResponse(&invoice), nil
 }
 
 // PayInvoice initiates payment for an invoice via Xendit
@@ -138,7 +138,7 @@ func (s *Service) PayInvoice(ctx context.Context, workspaceID, invoiceID string)
 		return nil, fmt.Errorf("failed to store payment: %w", err)
 	}
 
-	return paymentToResponse(&payment), nil
+	return PaymentToResponse(&payment), nil
 }
 
 // HandleWebhook processes Xendit payment callback
@@ -254,7 +254,7 @@ func (s *Service) GetInvoice(ctx context.Context, workspaceID, invoiceID string)
 		return nil, ErrInvoiceNotFound
 	}
 
-	return invoiceToResponse(&invoice), nil
+	return InvoiceToResponse(&invoice), nil
 }
 
 // ListInvoices returns invoices for a workspace
@@ -279,7 +279,7 @@ func (s *Service) ListInvoices(ctx context.Context, workspaceID string, limit, o
 
 	var resp []InvoiceResponse
 	for i := range invoices {
-		resp = append(resp, *invoiceToResponse(&invoices[i]))
+		resp = append(resp, *InvoiceToResponse(&invoices[i]))
 	}
 	if resp == nil {
 		resp = []InvoiceResponse{}
@@ -309,7 +309,7 @@ func (s *Service) ListPayments(ctx context.Context, workspaceID string, limit, o
 
 	var resp []PaymentResponse
 	for i := range payments {
-		resp = append(resp, *paymentToResponse(&payments[i]))
+		resp = append(resp, *PaymentToResponse(&payments[i]))
 	}
 	if resp == nil {
 		resp = []PaymentResponse{}
@@ -361,7 +361,7 @@ func (s *Service) ListAllInvoices(ctx context.Context, limit, offset int) ([]Inv
 
 // --- Helpers ---
 
-func invoiceToResponse(i *db.Invoice) *InvoiceResponse {
+func InvoiceToResponse(i *db.Invoice) *InvoiceResponse {
 	resp := &InvoiceResponse{
 		ID:             i.ID.String(),
 		WorkspaceID:    i.WorkspaceID.String(),
@@ -383,7 +383,7 @@ func invoiceToResponse(i *db.Invoice) *InvoiceResponse {
 	return resp
 }
 
-func paymentToResponse(p *db.Payment) *PaymentResponse {
+func PaymentToResponse(p *db.Payment) *PaymentResponse {
 	resp := &PaymentResponse{
 		ID:        p.ID.String(),
 		InvoiceID: p.InvoiceID.String(),

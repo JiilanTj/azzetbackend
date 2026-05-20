@@ -14,24 +14,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"codeberg.org/azzet/azzetbe/internal/db"
-	"codeberg.org/azzet/azzetbe/internal/entity"
+	"codeberg.org/azzet/azzetbe/internal/events"
 	rdb "codeberg.org/azzet/azzetbe/internal/redis"
 	"codeberg.org/azzet/azzetbe/internal/shared"
-	"codeberg.org/azzet/azzetbe/internal/workspace"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ErrUserNotFound = errors.New("user not found")
 
 type Service struct {
-	Queries          *db.Queries
-	Redis            *rdb.Redis
-	JWT              *shared.JWTService
-	OTP              *shared.OTPService
-	Zenziva          *shared.ZenzivaClient
-	Email            *shared.EmailOTPSender
-	Config           *ServiceConfig
-	EntityService    *entity.Service
-	WorkspaceService *workspace.Service
+	Queries *db.Queries
+	Pool    *pgxpool.Pool
+	Redis   *rdb.Redis
+	JWT     *shared.JWTService
+	OTP     *shared.OTPService
+	Zenziva *shared.ZenzivaClient
+	Email   *shared.EmailOTPSender
+	Config  *ServiceConfig
 }
 
 type ServiceConfig struct {
@@ -48,9 +48,10 @@ type LoginContext struct {
 	DeviceName string
 }
 
-func NewService(queries *db.Queries, redis *rdb.Redis, jwt *shared.JWTService, otp *shared.OTPService, zenziva *shared.ZenzivaClient, email *shared.EmailOTPSender, cfg *ServiceConfig) *Service {
+func NewService(queries *db.Queries, pool *pgxpool.Pool, redis *rdb.Redis, jwt *shared.JWTService, otp *shared.OTPService, zenziva *shared.ZenzivaClient, email *shared.EmailOTPSender, cfg *ServiceConfig) *Service {
 	return &Service{
 		Queries: queries,
+		Pool:    pool,
 		Redis:   redis,
 		JWT:     jwt,
 		OTP:     otp,
@@ -128,17 +129,12 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 		}
 	}
 
-	// Auto-create personal entity + workspace (Option A - will be refactored to event-driven in Phase 6)
-	if s.EntityService != nil && s.WorkspaceService != nil {
-		name := req.Name
-		if name == "" {
-			name = "Personal"
-		}
-		personalEntity, err := s.EntityService.CreatePersonalEntity(ctx, user.ID, name)
-		if err == nil {
-			_ = s.WorkspaceService.CreatePersonalWorkspace(ctx, personalEntity.ID)
-		}
-	}
+	// Emit user.registered event (Option C: event-driven entity creation)
+	// The consumer will handle: create personal entity + create personal workspace
+	_ = events.EmitEventDirect(ctx, s.Pool, events.UserRegistered, map[string]string{
+		"user_id": user.ID.String(),
+		"name":    req.Name,
+	})
 
 	return &user, nil
 }

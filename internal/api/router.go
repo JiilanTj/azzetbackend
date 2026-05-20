@@ -57,15 +57,12 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	userRefreshExpiry := time.Duration(cfg.RefreshTokenExpiryDays) * 24 * time.Hour
 	userJWT := shared.NewJWTService(cfg.AppSecret, cfg.RefreshTokenSecret, userAccessExpiry, userRefreshExpiry)
 
-	authService := auth.NewService(queries, redis, userJWT, otpService, zenzivaClient, emailSender, &auth.ServiceConfig{
+	authService := auth.NewService(queries, database.Pool, redis, userJWT, otpService, zenzivaClient, emailSender, &auth.ServiceConfig{
 		AccessTokenExpiry:  userAccessExpiry,
 		RefreshTokenExpiry: userRefreshExpiry,
 		OTPExpiry:          5 * time.Minute,
 		OTPMaxAttempts:     3,
 	})
-	// Inject entity + workspace services for auto-creation on register
-	authService.EntityService = entityService
-	authService.WorkspaceService = workspaceService
 
 	userIsBlacklisted := func(ctx context.Context, jti string) (bool, error) {
 		return authService.IsTokenBlacklisted(ctx, jti)

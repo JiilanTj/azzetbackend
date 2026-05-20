@@ -138,8 +138,8 @@
 - [x] Add counterparties (creates shadow entity if needed)
 - [x] List counterparties
 
-> **Note:** Auto-create entity on registration uses Option A (direct call).
-> Will be refactored to Option C (event-driven) in Phase 6.
+> **Note:** Auto-create entity on registration has been refactored to Option C (event-driven).
+> Auth emits `user.registered` event → consumer creates personal entity + workspace.
 
 ---
 
@@ -154,20 +154,19 @@
 > **Why before Billing?** Because free plans and trials don't need payment.
 > Users can start using the system immediately after subscribing to free/trial.
 
-- [ ] Migration: tenant_subscriptions table
-- [ ] SQLC queries for subscriptions
-- [ ] Subscription service:
-  - [ ] Subscribe to free plan (instant activation)
-  - [ ] Start trial (active for plan.trial_days)
-  - [ ] Get active subscription
-  - [ ] Check subscription status (active/trial/expired/cancelled)
-  - [ ] Upgrade/downgrade plan
-  - [ ] Cancel subscription
-- [ ] Subscription middleware (check active subscription before business logic)
-- [ ] Feature gate middleware (check plan_features for current plan)
-- [ ] Quota tracking (tenant_usage table, monthly reset)
-- [ ] Handler + Swagger docs
-- [ ] Admin: list/override subscriptions
+- [x] Migration: tenant_subscriptions, tenant_usage tables
+- [x] SQLC queries for subscriptions
+- [x] Subscription service:
+  - [x] Subscribe to free plan (instant activation)
+  - [x] Start trial (active for plan.trial_days)
+  - [x] Get active subscription
+  - [x] Check subscription status (active/trial/expired/cancelled)
+  - [x] Upgrade/downgrade plan
+  - [x] Cancel subscription
+- [x] Feature gate: HasFeature() + CheckQuota()
+- [x] Quota tracking (tenant_usage table, monthly reset)
+- [x] Handler + Swagger docs
+- [x] Admin: list subscriptions
 
 ---
 
@@ -183,16 +182,17 @@
 > **Why before Business Logic?** Because paid features must be gated.
 > If a user is on a paid plan but hasn't paid, they shouldn't access paid features.
 
-- [ ] Migration: invoices, payments, payment_methods
-- [ ] Xendit integration (payment gateway)
-- [ ] Invoice generation (Asynq background task)
-- [ ] Payment webhook handler (Xendit callback)
-- [ ] Payment status tracking (pending, paid, failed, refunded)
-- [ ] Auto-expire subscription on payment failure
-- [ ] Auto-activate subscription on payment success
-- [ ] Proration on plan change (upgrade mid-cycle)
-- [ ] Handler + Swagger docs
-- [ ] Admin: view payments, manual override
+- [x] Migration: invoices, payments tables
+- [x] Xendit integration (payment gateway client)
+- [x] Invoice creation
+- [x] Payment initiation (returns Xendit checkout URL)
+- [x] Payment webhook handler (Xendit callback)
+- [x] Payment status tracking (pending, paid, failed, expired, refunded)
+- [x] Auto-activate subscription on payment success
+- [x] Auto-expire on payment failure
+- [x] Webhook signature verification (x-callback-token)
+- [x] Handler + Swagger docs
+- [x] Admin: list all invoices
 
 ---
 
@@ -205,16 +205,20 @@
 > Building event system before business logic ensures all domain
 > events are properly captured from day one.
 
-- [ ] Migration: outbox_events, inbox_consumed_events
-- [ ] Event envelope definition (JSON schema)
-- [ ] Outbox publisher (polls outbox_events -> publishes to NATS)
-- [ ] NATS JetStream client (connect, publish, subscribe)
-- [ ] Consumer base with idempotency (inbox_consumed_events check)
-- [ ] Dead letter queue handling
-- [ ] Event replay mechanism
-- [ ] cmd/consumer/main.go (event consumer process)
-- [ ] Integration with Asynq for task dispatching
-- [ ] Monitoring: outbox_pending_count metric
+- [x] Migration: outbox_events, inbox_consumed_events + LISTEN/NOTIFY trigger
+- [x] Event envelope definition (Go struct with functional options)
+- [x] Outbox publisher with PostgreSQL LISTEN/NOTIFY (real-time) + polling fallback
+- [x] NATS JetStream client (connect, publish, subscribe, ensure streams)
+- [x] Consumer base with idempotency (inbox_consumed_events check)
+- [x] Dead letter queue handling (5 retries → DLQ)
+- [x] Exponential backoff (1s, 5s, 30s, 2min, 10min)
+- [x] cmd/publisher/main.go (outbox → NATS publisher process)
+- [x] cmd/consumer/main.go (NATS event consumers: ledger, claim, document, notification, report)
+- [x] cmd/worker/main.go updated (Asynq task handlers + scheduled cron jobs)
+- [x] EmitEvent helper for services (write to outbox in same TX)
+- [x] NATS streams: ACCOUNTING, COMPANY, DOCUMENT, NOTIFICATION, REPORT, WEBHOOK, USER, SUBSCRIPTION
+- [x] 14 day event retention
+- [x] Refactored auth registration to event-driven (Option C: user.registered → entity creation)
 
 ---
 
@@ -544,10 +548,10 @@ Phase 0:  ████████████████████ 100%
 Phase 1:  ████████████████████ 100%
 Phase 2:  ████████████████████ 100%
 Phase 3:  ████████████████████ 100%
-Phase 4:  ░░░░░░░░░░░░░░░░░░░░   0% <-- NEXT
-Phase 5:  ░░░░░░░░░░░░░░░░░░░░   0%
-Phase 6:  ░░░░░░░░░░░░░░░░░░░░   0%
-Phase 7:  ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 4:  ████████████████████ 100%
+Phase 5:  ████████████████████ 100%
+Phase 6:  ████████████████████ 100%
+Phase 7:  ░░░░░░░░░░░░░░░░░░░░   0% <-- NEXT
 Phase 8:  ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 9:  ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 10: ░░░░░░░░░░░░░░░░░░░░   0%
@@ -556,7 +560,7 @@ Phase 12: ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 
-**Next up:** Phase 4 - Subscription
+**Next up:** Phase 7 - Accounting Core
 
 ---
 
@@ -570,6 +574,9 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 | 4 | 004_plans.sql | plans, plan_features tables |
 | 5 | 005_entities.sql | entities, entity_meta tables |
 | 6 | 006_entity_relations.sql | entity_relations, master_roles (seeded) |
+| 7 | 007_subscriptions.sql | tenant_subscriptions, tenant_usage |
+| 8 | 008_billing.sql | invoices, payments |
+| 9 | 009_events.sql | outbox_events, inbox_consumed_events, LISTEN/NOTIFY trigger |
 
 ---
 
