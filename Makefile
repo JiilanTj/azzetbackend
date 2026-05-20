@@ -11,9 +11,11 @@ CMD_DIR    := ./cmd
 build:
 	@echo "Building $(APP_NAME)..."
 	@mkdir -p $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/api     $(CMD_DIR)/api
-	go build -o $(BUILD_DIR)/worker  $(CMD_DIR)/worker
-	go build -o $(BUILD_DIR)/migrate $(CMD_DIR)/migrate
+	go build -o $(BUILD_DIR)/api       $(CMD_DIR)/api
+	go build -o $(BUILD_DIR)/worker    $(CMD_DIR)/worker
+	go build -o $(BUILD_DIR)/publisher $(CMD_DIR)/publisher
+	go build -o $(BUILD_DIR)/consumer  $(CMD_DIR)/consumer
+	go build -o $(BUILD_DIR)/migrate   $(CMD_DIR)/migrate
 	@echo "Binaries placed in $(BUILD_DIR)/"
 
 build-api:
@@ -31,6 +33,12 @@ run-api:
 
 run-worker:
 	go run ./cmd/worker
+
+run-publisher:
+	go run ./cmd/publisher
+
+run-consumer:
+	go run ./cmd/consumer
 
 run-migrate:
 	go run ./cmd/migrate
@@ -151,6 +159,20 @@ dev: docker-up migrate run-api
 
 # Start worker in development
 dev-worker: docker-up run-worker
+
+# Start publisher in development
+dev-publisher: docker-up run-publisher
+
+# Start consumer in development
+dev-consumer: docker-up run-consumer
+
+# Start all background services
+dev-bg: docker-up
+	@echo "Starting background services..."
+	go run ./cmd/publisher &
+	go run ./cmd/consumer &
+	go run ./cmd/worker &
+	@echo "All background services started"
 
 # Fresh start: reset docker, migrate, run
 fresh: docker-reset migrate run-api

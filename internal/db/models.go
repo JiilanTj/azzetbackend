@@ -62,6 +62,13 @@ type EntityRelation struct {
 	UpdatedAt    time.Time   `json:"updated_at"`
 }
 
+type InboxConsumedEvent struct {
+	ID           uuid.UUID `json:"id"`
+	EventID      uuid.UUID `json:"event_id"`
+	ConsumerName string    `json:"consumer_name"`
+	ProcessedAt  time.Time `json:"processed_at"`
+}
+
 type Invoice struct {
 	ID             uuid.UUID      `json:"id"`
 	WorkspaceID    uuid.UUID      `json:"workspace_id"`
@@ -96,6 +103,26 @@ type OtpCode struct {
 	ExpiresAt      time.Time  `json:"expires_at"`
 	UsedAt         *time.Time `json:"used_at"`
 	CreatedAt      time.Time  `json:"created_at"`
+}
+
+type OutboxEvent struct {
+	ID             uuid.UUID   `json:"id"`
+	EventType      string      `json:"event_type"`
+	EventVersion   int32       `json:"event_version"`
+	WorkspaceID    pgtype.UUID `json:"workspace_id"`
+	ActorID        pgtype.UUID `json:"actor_id"`
+	CorrelationID  uuid.UUID   `json:"correlation_id"`
+	CausationID    pgtype.UUID `json:"causation_id"`
+	IdempotencyKey pgtype.Text `json:"idempotency_key"`
+	Payload        []byte      `json:"payload"`
+	Metadata       []byte      `json:"metadata"`
+	Status         string      `json:"status"`
+	PublishedAt    *time.Time  `json:"published_at"`
+	RetryCount     int32       `json:"retry_count"`
+	MaxRetries     int32       `json:"max_retries"`
+	NextRetryAt    *time.Time  `json:"next_retry_at"`
+	ErrorMessage   pgtype.Text `json:"error_message"`
+	CreatedAt      time.Time   `json:"created_at"`
 }
 
 type Payment struct {
