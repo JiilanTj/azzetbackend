@@ -9,11 +9,13 @@ import (
 	"syscall"
 	"time"
 
+	"codeberg.org/azzet/azzetbe/internal/ai"
 	"codeberg.org/azzet/azzetbe/internal/api"
 	"codeberg.org/azzet/azzetbe/internal/config"
 	"codeberg.org/azzet/azzetbe/internal/database"
 	rdb "codeberg.org/azzet/azzetbe/internal/redis"
 	"codeberg.org/azzet/azzetbe/internal/shared"
+	"codeberg.org/azzet/azzetbe/internal/smtp"
 
 	_ "codeberg.org/azzet/azzetbe/docs"
 )
@@ -52,6 +54,22 @@ func main() {
 	}
 	defer redisClient.Close()
 
+	// SMTP health check (non-fatal — app works without email in dev)
+	mailer := smtp.New(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
+	if err := mailer.HealthCheck(); err != nil {
+		slog.Warn("smtp health check failed", "host", cfg.SMTPHost, "error", err)
+	} else {
+		slog.Info("smtp connected", "host", cfg.SMTPHost)
+	}
+
+	// OpenAI health check (non-fatal — AI features degrade gracefully)
+	aiClient := ai.NewFromEnv(cfg.OpenAIApiKey, cfg.OpenAIModel)
+	aiCtx, aiCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer aiCancel()
+	if err := aiClient.HealthCheck(aiCtx); err != nil {
+		slog.Warn("openai health check failed", "model", cfg.OpenAIModel, "error", err)
+	}
+
 	router := api.NewRouter(cfg, db, redisClient)
 
 	srv := &http.Server{
@@ -62,7 +80,7 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Use error channel instead of os.Exit in goroutine
+	// Use error channel so a listen failure is handled in the same select as SIGTERM.
 	serverErr := make(chan error, 1)
 	go func() {
 		slog.Info("starting server", "port", cfg.AppPort)

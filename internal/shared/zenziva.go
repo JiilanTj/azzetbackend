@@ -62,37 +62,3 @@ func (z *ZenzivaClient) SendOTP(ctx context.Context, to, code string) error {
 	slog.Info("zenziva: OTP sent", "to", to)
 	return nil
 }
-
-type EmailOTPSender struct {
-	Host string
-	Port string
-	User string
-	Pass string
-	From string
-	Env  string
-}
-
-func NewEmailOTPSender(host, port, user, pass, from, env string) *EmailOTPSender {
-	return &EmailOTPSender{
-		Host: host,
-		Port: port,
-		User: user,
-		Pass: pass,
-		From: from,
-		Env:  env,
-	}
-}
-
-func (e *EmailOTPSender) SendOTP(ctx context.Context, to, code string) error {
-	if e.Host == "" || e.User == "" {
-		// In development without SMTP, log only that OTP was generated (not the code itself)
-		if e.Env == "development" {
-			slog.Debug("email OTP generated (SMTP not configured)", "to", to)
-		}
-		return nil
-	}
-
-	// TODO: Integrate with existing SMTP client for actual sending
-	slog.Info("email OTP sent", "to", to)
-	return nil
-}
