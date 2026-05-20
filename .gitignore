@@ -1,4 +1,4 @@
-# Binaries
+# Binaries (only in root directory)
 *.exe
 *.exe~
 *.dll
@@ -6,6 +6,9 @@
 *.dylib
 bin/
 dist/
+/api
+/migrate
+/worker
 
 # Go
 *.test
@@ -36,8 +39,13 @@ temp/
 *.log
 logs/
 
-api
-migrate
-worker
+# Coverage
+coverage.out
+coverage.html
+
+# Internal docs (not for repo)
 FINAL_STATUS.md
-PROJECT_TRACKER.md
+CLEANING_SUMMARY.md
+UPDATE_SUMMARY.md
+MODULE_RENAME_SUMMARY.md
+DOCKER_UPDATE_SUMMARY.md
