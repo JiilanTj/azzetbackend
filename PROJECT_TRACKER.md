@@ -138,8 +138,9 @@
 - [x] Add counterparties (creates shadow entity if needed)
 - [x] List counterparties
 
-> **Note:** Auto-create entity on registration has been refactored to Option C (event-driven).
-> Auth emits `user.registered` event → consumer creates personal entity + workspace.
+> **Note:** Entity + workspace creation uses hybrid approach:
+> - Synchronous creation during registration (instant, no polling needed for frontend)
+> - Event emitted for audit trail, notifications, and future async consumers
 
 ---
 

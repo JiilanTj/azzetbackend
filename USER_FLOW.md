@@ -401,18 +401,17 @@ Set-Cookie: refresh_token=new-eyJ...; (rotated)
 
 ## Flow 6: First Time Setup (Post-Registration)
 
-> After registration + verification + first login, the system automatically creates:
+> After registration + verification + first login, the system has already created:
 > 1. Personal entity (ORANG_PRIBADI)
 > 2. Personal workspace
 >
-> This happens via event system (async), usually within 1-2 seconds.
+> This happens synchronously during registration — no delay, no polling needed.
 
 **Frontend should:**
 
 1. After first login, call `GET /api/v1/workspaces`
-2. If empty (event not processed yet), show loading/onboarding screen
-3. Poll every 2 seconds until workspace appears
-4. Once workspace exists, proceed to plan selection
+2. Workspace will already be there (created during registration)
+3. Auto-select the workspace and proceed to plan selection
 
 **Request:**
 ```http
@@ -440,7 +439,7 @@ Authorization: Bearer <access_token>
 **Frontend Action:**
 - Store `entity_id` as default workspace
 - Set `X-Workspace-ID` header for subsequent requests
-- Redirect to plan selection page (`/plans`)
+- Check subscription → if none, redirect to plan selection page (`/plans/select`)
 
 ---
 
@@ -896,6 +895,37 @@ User opens any page
     │   └── NO ↓
     │
     ├── GET /api/v1/workspaces → has workspaces?
+    │   ├── NO (empty array) → should not happen (created during registration)
+    │   │   └── Redirect to /workspaces/new (manual creation as fallback)
+    │   └── YES ↓
+    │
+    ├── Has X-Workspace-ID selected?
+    │   ├── NO → auto-select first workspace (or show picker if multiple)
+    │   └── YES ↓
+    │
+    ├── GET /api/v1/subscription → has active subscription?
+    │   ├── NO (404 or status=expired/cancelled)
+    │   │   └── Redirect to /plans/select (plan selection page)
+    │   └── YES (status=active or status=trial) ↓
+    │
+    ├── If trial: is trial expiring soon? (< 3 days)
+    │   └── Show banner: "Trial expires in X days. Upgrade now."
+    │
+    └── ALLOW ACCESS to workspace features
+```
+User opens any page
+    │
+    ├── Has access_token in memory?
+    │   ├── NO → Redirect to /login (except public pages)
+    │   └── YES ↓
+    │
+    ├── Token expired?
+    │   ├── YES → Try refresh (POST /auth/refresh)
+    │   │         ├── Success → continue
+    │   │         └── Fail → clear state, redirect to /login
+    │   └── NO ↓
+    │
+    ├── GET /api/v1/workspaces → has workspaces?
     │   ├── NO (empty array) → entity not created yet
     │   │   └── Show loading screen, poll every 2s
     │   │       (event system creating entity + workspace)
@@ -967,15 +997,13 @@ User opens any page
 3. User verifies OTP → status = ACTIVE
 4. Redirect to /login
 5. User logs in → access_token received
-6. GET /workspaces → empty (event system processing)
-7. Show: "Setting up your workspace..." (loading)
-8. Poll GET /workspaces every 2 seconds
-9. Workspace appears → store entity_id as X-Workspace-ID
-10. GET /subscription → 404 (no subscription yet)
-11. Redirect to /plans/select
-12. User picks Free plan → POST /subscription
-13. Subscription active → redirect to /dashboard
-14. User can now use features!
+6. GET /workspaces → workspace already exists (created during registration)
+7. Auto-select workspace → store entity_id as X-Workspace-ID
+8. GET /subscription → 404 (no subscription yet)
+9. Redirect to /plans/select
+10. User picks Free plan → POST /subscription
+11. Subscription active → redirect to /dashboard
+12. User can now use features!
 ```
 
 #### Scenario 2: Returning User (Has Everything Set Up)
@@ -1122,12 +1150,12 @@ async function initGuard() {
   const { data: workspaces } = await api.get('/workspaces');
   
   if (workspaces.length === 0) {
-    // Entity not created yet (event processing)
-    return showLoading('Setting up your workspace...');
-    // Poll every 2s until workspace appears
+    // Should not happen (created during registration)
+    // Fallback: redirect to manual creation
+    return redirect('/workspaces/new');
   }
 
-  // 3. Check workspace selection
+  // 3. Auto-select workspace (or use last selected)
   const wsId = localStorage.getItem('workspace_id') || workspaces[0].entity_id;
   setWorkspaceHeader(wsId);
 
@@ -1144,7 +1172,7 @@ async function initGuard() {
     
   } catch (err) {
     if (err.status === 404) {
-      // No subscription
+      // No subscription - must select plan
       return redirect('/plans/select');
     }
     throw err;
@@ -1295,7 +1323,7 @@ axios.interceptors.response.use(
 
 3. **X-Workspace-ID is mandatory** for business endpoints. Frontend should have a workspace switcher and always send this header.
 
-4. **Personal entity is auto-created** after registration (via event system). May take 1-2 seconds. Poll `GET /workspaces` until it appears.
+4. **Personal entity + workspace are created instantly** during registration (synchronous). No polling needed. Workspace is always ready when user first logs in.
 
 5. **Password is always required** during registration (even for WhatsApp users) as fallback when OTP service is down.
 

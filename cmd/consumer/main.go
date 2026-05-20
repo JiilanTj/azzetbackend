@@ -9,15 +9,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/google/uuid"
-
 	"codeberg.org/azzet/azzetbe/internal/config"
 	"codeberg.org/azzet/azzetbe/internal/database"
-	dbpkg "codeberg.org/azzet/azzetbe/internal/db"
-	"codeberg.org/azzet/azzetbe/internal/entity"
 	"codeberg.org/azzet/azzetbe/internal/events"
 	"codeberg.org/azzet/azzetbe/internal/shared"
-	"codeberg.org/azzet/azzetbe/internal/workspace"
 )
 
 func main() {
@@ -63,21 +58,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create services for event handlers
-	queries := dbpkg.New(db.Pool)
-	entityService := entity.NewService(queries)
-	workspaceService := workspace.NewService(queries, entityService)
-
 	// Create consumer base
 	consumer := events.NewConsumer(db.Pool, natsClient)
 
 	// --- Register Event Handlers ---
 
-	// User stream: handle user.registered → create personal entity + workspace
+	// User stream: handle user.registered (audit + future use)
+	// Entity + workspace are created synchronously during registration.
+	// This consumer handles additional async tasks (e.g., welcome email, analytics)
 	_, err = natsClient.Subscribe(ctx, events.StreamUser, "user-entity-worker",
 		consumer.HandleWithIdempotency("user-entity-worker", func(ctx context.Context, event *events.Event) error {
 			if event.Type != events.UserRegistered {
-				return nil // Skip non-registration events
+				return nil
 			}
 
 			var payload struct {
@@ -88,36 +80,17 @@ func main() {
 				return fmt.Errorf("failed to parse user.registered payload: %w", err)
 			}
 
-			slog.Info("user-entity-worker: creating personal entity",
+			slog.Info("user-entity-worker: user registered event received",
 				"user_id", payload.UserID,
 				"name", payload.Name,
 			)
 
-			name := payload.Name
-			if name == "" {
-				name = "Personal"
-			}
+			// Entity + workspace already created synchronously during registration.
+			// This handler is for future async tasks:
+			// - Send welcome email (via Asynq)
+			// - Track analytics
+			// - Notify admin of new signup
 
-			userID, err := uuid.Parse(payload.UserID)
-			if err != nil {
-				return fmt.Errorf("invalid user_id: %w", err)
-			}
-
-			// Create personal entity
-			personalEntity, err := entityService.CreatePersonalEntity(ctx, userID, name)
-			if err != nil {
-				return fmt.Errorf("failed to create personal entity: %w", err)
-			}
-
-			// Create personal workspace
-			if err := workspaceService.CreatePersonalWorkspace(ctx, personalEntity.ID); err != nil {
-				return fmt.Errorf("failed to create personal workspace: %w", err)
-			}
-
-			slog.Info("user-entity-worker: personal entity + workspace created",
-				"user_id", payload.UserID,
-				"entity_id", personalEntity.ID.String(),
-			)
 			return nil
 		}),
 	)

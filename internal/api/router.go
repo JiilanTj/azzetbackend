@@ -63,6 +63,8 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		OTPExpiry:          5 * time.Minute,
 		OTPMaxAttempts:     3,
 	})
+	authService.EntityService = entityService
+	authService.WorkspaceService = workspaceService
 
 	userIsBlacklisted := func(ctx context.Context, jti string) (bool, error) {
 		return authService.IsTokenBlacklisted(ctx, jti)
