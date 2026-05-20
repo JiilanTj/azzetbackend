@@ -107,34 +107,39 @@
 
 ### 3A. Entity Core
 
-- [ ] Migration: entities, entity_meta
-- [ ] SQLC queries for entities
-- [ ] Entity service (create, get, update, search)
-- [ ] Entity types: ORANG_PRIBADI, BADAN_USAHA
-- [ ] Shadow entity creation (id_user = NULL)
-- [ ] Link entity to user (id_user FK)
-- [ ] Entity handler + Swagger docs
-- [ ] Auto-create personal entity on user registration
+- [x] Migration: entities, entity_meta
+- [x] SQLC queries for entities
+- [x] Entity service (create, get, update, search)
+- [x] Entity types: ORANG_PRIBADI, BADAN_USAHA
+- [x] Shadow entity creation (id_user = NULL)
+- [x] Link entity to user (id_user FK)
+- [x] Entity handler + Swagger docs
+- [x] Auto-create personal entity on user registration
 
 ### 3B. Entity Relations (Tenant Isolation)
 
-- [ ] Migration: entity_relations, master_roles, relation_permissions
-- [ ] SQLC queries for relations
-- [ ] Relation service (create, list, update status)
-- [ ] Relation types: PEMILIK, KARYAWAN, PELANGGAN, VENDOR
-- [ ] nama_alias_kustom (custom naming per relation)
-- [ ] Tenant context middleware (resolve workspace from relation)
-- [ ] RBAC: master_roles + relation_permissions
-- [ ] Privacy boundary enforcement (query scoping by relation)
-- [ ] Handler + Swagger docs
+- [x] Migration: entity_relations, master_roles (seeded: PEMILIK, AKUNTAN, KASIR, VIEWER)
+- [x] SQLC queries for relations
+- [x] Relation service (create, list, update status)
+- [x] Relation types: PEMILIK, KARYAWAN, PELANGGAN, VENDOR
+- [x] nama_alias_kustom (custom naming per relation)
+- [x] Tenant context middleware (resolve workspace from X-Workspace-ID header)
+- [x] RBAC: master_roles with JSONB permissions (resource:action pattern)
+- [x] Privacy boundary enforcement (query scoping by relation)
+- [x] Handler + Swagger docs
 
 ### 3C. Workspace Management
 
-- [ ] Create workspace (entity becomes "tenant")
-- [ ] Invite members to workspace
-- [ ] Assign roles to members
-- [ ] Switch workspace context
-- [ ] List my workspaces
+- [x] Create workspace (entity becomes "tenant")
+- [x] Invite members to workspace
+- [x] Assign roles to members
+- [x] Switch workspace context (X-Workspace-ID header)
+- [x] List my workspaces
+- [x] Add counterparties (creates shadow entity if needed)
+- [x] List counterparties
+
+> **Note:** Auto-create entity on registration uses Option A (direct call).
+> Will be refactored to Option C (event-driven) in Phase 6.
 
 ---
 
@@ -538,8 +543,8 @@ must be sequential.
 Phase 0:  ████████████████████ 100%
 Phase 1:  ████████████████████ 100%
 Phase 2:  ████████████████████ 100%
-Phase 3:  ░░░░░░░░░░░░░░░░░░░░   0% <-- NEXT
-Phase 4:  ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 3:  ████████████████████ 100%
+Phase 4:  ░░░░░░░░░░░░░░░░░░░░   0% <-- NEXT
 Phase 5:  ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 6:  ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 7:  ░░░░░░░░░░░░░░░░░░░░   0%
@@ -551,7 +556,7 @@ Phase 12: ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 
-**Next up:** Phase 3 - Entity & Relations (Tenant System)
+**Next up:** Phase 4 - Subscription
 
 ---
 
@@ -563,6 +568,8 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 | 2 | 002_add_user_name.sql | users.name column |
 | 3 | 003_platform_admins.sql | platform_admins table |
 | 4 | 004_plans.sql | plans, plan_features tables |
+| 5 | 005_entities.sql | entities, entity_meta tables |
+| 6 | 006_entity_relations.sql | entity_relations, master_roles (seeded) |
 
 ---
 

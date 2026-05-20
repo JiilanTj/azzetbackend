@@ -694,6 +694,89 @@ definitions:
       message:
         type: string
     type: object
+  codeberg_org_azzet_azzetbe_internal_subscription.MessageResponse:
+    description: Simple message response
+    properties:
+      message:
+        example: Operation successful
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest:
+    description: Subscribe a workspace to a plan
+    properties:
+      billing_cycle:
+        enum:
+        - monthly
+        - yearly
+        example: monthly
+        type: string
+      plan_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse:
+    description: Workspace subscription information
+    properties:
+      billing_cycle:
+        example: monthly
+        type: string
+      cancelled_at:
+        type: string
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      expires_at:
+        example: "2026-06-20T10:00:00Z"
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      plan_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      plan_name:
+        example: Professional
+        type: string
+      plan_slug:
+        example: professional
+        type: string
+      started_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      status:
+        enum:
+        - active
+        - trial
+        - expired
+        - cancelled
+        example: active
+        type: string
+      trial_ends_at:
+        example: "2026-06-03T10:00:00Z"
+        type: string
+      workspace_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_subscription.UsageResponse:
+    description: Feature usage tracking
+    properties:
+      feature_key:
+        example: max_transactions_monthly
+        type: string
+      limit:
+        example: 1000
+        type: integer
+      period_end:
+        example: "2026-06-01T00:00:00Z"
+        type: string
+      period_start:
+        example: "2026-05-01T00:00:00Z"
+        type: string
+      usage_count:
+        example: 42
+        type: integer
+    type: object
   codeberg_org_azzet_azzetbe_internal_workspace.AddCounterpartyRequest:
     description: Add a counterparty (customer/vendor) to workspace. Creates shadow
       entity if needed.
@@ -1500,6 +1583,46 @@ paths:
       summary: Remove plan feature
       tags:
       - Admin Plans
+  /admin/subscriptions:
+    get:
+      description: Returns all subscriptions across all workspaces. SUPER_ADMIN/ENGINEER
+        only.
+      parameters:
+      - description: Limit (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all subscriptions (admin)
+      tags:
+      - Admin Subscriptions
   /auth/login/email:
     post:
       consumes:
@@ -2216,6 +2339,232 @@ paths:
       summary: List available roles
       tags:
       - Workspaces
+  /subscription:
+    get:
+      description: Returns the current active subscription for the workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get active subscription
+      tags:
+      - Subscription
+    post:
+      consumes:
+      - application/json
+      description: Subscribe the current workspace to a plan. Free plans activate
+        instantly. Paid plans with is_trial start a trial.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Subscription data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Subscribe to a plan
+      tags:
+      - Subscription
+  /subscription/cancel:
+    post:
+      description: Cancel the active subscription for the workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Cancel subscription
+      tags:
+      - Subscription
+  /subscription/change:
+    post:
+      consumes:
+      - application/json
+      description: Cancel current subscription and subscribe to a new plan.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: New plan data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change plan (upgrade/downgrade)
+      tags:
+      - Subscription
+  /subscription/history:
+    get:
+      description: Returns all subscriptions (active, expired, cancelled) for the
+        workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List subscription history
+      tags:
+      - Subscription
+  /subscription/usage:
+    get:
+      description: Returns quota usage for all tracked features in the current billing
+        period.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.UsageResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get usage summary
+      tags:
+      - Subscription
   /workspaces:
     get:
       description: Returns all workspaces the authenticated user has access to.

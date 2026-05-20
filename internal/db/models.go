@@ -138,6 +138,31 @@ type Session struct {
 	CreatedAt    time.Time   `json:"created_at"`
 }
 
+type TenantSubscription struct {
+	ID           uuid.UUID   `json:"id"`
+	WorkspaceID  uuid.UUID   `json:"workspace_id"`
+	PlanID       uuid.UUID   `json:"plan_id"`
+	Status       string      `json:"status"`
+	BillingCycle pgtype.Text `json:"billing_cycle"`
+	StartedAt    time.Time   `json:"started_at"`
+	ExpiresAt    *time.Time  `json:"expires_at"`
+	TrialEndsAt  *time.Time  `json:"trial_ends_at"`
+	CancelledAt  *time.Time  `json:"cancelled_at"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
+}
+
+type TenantUsage struct {
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	FeatureKey  string    `json:"feature_key"`
+	UsageCount  int32     `json:"usage_count"`
+	PeriodStart time.Time `json:"period_start"`
+	PeriodEnd   time.Time `json:"period_end"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 type User struct {
 	ID               uuid.UUID   `json:"id"`
 	Email            pgtype.Text `json:"email"`

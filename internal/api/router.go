@@ -21,6 +21,7 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/plan"
 	rdb "codeberg.org/azzet/azzetbe/internal/redis"
 	"codeberg.org/azzet/azzetbe/internal/shared"
+	"codeberg.org/azzet/azzetbe/internal/subscription"
 	"codeberg.org/azzet/azzetbe/internal/workspace"
 )
 
@@ -94,6 +95,10 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	// --- Plan ---
 	planService := plan.NewService(queries)
 	planHandler := handler.NewPlanHandler(planService)
+
+	// --- Subscription ---
+	subscriptionService := subscription.NewService(queries)
+	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
 
 	// --- Entity & Workspace Handlers ---
 	entityHandler := handler.NewEntityHandler(entityService)
@@ -179,6 +184,18 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			})
 		})
 
+		// Subscription routes (workspace-scoped)
+		r.Route("/subscription", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Use(workspaceMiddleware.RequireWorkspace)
+			r.Post("/", subscriptionHandler.Subscribe)
+			r.Get("/", subscriptionHandler.GetActive)
+			r.Get("/history", subscriptionHandler.ListSubscriptions)
+			r.Post("/cancel", subscriptionHandler.Cancel)
+			r.Post("/change", subscriptionHandler.ChangePlan)
+			r.Get("/usage", subscriptionHandler.GetUsage)
+		})
+
 		// Roles (authenticated, public read)
 		r.Route("/roles", func(r chi.Router) {
 			r.Use(authMiddleware.Authenticate)
@@ -235,6 +252,13 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			r.Delete("/{id}", planHandler.AdminDeletePlan)
 			r.Post("/{id}/features", planHandler.AdminSetFeature)
 			r.Delete("/{id}/features/{feature_key}", planHandler.AdminRemoveFeature)
+		})
+
+		// Subscription management (SUPER_ADMIN + ENGINEER)
+		r.Route("/subscriptions", func(r chi.Router) {
+			r.Use(adminMiddleware.Authenticate)
+			r.Use(adminMiddleware.RequireRole(admin.RoleSuperAdmin, admin.RoleEngineer))
+			r.Get("/", subscriptionHandler.AdminListSubscriptions)
 		})
 
 		// TODO: User management (SUPPORT+)

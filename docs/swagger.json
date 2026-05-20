@@ -1030,6 +1030,72 @@
                 }
             }
         },
+        "/admin/subscriptions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all subscriptions across all workspaces. SUPER_ADMIN/ENGINEER only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Subscriptions"
+                ],
+                "summary": "List all subscriptions (admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login/email": {
             "post": {
                 "description": "Authenticate using email + password. Returns access token in body and refresh token in HttpOnly cookie.",
@@ -2211,6 +2277,382 @@
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/subscription": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the current active subscription for the workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Get active subscription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Subscribe the current workspace to a plan. Free plans activate instantly. Paid plans with is_trial start a trial.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Subscribe to a plan",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Subscription data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/subscription/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cancel the active subscription for the workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Cancel subscription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/subscription/change": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cancel current subscription and subscribe to a new plan.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Change plan (upgrade/downgrade)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "New plan data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/subscription/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all subscriptions (active, expired, cancelled) for the workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "List subscription history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/subscription/usage": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns quota usage for all tracked features in the current billing period.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Get usage summary",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.UsageResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
                         }
                     }
                 }
@@ -3692,6 +4134,119 @@
                 },
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_subscription.MessageResponse": {
+            "description": "Simple message response",
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Operation successful"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest": {
+            "description": "Subscribe a workspace to a plan",
+            "type": "object",
+            "properties": {
+                "billing_cycle": {
+                    "type": "string",
+                    "enum": [
+                        "monthly",
+                        "yearly"
+                    ],
+                    "example": "monthly"
+                },
+                "plan_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse": {
+            "description": "Workspace subscription information",
+            "type": "object",
+            "properties": {
+                "billing_cycle": {
+                    "type": "string",
+                    "example": "monthly"
+                },
+                "cancelled_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "expires_at": {
+                    "type": "string",
+                    "example": "2026-06-20T10:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "plan_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "plan_name": {
+                    "type": "string",
+                    "example": "Professional"
+                },
+                "plan_slug": {
+                    "type": "string",
+                    "example": "professional"
+                },
+                "started_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "trial",
+                        "expired",
+                        "cancelled"
+                    ],
+                    "example": "active"
+                },
+                "trial_ends_at": {
+                    "type": "string",
+                    "example": "2026-06-03T10:00:00Z"
+                },
+                "workspace_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_subscription.UsageResponse": {
+            "description": "Feature usage tracking",
+            "type": "object",
+            "properties": {
+                "feature_key": {
+                    "type": "string",
+                    "example": "max_transactions_monthly"
+                },
+                "limit": {
+                    "type": "integer",
+                    "example": 1000
+                },
+                "period_end": {
+                    "type": "string",
+                    "example": "2026-06-01T00:00:00Z"
+                },
+                "period_start": {
+                    "type": "string",
+                    "example": "2026-05-01T00:00:00Z"
+                },
+                "usage_count": {
+                    "type": "integer",
+                    "example": 42
                 }
             }
         },
