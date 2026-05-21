@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"codeberg.org/azzet/azzetbe/internal/billing"
 	"codeberg.org/azzet/azzetbe/internal/db"
 )
 
@@ -19,7 +20,8 @@ var ErrFeatureNotAvailable = errors.New("feature not available in current plan")
 var ErrQuotaExceeded = errors.New("quota exceeded for current plan")
 
 type Service struct {
-	Queries *db.Queries
+	Queries        *db.Queries
+	BillingService *billing.Service
 }
 
 func NewService(queries *db.Queries) *Service {
@@ -81,8 +83,8 @@ func (s *Service) Subscribe(ctx context.Context, workspaceID string, req *Subscr
 		params.TrialEndsAt = &trialEnd
 		params.ExpiresAt = &trialEnd
 	} else {
-		// Paid plan (requires billing - for now just activate)
-		params.Status = StatusActive
+		// Paid plan — create with pending_payment, then generate invoice + payment
+		params.Status = StatusPendingPayment
 		if req.BillingCycle != nil {
 			params.BillingCycle = pgtype.Text{String: *req.BillingCycle, Valid: true}
 			switch *req.BillingCycle {
@@ -102,6 +104,42 @@ func (s *Service) Subscribe(ctx context.Context, workspaceID string, req *Subscr
 	}
 
 	resp := SubscriptionToResponse(&sub)
+
+	// For paid plans, create invoice and initiate payment via Xendit
+	if plan.Type != "free" && !(plan.IsTrial && req.BillingCycle == nil) {
+		if s.BillingService == nil {
+			return nil, fmt.Errorf("billing service not configured")
+		}
+
+		// Determine amount based on billing cycle
+		var amount float64
+		cycle := "monthly"
+		if req.BillingCycle != nil {
+			cycle = *req.BillingCycle
+		}
+		if cycle == CycleYearly {
+			amount = numericToFloat(plan.PriceYearly)
+		} else {
+			amount = numericToFloat(plan.PriceMonthly)
+		}
+
+		description := fmt.Sprintf("%s - %s", plan.Name, cycle)
+
+		// Create invoice
+		invoice, err := s.BillingService.CreateInvoice(ctx, wsID.String(), sub.ID.String(), amount, description)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create invoice: %w", err)
+		}
+
+		// Initiate payment via Xendit
+		payment, err := s.BillingService.PayInvoice(ctx, wsID.String(), invoice.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initiate payment: %w", err)
+		}
+
+		resp.PaymentURL = payment.PaymentURL
+	}
+
 	return &resp, nil
 }
 
@@ -404,4 +442,14 @@ func (s *Service) ListAllSubscriptions(ctx context.Context, limit, offset int) (
 		resp = []SubscriptionResponse{}
 	}
 	return resp, nil
+}
+
+// --- Helpers ---
+
+func numericToFloat(n pgtype.Numeric) float64 {
+	if !n.Valid {
+		return 0
+	}
+	f, _ := n.Float64Value()
+	return f.Float64
 }

@@ -105,6 +105,9 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	billingService := billing.NewService(queries, xenditClient)
 	billingHandler := handler.NewBillingHandler(billingService)
 
+	// Wire billing into subscription for paid plan flow
+	subscriptionService.BillingService = billingService
+
 	// --- Entity & Workspace Handlers ---
 	entityHandler := handler.NewEntityHandler(entityService)
 	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)

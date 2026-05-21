@@ -55,7 +55,7 @@ func (z *ZenzivaClient) SendOTP(ctx context.Context, to, code string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("zenziva: API returned status %d", resp.StatusCode)
 	}
 

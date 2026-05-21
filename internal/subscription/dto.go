@@ -25,12 +25,13 @@ type SubscriptionResponse struct {
 	PlanID       string  `json:"plan_id" example:"550e8400-e29b-41d4-a716-446655440000"`
 	PlanName     *string `json:"plan_name,omitempty" example:"Professional"`
 	PlanSlug     *string `json:"plan_slug,omitempty" example:"professional"`
-	Status       string  `json:"status" example:"active" enums:"active,trial,expired,cancelled"`
+	Status       string  `json:"status" example:"active" enums:"active,trial,expired,cancelled,pending_payment"`
 	BillingCycle *string `json:"billing_cycle,omitempty" example:"monthly"`
 	StartedAt    string  `json:"started_at" example:"2026-05-20T10:00:00Z"`
 	ExpiresAt    *string `json:"expires_at,omitempty" example:"2026-06-20T10:00:00Z"`
 	TrialEndsAt  *string `json:"trial_ends_at,omitempty" example:"2026-06-03T10:00:00Z"`
 	CancelledAt  *string `json:"cancelled_at,omitempty"`
+	PaymentURL   *string `json:"payment_url,omitempty" example:"https://checkout.xendit.co/..."`
 	CreatedAt    string  `json:"created_at" example:"2026-05-20T10:00:00Z"`
 }
 
@@ -53,10 +54,11 @@ type MessageResponse struct {
 // --- Constants ---
 
 const (
-	StatusActive    = "active"
-	StatusTrial     = "trial"
-	StatusExpired   = "expired"
-	StatusCancelled = "cancelled"
+	StatusActive         = "active"
+	StatusTrial          = "trial"
+	StatusExpired        = "expired"
+	StatusCancelled      = "cancelled"
+	StatusPendingPayment = "pending_payment"
 
 	CycleMonthly = "monthly"
 	CycleYearly  = "yearly"
