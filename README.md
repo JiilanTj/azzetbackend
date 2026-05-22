@@ -862,64 +862,46 @@ Responsible for:
 ```
 .
 ├── cmd
-│   ├── api
-│   │   └── main.go
-│   ├── worker
-│   │   └── main.go
-│   └── migrate
-│       └── main.go
+│   ├── api/                # HTTP API server
+│   ├── worker/             # Asynq background task worker
+│   ├── consumer/           # NATS JetStream event consumer
+│   ├── publisher/          # Outbox event publisher
+│   ├── migrate/            # Database migration tool
+│   ├── admin-seed/         # Platform admin seeder
+│   └── plan-seed/          # Plan data seeder
 │
 ├── internal
-│   ├── auth
-│   ├── tenant
-│   ├── company
-│   ├── counterparty
-│   ├── claim
-│   ├── accounting
-│   ├── tax
-│   ├── document
-│   ├── admin_review
-│   ├── audit
-│   ├── events
-│   ├── messaging
-│   ├── observability
-│   ├── config
-│   ├── database
-│   ├── security
-│   └── common
+│   ├── api/
+│   │   ├── handler/        # HTTP handlers (auth, workspace, entity, plan, subscription, billing, invite)
+│   │   └── middleware/     # Auth, workspace, admin middleware
+│   ├── auth/               # User authentication (register, login, OTP, sessions)
+│   ├── admin/              # Platform admin (login, MFA, CRUD admins)
+│   ├── workspace/          # Workspace management, ABAC roles, invites, members, counterparties
+│   ├── entity/             # Entity CRUD (ORANG_PRIBADI, BADAN_USAHA)
+│   ├── plan/               # Plan management (CRUD, features)
+│   ├── subscription/       # Subscription lifecycle (subscribe, trial, cancel, usage)
+│   ├── billing/            # Invoices, payments, Xendit integration
+│   ├── events/             # Event system (outbox, publisher, consumer, NATS)
+│   ├── ai/                 # OpenAI integration (OCR, categorization)
+│   ├── config/             # Environment configuration
+│   ├── database/           # PostgreSQL connection pooling
+│   ├── db/                 # SQLC generated code (queries, models)
+│   ├── redis/              # Redis client wrapper
+│   ├── smtp/               # SMTP email client
+│   └── shared/             # Shared utilities (JWT, OTP, Zenziva, validator, response helpers)
 │
-├── pkg
-│   └── (shared utilities)
-│
-├── migrations
-│   ├── 000001_init_users.up.sql
-│   ├── 000001_init_users.down.sql
-│   ├── 000002_init_tenants.up.sql
-│   ├── 000002_init_tenants.down.sql
-│   ├── 000003_init_companies.up.sql
-│   ├── 000003_init_companies.down.sql
-│   ├── 000004_init_counterparties.up.sql
-│   ├── 000004_init_counterparties.down.sql
-│   ├── 000005_init_claims.up.sql
-│   ├── 000005_init_claims.down.sql
-│   ├── 000006_init_accounting.up.sql
-│   ├── 000006_init_accounting.down.sql
-│   ├── 000007_init_documents.up.sql
-│   ├── 000007_init_documents.down.sql
-│   ├── 000008_init_events.up.sql
-│   ├── 000008_init_events.down.sql
-│   └── 000009_init_audit.up.sql
-│
-├── tests
-│   ├── integration
-│   └── fixtures
+├── queries/                # SQLC query definitions (.sql)
+├── migrations/             # Database migrations (numbered .sql files)
+├── docs/                   # Swagger/OpenAPI generated docs
 │
 ├── docker-compose.yml
-├── Dockerfile
 ├── Makefile
+├── sqlc.yaml
 ├── go.mod
 ├── go.sum
 ├── .env.example
+├── PROJECT_TRACKER.md
+├── USER_FLOW.md
 └── README.md
 ```
 
@@ -1064,16 +1046,42 @@ This table stores long and heavy attribute data, keeping the entities table lean
 - **nama_alias_kustom** (VARCHAR, NULLABLE): **Key to Naming Flexibility.** Allows PT A to store subject as "Toko Maju", while PT B stores the same physical subject as "Pak Budi", without corrupting each other
 - **status_relasi** (VARCHAR): Relationship activity flag (ACTIVE, INACTIVE)
 
-#### 5. Table: master_roles
+#### 5. Table: workspace_roles (ABAC Permission System)
 
-- **id_role** (UUID, PK)
-- **nama_role** (VARCHAR, UNIQUE): Standardized name (SUPER_ADMIN, KASIR, AKUNTAN)
-- **deskripsi_role** (TEXT)
+> Replaces the old `master_roles` table. Roles are now per-workspace, custom, and managed by workspace owners.
 
-#### 6. Table: relation_permissions
+- **id** (UUID, PK)
+- **workspace_id** (UUID, FK -> entities.id): The workspace this role belongs to
+- **name** (VARCHAR): Role name (e.g., "Akuntan", "Kasir", "Manager")
+- **description** (TEXT, NULLABLE): Human-readable description
+- **permissions** (TEXT[]): Array of permission keys (e.g., `["transaction:create", "report:read"]`)
+- **is_system** (BOOLEAN): System roles (e.g., "Owner") cannot be modified/deleted
+- **created_by** (UUID, FK -> users.id): Who created this role
+- **created_at**, **updated_at** (TIMESTAMPTZ)
 
-- **id_permission** (UUID, PK)
-- **id_relasi** (UUID, FK -> entity_relations): Points to specific connection
+#### 6. Table: workspace_role_assignments
+
+> Links members to roles within a workspace. A member can have multiple roles.
+
+- **id** (UUID, PK)
+- **workspace_id** (UUID, FK -> entities.id)
+- **member_entity_id** (UUID, FK -> entities.id): The member's personal entity
+- **role_id** (UUID, FK -> workspace_roles.id, ON DELETE CASCADE)
+- **assigned_by** (UUID, FK -> users.id)
+- **created_at** (TIMESTAMPTZ)
+- **UNIQUE** (workspace_id, member_entity_id, role_id)
+
+#### 6b. Table: workspace_invites (Email-based Invitations)
+
+- **id** (UUID, PK)
+- **workspace_id** (UUID, FK -> entities.id)
+- **invited_email** (VARCHAR): Must be a registered user's email
+- **role_id** (UUID, FK -> workspace_roles.id): Role to assign on accept
+- **token** (VARCHAR(64), UNIQUE): Secure invite token
+- **invited_by** (UUID, FK -> users.id)
+- **expires_at** (TIMESTAMPTZ): 24h from creation
+- **accepted_at** (TIMESTAMPTZ, NULLABLE): Set when invite is accepted
+- **created_at** (TIMESTAMPTZ)
 
 #### 7. Table: items
 
@@ -1119,56 +1127,125 @@ This table stores long and heavy attribute data, keeping the entities table lean
 ### Route Groups
 
 ```
-/auth
-/tenants
-/memberships
-/companies
-/company-candidates
-/counterparties
-/claims
-/documents
-/accounting
-/tax
-/reports
-/admin
-/webhooks
+/api/v1/auth              — User authentication (register, login, OTP, sessions)
+/api/v1/plans             — Public plan listing
+/api/v1/entities          — Entity CRUD (authenticated)
+/api/v1/workspaces        — Workspace management, members, roles, invites, counterparties
+/api/v1/subscription      — Subscription management (workspace-scoped)
+/api/v1/billing           — Invoices & payments (workspace-scoped)
+/api/v1/webhooks/xendit   — Xendit payment webhook (public, token-verified)
+
+/api/v1/admin/auth        — Admin authentication (login, MFA, sessions)
+/api/v1/admin/admins      — Admin management (SUPER_ADMIN only)
+/api/v1/admin/plans       — Plan management (SUPER_ADMIN + ENGINEER)
+/api/v1/admin/subscriptions — Subscription overview (SUPER_ADMIN + ENGINEER)
+/api/v1/admin/billing     — Invoice overview (SUPER_ADMIN + ENGINEER)
 ```
 
-### Example Routes
+### User API Routes
 
 ```
-POST   /auth/login
-POST   /auth/logout
-POST   /auth/refresh
+# Auth (public)
+POST   /api/v1/auth/register          — Register new account
+POST   /api/v1/auth/login/email       — Login with email + password
+POST   /api/v1/auth/login/otp         — Login with WhatsApp OTP
+POST   /api/v1/auth/otp/request       — Request OTP code
+POST   /api/v1/auth/verify            — Verify email/WhatsApp OTP
+POST   /api/v1/auth/password/reset    — Reset password via OTP
+POST   /api/v1/auth/refresh           — Refresh access token (HttpOnly cookie)
 
-GET    /tenants/current
-POST   /tenants
-GET    /tenants/:tenant_id/members
+# Auth (authenticated)
+GET    /api/v1/auth/me                — Get current user profile
+POST   /api/v1/auth/logout            — Logout current session
+POST   /api/v1/auth/logout-all        — Revoke all sessions
+POST   /api/v1/auth/password/change   — Change password
+GET    /api/v1/auth/sessions          — List active sessions
+DELETE /api/v1/auth/sessions/{id}     — Revoke specific session
 
-POST   /counterparties
-GET    /counterparties
-GET    /counterparties/search
+# Plans (public)
+GET    /api/v1/plans                  — List all active plans
+GET    /api/v1/plans/{slug}           — Get plan details with features
 
-POST   /claims
-GET    /claims/:claim_id
-POST   /claims/:claim_id/submit-documents
+# Entities (authenticated)
+POST   /api/v1/entities               — Create entity
+GET    /api/v1/entities               — List my entities
+GET    /api/v1/entities/search        — Search entities
+GET    /api/v1/entities/{id}          — Get entity by ID
+PATCH  /api/v1/entities/{id}          — Update entity
+PATCH  /api/v1/entities/{id}/meta     — Update entity metadata
 
-GET    /admin/review-cases
-POST   /admin/review-cases/:case_id/approve
-POST   /admin/review-cases/:case_id/reject
+# Workspaces (authenticated)
+POST   /api/v1/workspaces             — Create workspace
+GET    /api/v1/workspaces             — List my workspaces (includes subscription_status)
+POST   /api/v1/workspaces/invites/accept — Accept invite (token-based)
 
-POST   /accounting/cash-transactions
-GET    /accounting/cash-transactions
-POST   /accounting/journal-entries
+# Workspaces (workspace-scoped, requires X-Workspace-ID header)
+GET    /api/v1/workspaces/members             — List members
+PATCH  /api/v1/workspaces/members/{id}        — Update member [member:manage]
+DELETE /api/v1/workspaces/members/{id}        — Remove member [member:remove]
 
-POST   /documents/upload-request
-POST   /documents/:document_id/verify
+GET    /api/v1/workspaces/roles               — List workspace roles
+POST   /api/v1/workspaces/roles               — Create custom role [role:create]
+PATCH  /api/v1/workspaces/roles/{id}          — Update role [role:update]
+DELETE /api/v1/workspaces/roles/{id}          — Delete role [role:delete]
+POST   /api/v1/workspaces/roles/assign        — Assign role to member [role:assign]
+POST   /api/v1/workspaces/roles/unassign      — Unassign role [role:assign]
 
-POST   /reports/financial
-GET    /reports/:report_job_id
+POST   /api/v1/workspaces/invites             — Send invite email [member:invite]
+GET    /api/v1/workspaces/invites             — List pending invites
+DELETE /api/v1/workspaces/invites/{id}        — Revoke invite [member:invite]
 
-POST   /webhooks
-GET    /webhooks/deliveries
+POST   /api/v1/workspaces/counterparties      — Add counterparty
+GET    /api/v1/workspaces/counterparties      — List counterparties
+
+# Subscription (workspace-scoped)
+POST   /api/v1/subscription            — Subscribe to plan (returns payment_url for paid plans)
+GET    /api/v1/subscription            — Get active subscription
+GET    /api/v1/subscription/history    — List subscription history
+POST   /api/v1/subscription/cancel     — Cancel subscription
+POST   /api/v1/subscription/change     — Change plan
+GET    /api/v1/subscription/usage      — Get quota usage
+
+# Billing (workspace-scoped)
+GET    /api/v1/billing/invoices        — List invoices
+GET    /api/v1/billing/invoices/{id}   — Get invoice details
+POST   /api/v1/billing/pay             — Initiate payment (returns Xendit URL)
+GET    /api/v1/billing/payments        — List payments
+
+# Webhook (public, token-verified)
+POST   /api/v1/webhooks/xendit         — Xendit payment callback
+```
+
+### Admin API Routes
+
+```
+# Admin Auth
+POST   /api/v1/admin/auth/login        — Admin login (step 1)
+POST   /api/v1/admin/auth/mfa/verify   — MFA verification (step 2)
+POST   /api/v1/admin/auth/mfa/setup    — Setup MFA (authenticated)
+POST   /api/v1/admin/auth/mfa/confirm  — Confirm MFA setup
+POST   /api/v1/admin/auth/refresh      — Refresh admin token
+POST   /api/v1/admin/auth/logout       — Admin logout
+GET    /api/v1/admin/auth/me           — Admin profile
+
+# Admin Management (SUPER_ADMIN only)
+POST   /api/v1/admin/admins            — Invite admin
+GET    /api/v1/admin/admins            — List admins
+PATCH  /api/v1/admin/admins/{id}       — Update admin
+DELETE /api/v1/admin/admins/{id}       — Delete admin
+
+# Plan Management (SUPER_ADMIN + ENGINEER)
+GET    /api/v1/admin/plans             — List all plans (including inactive)
+POST   /api/v1/admin/plans             — Create plan
+GET    /api/v1/admin/plans/{id}        — Get plan
+PATCH  /api/v1/admin/plans/{id}        — Update plan
+DELETE /api/v1/admin/plans/{id}        — Soft-delete plan
+POST   /api/v1/admin/plans/{id}/features          — Set feature
+DELETE /api/v1/admin/plans/{id}/features/{key}     — Remove feature
+
+# Subscription & Billing Overview (SUPER_ADMIN + ENGINEER)
+GET    /api/v1/admin/subscriptions     — List all subscriptions
+GET    /api/v1/admin/billing/invoices  — List all invoices
 ```
 
 ---
@@ -1481,28 +1558,42 @@ client-side tenant_id
 
 ---
 
-## Tenant Isolation
+## Workspace Isolation (Multi-Tenant)
 
-Every request must resolve tenant context.
+Every workspace-scoped request must resolve workspace context and verify permissions.
 
-**Recommended flow:**
+**Flow (implemented in middleware):**
 
 ```
-Authenticate user
+Authenticate user (JWT access token)
       |
       v
-Resolve tenant membership
+Extract X-Workspace-ID header
       |
       v
-Check role/permission
+VerifyWorkspaceAccess: check entity_relations
+(user's personal entity must have PEMILIK or KARYAWAN relation to workspace)
       |
       v
-Execute query with tenant_id filter
+Resolve permissions:
+  - PEMILIK → wildcard ["*"] (full access)
+  - KARYAWAN → aggregate permissions from workspace_role_assignments
+      |
+      v
+RequirePermission("action:resource") middleware check
+      |
+      v
+Execute query scoped to workspace entity ID
 ```
 
-Never accept `tenant_id` blindly from client request body.
+**Key principles:**
 
-Tenant access must be derived from authenticated session and membership.
+- Never accept workspace ID from request body — always from `X-Workspace-ID` header
+- Workspace access derived from `entity_relations` table (not a separate membership table)
+- Permissions are per-workspace custom roles (ABAC), not global roles
+- Owner (PEMILIK) always bypasses permission checks via wildcard `["*"]`
+- Permission keys follow `resource:action` pattern (e.g., `transaction:create`, `member:invite`)
+- `RequirePermission` middleware supports exact match, wildcard `*`, and resource wildcard `transaction:*`
 
 ---
 
@@ -1646,6 +1737,15 @@ report worker:            separately scalable (high CPU/memory)
 APP_ENV=production
 APP_PORT=8080
 APP_SECRET=your-secret-key-min-32-chars
+REFRESH_TOKEN_SECRET=your-different-secret-key-min-32-chars
+
+# Auth Token Expiry
+ACCESS_TOKEN_EXPIRY_MINUTES=15
+REFRESH_TOKEN_EXPIRY_DAYS=7
+
+# CORS (comma-separated origins)
+CORS_ALLOWED_ORIGINS=https://app.azzet.id
+ADMIN_CORS_ALLOWED_ORIGINS=https://admin.azzet.id
 
 # Database
 DATABASE_URL=postgres://user:pass@localhost:5432/azzet?sslmode=require
@@ -1667,33 +1767,31 @@ R2_ENDPOINT=https://your-account.r2.cloudflarestorage.com
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4-turbo
 
-# WhatsApp API
-WA_API_KEY=your-wa-api-key
-WA_API_URL=https://api.whatsapp.com
+# Zenziva WhatsApp OTP
+ZENZIVA_URL=https://console.zenziva.net/waofficial/api/sendWAOfficial/
+ZENZIVA_USERKEY=your-zenziva-userkey
+ZENZIVA_PASSKEY=your-zenziva-passkey
+ZENZIVA_BRAND=Azzet
 
 # Xendit Payment Gateway
 XENDIT_API_KEY=your-xendit-api-key
 XENDIT_WEBHOOK_SECRET=your-webhook-secret
-XENDIT_CALLBACK_URL=https://yourdomain.com/api/v1/webhooks/xendit
-XENDIT_SUCCESS_URL=https://yourdomain.com/payment/success
-XENDIT_FAILURE_URL=https://yourdomain.com/payment/failure
+XENDIT_CALLBACK_URL=https://api.azzet.id/api/v1/webhooks/xendit
+XENDIT_SUCCESS_URL=https://app.azzet.id/payment/success
+XENDIT_FAILURE_URL=https://app.azzet.id/payment/failed
 
-# SMTP
+# SMTP (Email)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
 SMTP_FROM=noreply@azzet.com
 
-# JWT
-ACCESS_TOKEN_EXPIRY_MINUTES=15
-REFRESH_TOKEN_EXPIRY_DAYS=7
+# Frontend URL (used for invite email links)
+FRONTEND_URL=https://app.azzet.id
 
 # Worker
 WORKER_CONCURRENCY=50
-
-# Logging
-LOG_LEVEL=info
 ```
 
 ---

@@ -404,14 +404,18 @@ Set-Cookie: refresh_token=new-eyJ...; (rotated)
 > After registration + verification + first login, the system has already created:
 > 1. Personal entity (ORANG_PRIBADI)
 > 2. Personal workspace
+> 3. Free plan subscription (if a free plan exists in DB)
 >
 > This happens synchronously during registration — no delay, no polling needed.
 
-**Frontend should:**
+**Frontend flow:**
 
-1. After first login, call `GET /api/v1/workspaces`
-2. Workspace will already be there (created during registration)
-3. Auto-select the workspace and proceed to plan selection
+1. After login, frontend always redirects to `/workspaces` (workspace selection page)
+2. User sees all their workspaces with subscription status
+3. User picks a workspace:
+   - Personal workspace with free plan → go to `/dashboard`
+   - Business workspace with active plan → go to `/dashboard`
+   - Workspace without plan → go to `/plans`
 
 **Request:**
 ```http
@@ -419,7 +423,7 @@ GET /api/v1/workspaces
 Authorization: Bearer <access_token>
 ```
 
-**Response (workspace ready):**
+**Response (workspace ready with subscription info):**
 ```json
 {
   "success": true,
@@ -430,6 +434,8 @@ Authorization: Bearer <access_token>
       "entity_name": "Jiilan Nashrulloh",
       "entity_type": "ORANG_PRIBADI",
       "role": "PEMILIK",
+      "subscription_status": "active",
+      "plan_name": "Free",
       "created_at": "2026-05-20T10:00:05Z"
     }
   ]
@@ -437,9 +443,11 @@ Authorization: Bearer <access_token>
 ```
 
 **Frontend Action:**
-- Store `entity_id` as default workspace
-- Set `X-Workspace-ID` header for subsequent requests
-- Check subscription → if none, redirect to plan selection page (`/plans/select`)
+- Always show workspace selection page (every login)
+- User must manually click a workspace to proceed
+- Store selected `entity_id` as `X-Workspace-ID` for subsequent requests
+- If `subscription_status` is `active` or `trial` → navigate to `/dashboard`
+- If `subscription_status` is null/expired/cancelled → navigate to `/plans`
 
 ---
 
@@ -612,10 +620,29 @@ Content-Type: application/json
 }
 ```
 
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "sub-uuid",
+    "workspace_id": "...",
+    "plan_id": "...",
+    "status": "pending_payment",
+    "billing_cycle": "monthly",
+    "started_at": "2026-05-20T10:10:00Z",
+    "expires_at": "2026-06-20T10:10:00Z",
+    "payment_url": "https://checkout.xendit.co/web/abc123"
+  }
+}
+```
+
 **Frontend Action after subscription:**
-- Redirect to dashboard
-- If paid plan → redirect to payment page (Flow 10)
-- If free/trial → ready to use
+- If `payment_url` is present → redirect user to Xendit checkout page
+- If status is `active` (free plan) or `trial` → redirect to `/dashboard`
+- After payment at Xendit:
+  - Success → Xendit redirects to `/payment/success` → auto-redirect to dashboard
+  - Failed → Xendit redirects to `/payment/failed` → user can retry
 
 ---
 
@@ -679,7 +706,8 @@ Content-Type: application/json
 
 ### Switch Workspace
 
-**Frontend:** Workspace switcher dropdown in navbar
+**Frontend:** Workspace selection page (`/workspaces`) shown every login.
+User can also switch workspace from within the app.
 
 All workspace-scoped requests need `X-Workspace-ID` header:
 
@@ -689,21 +717,122 @@ Authorization: Bearer <access_token>
 X-Workspace-ID: <selected-workspace-entity-id>
 ```
 
-### Invite Team Member
+### Invite Team Member (Email-based)
 
-**Page:** `/workspace/settings/members`
+**Page:** `/users` (workspace members page)
+
+**Requirements:**
+- Inviter must have `member:invite` permission (Owner has this by default via wildcard)
+- Invited email must be registered on the platform
+- No duplicate pending invites for same email + workspace
+- User must not already be a member of the workspace
+
+**Step 1:** Send invite
 
 ```http
-POST /api/v1/workspaces/members
+POST /api/v1/workspaces/invites
 Authorization: Bearer <access_token>
 X-Workspace-ID: <workspace-entity-id>
 Content-Type: application/json
 
 {
-  "entity_id": "<member-entity-id>",
-  "role": "KASIR",
-  "custom_alias": "Andi Kasir"
+  "email": "andi@example.com",
+  "role_id": "<workspace-role-uuid>"
 }
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "invite-uuid",
+    "workspace_id": "...",
+    "invited_email": "andi@example.com",
+    "role_name": "Akuntan",
+    "token": "a1b2c3d4...",
+    "invited_by": "...",
+    "expires_at": "2026-05-21T10:00:00Z",
+    "created_at": "2026-05-20T10:00:00Z"
+  }
+}
+```
+
+**What happens:**
+- Backend sends styled HTML email to `andi@example.com`
+- Email contains link: `{FRONTEND_URL}/invite/{token}`
+- Link expires in 24 hours
+
+**Step 2:** Invitee accepts (must be logged in)
+
+```http
+POST /api/v1/workspaces/invites/accept
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "token": "a1b2c3d4..."
+}
+```
+
+**Validation:**
+- Token must be valid and not expired (24h)
+- Logged-in user's email must match `invited_email`
+- User must not already be a member
+
+**Result:** Creates `KARYAWAN` relation + assigns the specified role.
+
+**Note:** Invite only works via email. WhatsApp is reserved for OTP only.
+
+### Manage Workspace Roles (ABAC)
+
+**Page:** Workspace settings / roles management
+
+**List roles:**
+```http
+GET /api/v1/workspaces/roles
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Create custom role:**
+```http
+POST /api/v1/workspaces/roles
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "name": "Akuntan",
+  "description": "Akses laporan dan transaksi",
+  "permissions": ["transaction:read", "transaction:create", "report:read", "report:export"]
+}
+```
+
+**Assign role to member:**
+```http
+POST /api/v1/workspaces/roles/assign
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "member_entity_id": "<member-personal-entity-uuid>",
+  "role_id": "<workspace-role-uuid>"
+}
+```
+
+**Available permission keys:**
+```
+transaction:create, transaction:read, transaction:update, transaction:delete
+report:read, report:export
+member:invite, member:manage, member:remove
+role:create, role:update, role:delete, role:assign
+workspace:settings
+billing:read, billing:manage
+item:create, item:read, item:update, item:delete
+account:create, account:read, account:update, account:delete
+* (wildcard — owner only, auto-assigned)
 ```
 
 ### Add Counterparty (Customer/Vendor)
@@ -885,105 +1014,69 @@ Content-Type: application/json
 User opens any page
     │
     ├── Has access_token in memory?
-    │   ├── NO → Redirect to /login (except public pages)
+    │   ├── NO → Try silent refresh (POST /auth/refresh via HttpOnly cookie)
+    │   │         ├── Success → continue with new token
+    │   │         └── Fail → redirect to /login
     │   └── YES ↓
     │
-    ├── Token expired?
-    │   ├── YES → Try refresh (POST /auth/refresh)
-    │   │         ├── Success → continue
-    │   │         └── Fail → clear state, redirect to /login
-    │   └── NO ↓
+    ├── Is this a public page? (/login, /register, /verify-*, /forgot-password, /payment/*)
+    │   └── YES → If authenticated, redirect to /workspaces (except /payment/*)
     │
-    ├── GET /api/v1/workspaces → has workspaces?
-    │   ├── NO (empty array) → should not happen (created during registration)
-    │   │   └── Redirect to /workspaces/new (manual creation as fallback)
-    │   └── YES ↓
+    ├── Always redirect to /workspaces (workspace selection page)
+    │   User MUST manually select a workspace every login
     │
-    ├── Has X-Workspace-ID selected?
-    │   ├── NO → auto-select first workspace (or show picker if multiple)
-    │   └── YES ↓
+    ├── User selects workspace → check subscription_status from response
+    │   ├── status = "active" or "trial" → navigate to /dashboard
+    │   ├── status = null/expired/cancelled/pending_payment → navigate to /plans
+    │   └── (subscription_status is included in GET /workspaces response)
     │
-    ├── GET /api/v1/subscription → has active subscription?
-    │   ├── NO (404 or status=expired/cancelled)
-    │   │   └── Redirect to /plans/select (plan selection page)
-    │   └── YES (status=active or status=trial) ↓
-    │
-    ├── If trial: is trial expiring soon? (< 3 days)
-    │   └── Show banner: "Trial expires in X days. Upgrade now."
-    │
-    └── ALLOW ACCESS to workspace features
-```
-User opens any page
-    │
-    ├── Has access_token in memory?
-    │   ├── NO → Redirect to /login (except public pages)
-    │   └── YES ↓
-    │
-    ├── Token expired?
-    │   ├── YES → Try refresh (POST /auth/refresh)
-    │   │         ├── Success → continue
-    │   │         └── Fail → clear state, redirect to /login
-    │   └── NO ↓
-    │
-    ├── GET /api/v1/workspaces → has workspaces?
-    │   ├── NO (empty array) → entity not created yet
-    │   │   └── Show loading screen, poll every 2s
-    │   │       (event system creating entity + workspace)
-    │   │       └── Once workspace appears → continue ↓
-    │   └── YES ↓
-    │
-    ├── Has X-Workspace-ID selected?
-    │   ├── NO → Redirect to /workspaces (workspace picker)
-    │   └── YES ↓
-    │
-    ├── GET /api/v1/subscription → has active subscription?
-    │   ├── NO (404 or status=expired/cancelled)
-    │   │   └── Redirect to /plans (plan selection page)
-    │   └── YES (status=active or status=trial) ↓
-    │
-    ├── If trial: is trial expiring soon? (< 3 days)
-    │   └── Show banner: "Trial expires in X days. Upgrade now."
+    ├── Inside /dashboard (_authed layout):
+    │   ├── No activeWorkspace in store? → redirect to /workspaces
+    │   ├── GET /subscription → check status
+    │   │   ├── active/trial → allow access
+    │   │   ├── expired/cancelled/pending_payment → redirect to /plans
+    │   │   └── 404 (no subscription) → redirect to /plans
+    │   └── If trial expiring soon (< 3 days) → show warning banner
     │
     └── ALLOW ACCESS to workspace features
 ```
 
 ---
 
-### Page-by-Page Routing Rules
+### Route Categories
 
 #### Public Pages (No Auth Required)
 
-| Page | Path | Condition |
-|------|------|-----------|
-| Landing | `/` | Always accessible |
-| Login | `/login` | If already logged in → redirect to `/dashboard` |
-| Register | `/register` | If already logged in → redirect to `/dashboard` |
-| Verify Email | `/verify-email` | Accessible after registration |
-| Verify WhatsApp | `/verify-whatsapp` | Accessible after registration |
-| Forgot Password | `/forgot-password` | Always accessible |
-| Reset Password | `/reset-password` | Always accessible |
-| Pricing | `/plans` | Always accessible (public plan list) |
+| Page | Path | Behavior if Authenticated |
+|------|------|---------------------------|
+| Index | `/` | Redirect to `/workspaces` |
+| Login | `/login` | Redirect to `/workspaces` |
+| Register | `/register` | Redirect to `/workspaces` |
+| Verify Email | `/verify-email` | Accessible (no redirect) |
+| Verify WhatsApp | `/verify-whatsapp` | Accessible (no redirect) |
+| Forgot Password | `/forgot-password` | Accessible (no redirect) |
+| Payment Success | `/payment/success` | Show success + auto-redirect to dashboard (5s) |
+| Payment Failed | `/payment/failed` | Show failure + retry button |
 
-#### Authenticated Pages (Requires Access Token)
-
-| Page | Path | Guard Logic |
-|------|------|-------------|
-| Dashboard | `/dashboard` | Requires workspace + subscription |
-| Workspace Picker | `/workspaces` | Shows all workspaces, user picks one |
-| Create Workspace | `/workspaces/new` | User creates business entity + workspace |
-| Plan Selection | `/plans/select` | Shown when workspace has no subscription |
-| Payment | `/billing/pay` | Shown when paid plan selected |
-
-#### Workspace-Scoped Pages (Requires X-Workspace-ID + Active Subscription)
+#### Onboarding Pages (Auth Required, No Sidebar)
 
 | Page | Path | Guard Logic |
 |------|------|-------------|
-| Dashboard | `/dashboard` | Main workspace view |
-| Members | `/workspace/members` | Requires PEMILIK role |
-| Counterparties | `/workspace/counterparties` | Any workspace member |
-| Billing | `/workspace/billing` | Requires PEMILIK role |
-| Settings | `/workspace/settings` | Requires PEMILIK role |
-| Subscription | `/workspace/subscription` | Requires PEMILIK role |
+| Setup | `/setup` | Always redirects to `/workspaces` |
+| Workspace Selection | `/workspaces` | Shows all workspaces with plan status. Always shown on login. |
+| Create Workspace | `/workspaces/new` | Form to create business entity + workspace |
+| Plan Selection | `/plans` | Standalone page. Shown when workspace has no active subscription. |
+| Accept Invite | `/invite/{token}` | Validates token, accepts invite, redirects to `/workspaces` |
+
+#### Protected Pages (Auth + Active Workspace + Subscription, With Sidebar)
+
+| Page | Path | Permission Required |
+|------|------|---------------------|
+| Dashboard | `/dashboard` | Any workspace member |
+| Members | `/users` | Any (view), `member:manage` (edit), `member:remove` (delete) |
+| Billing | `/billing` | `billing:read` |
+| Settings | `/settings` | `workspace:settings` |
+| UI Overview | `/ui-overview` | Any workspace member |
 
 ---
 
@@ -997,99 +1090,86 @@ User opens any page
 3. User verifies OTP → status = ACTIVE
 4. Redirect to /login
 5. User logs in → access_token received
-6. GET /workspaces → workspace already exists (created during registration)
-7. Auto-select workspace → store entity_id as X-Workspace-ID
-8. GET /subscription → 404 (no subscription yet)
-9. Redirect to /plans/select
-10. User picks Free plan → POST /subscription
-11. Subscription active → redirect to /dashboard
-12. User can now use features!
+6. Redirect to /workspaces (always)
+7. Workspace list shows personal workspace with "Free" plan badge (auto-assigned)
+8. User clicks personal workspace → subscription_status = "active"
+9. Navigate to /dashboard → ready to use!
 ```
 
 #### Scenario 2: Returning User (Has Everything Set Up)
 
 ```
-1. User opens app → has access_token in memory? 
-   - If page refresh: token gone → try refresh cookie
-   - POST /auth/refresh → new access_token
-2. GET /workspaces → has workspaces ✓
-3. Last used workspace stored in localStorage (just the ID)
-4. Set X-Workspace-ID header
-5. GET /subscription → active ✓
-6. Show dashboard directly
+1. User opens app → access_token gone (page refresh)
+2. Silent refresh via HttpOnly cookie → new access_token
+3. Redirect to /workspaces (always shown on login)
+4. User clicks their workspace
+5. subscription_status = "active" → navigate to /dashboard
 ```
 
 #### Scenario 3: User with Expired Trial
 
 ```
-1. User logs in → access_token received
-2. GET /workspaces → has workspace ✓
-3. Set X-Workspace-ID
-4. GET /subscription → status = "expired" (trial ended)
-5. Redirect to /plans/select
-6. Show message: "Your trial has ended. Choose a plan to continue."
-7. User picks paid plan → POST /subscription { plan_id, billing_cycle: "monthly" }
-8. Invoice created → redirect to /billing/pay
-9. POST /billing/pay → get payment_url
-10. Redirect to Xendit checkout
-11. User pays → webhook activates subscription
-12. User returns → subscription active → dashboard
+1. User logs in → redirect to /workspaces
+2. Workspace list shows workspace with subscription_status = null (expired)
+3. User clicks workspace → navigate to /plans
+4. Show message: "Masa uji coba telah berakhir. Pilih plan untuk melanjutkan."
+5. User picks paid plan → POST /subscription → response has payment_url
+6. Frontend redirects to Xendit checkout
+7. User pays → Xendit redirects to /payment/success
+8. Webhook activates subscription
+9. User clicks "Masuk ke Dashboard" → /dashboard
 ```
 
 #### Scenario 4: User with Multiple Workspaces
 
 ```
-1. User logs in
-2. GET /workspaces → returns multiple:
+1. User logs in → redirect to /workspaces
+2. Workspace list shows:
    [
-     { entity_name: "Jiilan (Personal)", entity_type: "ORANG_PRIBADI" },
-     { entity_name: "PT Azzet", entity_type: "BADAN_USAHA" },
-     { entity_name: "CV Jiilan", entity_type: "BADAN_USAHA" }
+     { entity_name: "Jiilan (Personal)", subscription_status: "active", plan_name: "Free" },
+     { entity_name: "PT Azzet", subscription_status: "active", plan_name: "Professional" },
+     { entity_name: "CV Jiilan", subscription_status: null }
    ]
-3. Show workspace picker (/workspaces)
-4. User selects "PT Azzet" → store as X-Workspace-ID
-5. GET /subscription for PT Azzet → check status
-6. If active → dashboard
-7. If no subscription → /plans/select
+3. User clicks "PT Azzet" → active → /dashboard
+4. Or user clicks "CV Jiilan" → no plan → /plans
 ```
 
 #### Scenario 5: User Creates New Business Workspace
 
 ```
-1. User is on /dashboard (personal workspace active)
-2. Clicks "Create Business Workspace"
-3. Redirect to /workspaces/new
-4. Fill form: nama_utama, entity_type=BADAN_USAHA, nik_npwp, etc.
+1. User on /workspaces page
+2. Clicks "Buat Workspace Baru"
+3. Navigate to /workspaces/new
+4. Fill form: nama_utama, nik_npwp, nomor_wa, alamat_lengkap
 5. POST /entities → entity created
-6. POST /workspaces { entity_id } → workspace created
-7. Switch X-Workspace-ID to new workspace
-8. GET /subscription → 404 (new workspace, no plan)
-9. Redirect to /plans/select
-10. User subscribes → ready to use
+6. POST /workspaces { entity_id } → workspace created (Owner role bootstrapped)
+7. Navigate to /plans (new workspace has no subscription)
+8. User subscribes → payment flow or instant activation
+9. Navigate to /dashboard
 ```
 
-#### Scenario 6: User Tries to Access Feature Without Subscription
+#### Scenario 6: User Accepts Workspace Invite
 
 ```
-1. User on workspace that has no subscription
-2. Tries to access /workspace/counterparties
-3. Frontend guard: GET /subscription → 404
-4. Redirect to /plans/select
-5. Show: "Subscribe to a plan to access this feature"
+1. User receives email with invite link: https://app.azzet.id/invite/{token}
+2. User clicks link → frontend /invite/{token} page
+3. If not logged in → redirect to /login?redirect=/invite/{token}
+4. After login → back to /invite/{token}
+5. Frontend calls POST /workspaces/invites/accept { token }
+6. Backend validates: token valid, not expired (24h), email matches, not already member
+7. Creates KARYAWAN relation + assigns role
+8. Show success → navigate to /workspaces
+9. New workspace appears in list
 ```
 
 #### Scenario 7: User's Payment Failed
 
 ```
-1. User subscribed to paid plan
-2. Invoice created but payment failed/expired
-3. GET /subscription → status = "active" (still within grace period)
-   OR status = "expired" (payment overdue)
-4. If expired:
-   - Show banner: "Payment overdue. Please pay to continue."
-   - Redirect to /workspace/billing
-   - Show unpaid invoice
-   - User clicks "Pay Now" → POST /billing/pay → Xendit checkout
+1. User subscribed to paid plan → redirected to Xendit
+2. Payment fails → Xendit redirects to /payment/failed
+3. User sees "Pembayaran Gagal" page
+4. Clicks "Coba Lagi" → navigate to /plans
+5. Or clicks "Kembali ke Workspace" → /workspaces
 ```
 
 ---
@@ -1105,92 +1185,88 @@ User opens any page
 │  ├── /verify-email                                           │
 │  ├── /verify-whatsapp                                        │
 │  ├── /forgot-password                                        │
-│  └── /plans (public pricing)                                 │
+│  ├── /payment/success (public, no auth needed)               │
+│  └── /payment/failed (public, no auth needed)                │
 │                                                              │
 │  ─── Login Success ───────────────────────────────────────── │
 │                                                              │
 │  AUTHENTICATED (has access_token)                            │
 │  │                                                           │
-│  ├── NO WORKSPACE YET                                        │
-│  │   └── Show loading (poll GET /workspaces)                 │
+│  ├── WORKSPACE SELECTION (always shown on login)             │
+│  │   ├── /workspaces (picker — shows plan status per ws)     │
+│  │   ├── /workspaces/new (create business workspace)         │
+│  │   └── /invite/{token} (accept invite)                     │
 │  │                                                           │
-│  ├── HAS WORKSPACE, NO SUBSCRIPTION                          │
-│  │   ├── /workspaces (picker)                                │
-│  │   ├── /workspaces/new (create business)                   │
-│  │   └── /plans/select (choose plan) ← FORCED               │
+│  ├── PLAN SELECTION (workspace selected, no subscription)    │
+│  │   └── /plans (choose plan → free/trial/paid)              │
+│  │       └── Paid → redirect to Xendit → /payment/success    │
 │  │                                                           │
-│  ├── HAS WORKSPACE + ACTIVE SUBSCRIPTION                     │
+│  ├── HAS WORKSPACE + ACTIVE SUBSCRIPTION (_authed layout)    │
 │  │   ├── /dashboard                                          │
-│  │   ├── /workspace/members                                  │
-│  │   ├── /workspace/counterparties                           │
-│  │   ├── /workspace/billing                                  │
-│  │   ├── /workspace/settings                                 │
+│  │   ├── /users (members)                                    │
+│  │   ├── /billing                                            │
+│  │   ├── /settings                                           │
 │  │   └── (all business features)                             │
 │  │                                                           │
-│  └── SUBSCRIPTION EXPIRED                                    │
-│      └── /plans/select ← FORCED (must re-subscribe)          │
+│  └── SUBSCRIPTION EXPIRED/CANCELLED/PENDING                  │
+│      └── /plans ← FORCED (must subscribe/pay)                │
 │                                                              │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### API Calls for Guard Logic (Frontend Init)
+### API Calls for Guard Logic (Frontend Implementation)
 
-```javascript
-// On app load / page navigation:
-async function initGuard() {
-  // 1. Check auth
-  if (!accessToken) {
-    const refreshed = await tryRefresh();
-    if (!refreshed) return redirect('/login');
-  }
+```typescript
+// Auth middleware (src/middleware/auth.middleware.ts)
 
-  // 2. Check workspaces
-  const { data: workspaces } = await api.get('/workspaces');
-  
-  if (workspaces.length === 0) {
-    // Should not happen (created during registration)
-    // Fallback: redirect to manual creation
-    return redirect('/workspaces/new');
-  }
+async function tryRefresh(): Promise<boolean> {
+  const { isAuthenticated, setAuth } = useAuthStore.getState()
+  if (isAuthenticated) return true
 
-  // 3. Auto-select workspace (or use last selected)
-  const wsId = localStorage.getItem('workspace_id') || workspaces[0].entity_id;
-  setWorkspaceHeader(wsId);
-
-  // 4. Check subscription
   try {
-    const { data: sub } = await api.get('/subscription');
-    
-    if (sub.status === 'trial' && isExpiringSoon(sub.trial_ends_at)) {
-      showBanner('Trial expires soon. Upgrade now.');
-    }
-    
-    // All good - allow access
-    return ALLOW;
-    
-  } catch (err) {
-    if (err.status === 404) {
-      // No subscription - must select plan
-      return redirect('/plans/select');
-    }
-    throw err;
+    const data = await authService.refresh()
+    setAuth(data.access_token, data.user)
+    return true
+  } catch {
+    return false
   }
+}
+
+// requireAuth — for protected routes (beforeLoad)
+async function requireAuth({ location }) {
+  const authed = await tryRefresh()
+  if (!authed) throw redirect({ to: '/login', search: { redirect: location.href } })
+}
+
+// requireGuest — for login/register (beforeLoad)
+async function requireGuest() {
+  const authed = await tryRefresh()
+  if (authed) throw redirect({ to: '/workspaces' })
+}
+
+// _authed layout (loader) — checks workspace + subscription
+async function authedLayoutLoader() {
+  // 1. If no active workspace → redirect to /workspaces
+  // 2. GET /subscription → check status
+  //    - active/trial → allow, show trial banner if < 3 days
+  //    - expired/cancelled/pending_payment/404 → redirect to /plans
 }
 ```
 
 ---
 
-### localStorage Keys (Frontend Reference)
+### Storage Strategy (Frontend Reference)
 
-| Key | Value | Purpose |
-|-----|-------|---------|
-| `workspace_id` | UUID string | Last selected workspace (for X-Workspace-ID header) |
-| `workspace_name` | string | Display name in navbar |
-| `theme` | "light" / "dark" | UI preference |
+| Storage | Key | Value | Purpose |
+|---------|-----|-------|---------|
+| In-memory (Zustand) | `accessToken` | JWT string | Auth header — never persisted |
+| sessionStorage (Zustand persist) | `user` | User object | Display name, email — survives refresh within tab |
+| Zustand (workspace store) | `activeWorkspace` | WorkspaceResponse | Selected workspace for X-Workspace-ID |
+| HttpOnly cookie (set by backend) | `refresh_token` | JWT string | Silent refresh — frontend cannot read |
 
-**Note:** Access token is NEVER stored in localStorage. Only in memory (JS variable / React state).
+**Note:** Access token is NEVER stored in localStorage/sessionStorage. Only in JS memory via Zustand (non-persisted).
 
 ---
 
@@ -1234,9 +1310,24 @@ POST /api/v1/webhooks/xendit
 
 ```
 /api/v1/workspaces/members/*
+/api/v1/workspaces/roles/*
+/api/v1/workspaces/invites (POST, GET, DELETE — not /accept)
 /api/v1/workspaces/counterparties/*
 /api/v1/subscription/*
 /api/v1/billing/*
+```
+
+### Endpoints that need auth but NOT X-Workspace-ID:
+
+```
+GET  /api/v1/workspaces
+POST /api/v1/workspaces
+POST /api/v1/workspaces/invites/accept
+GET  /api/v1/entities
+POST /api/v1/entities
+GET  /api/v1/auth/me
+POST /api/v1/auth/logout
+GET  /api/v1/auth/sessions
 ```
 
 ---
@@ -1285,52 +1376,52 @@ Call POST /api/v1/auth/refresh (cookie auto-sent)
 
 ### Recommended Frontend Token Strategy
 
-```javascript
-// Store access token in memory (NOT localStorage)
-let accessToken = null;
+```typescript
+// Access token stored in Zustand (in-memory only, not persisted)
+// On 401 response → ky afterResponse hook auto-refreshes:
 
-// Set refresh timer
-function scheduleRefresh(expiresIn) {
-  // Refresh at 80% of expiry time
-  const refreshAt = expiresIn * 0.8 * 1000; // ms
-  setTimeout(refreshToken, refreshAt);
-}
-
-// Axios interceptor for auto-refresh
-axios.interceptors.response.use(
-  response => response,
-  async error => {
-    if (error.response?.status === 401 && !error.config._retry) {
-      error.config._retry = true;
-      const newToken = await refreshToken();
-      if (newToken) {
-        error.config.headers.Authorization = `Bearer ${newToken}`;
-        return axios(error.config);
+// src/lib/api/client.ts
+afterResponse: [
+  async ({ request, response, retryCount }) => {
+    if (response.status === 401 && retryCount === 0) {
+      try {
+        const newToken = await doRefresh() // POST /auth/refresh (cookie auto-sent)
+        const headers = new Headers(request.headers)
+        headers.set('Authorization', `Bearer ${newToken}`)
+        return ky(new Request(request, { headers })) // retry original request
+      } catch {
+        return response // refresh failed, let error propagate
       }
     }
-    return Promise.reject(error);
+    return response
   }
-);
+]
 ```
 
 ---
 
 ## Important Notes for Frontend
 
-1. **Refresh token is HttpOnly cookie** — Frontend cannot read it. Browser sends it automatically with requests to `/api/v1/auth/*` path.
+1. **Refresh token is HttpOnly cookie** (`SameSite=Lax`, `Secure=true`) — Frontend cannot read it. Browser sends it automatically with requests to `/api/v1/auth/*` path.
 
-2. **Access token in memory only** — Never store in localStorage (XSS risk). Store in JS variable or React state.
+2. **Access token in memory only** — Never stored in localStorage/sessionStorage (XSS risk). Stored in Zustand state (non-persisted). Lost on page refresh → silent refresh via cookie.
 
-3. **X-Workspace-ID is mandatory** for business endpoints. Frontend should have a workspace switcher and always send this header.
+3. **X-Workspace-ID is mandatory** for business endpoints. Frontend auto-sets this from `activeWorkspace.entity_id` in the ky `beforeRequest` hook.
 
-4. **Personal entity + workspace are created instantly** during registration (synchronous). No polling needed. Workspace is always ready when user first logs in.
+4. **Personal entity + workspace + free plan are created instantly** during registration (synchronous). Workspace is always ready when user first logs in.
 
-5. **Password is always required** during registration (even for WhatsApp users) as fallback when OTP service is down.
+5. **Workspace selection page is always shown** on every login. User must manually pick a workspace.
 
-6. **OTP expires in 5 minutes**, max 3 attempts. After that, user needs to request a new one.
+6. **Password is always required** during registration (even for WhatsApp users) as fallback when OTP service is down.
 
 7. **OTP expires in 5 minutes**, max 3 attempts. After that, user needs to request a new one.
 
+8. **Invite flow is email-only.** WhatsApp is reserved for OTP. Invited user must already have an Azzet account. Invite expires in 24 hours.
+
+9. **ABAC permissions** — Roles are per-workspace custom roles. Owner always has wildcard `["*"]`. Permission check happens via `RequirePermission` middleware on backend.
+
+10. **Payment pages (`/payment/success`, `/payment/failed`) are public** — no auth required. This is intentional because cross-site redirect from Xendit may not carry cookies.
+
 ---
 
-**Last Updated:** 2026-05-20
+**Last Updated:** 2026-05-22

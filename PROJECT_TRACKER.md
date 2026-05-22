@@ -118,29 +118,61 @@
 
 ### 3B. Entity Relations (Tenant Isolation)
 
-- [x] Migration: entity_relations, master_roles (seeded: PEMILIK, AKUNTAN, KASIR, VIEWER)
+- [x] Migration: entity_relations ~~master_roles (seeded: PEMILIK, AKUNTAN, KASIR, VIEWER)~~
 - [x] SQLC queries for relations
 - [x] Relation service (create, list, update status)
 - [x] Relation types: PEMILIK, KARYAWAN, PELANGGAN, VENDOR
 - [x] nama_alias_kustom (custom naming per relation)
 - [x] Tenant context middleware (resolve workspace from X-Workspace-ID header)
-- [x] RBAC: master_roles with JSONB permissions (resource:action pattern)
+- [x] ~~RBAC: master_roles with JSONB permissions (resource:action pattern)~~ → Replaced by ABAC (Phase 3D)
 - [x] Privacy boundary enforcement (query scoping by relation)
 - [x] Handler + Swagger docs
 
 ### 3C. Workspace Management
 
 - [x] Create workspace (entity becomes "tenant")
-- [x] Invite members to workspace
-- [x] Assign roles to members
+- [x] ~~Invite members to workspace (instant)~~ → Replaced by email invite flow (Phase 3E)
+- [x] ~~Assign roles to members (via master_roles)~~ → Replaced by ABAC role assignments (Phase 3D)
 - [x] Switch workspace context (X-Workspace-ID header)
-- [x] List my workspaces
+- [x] List my workspaces (includes subscription_status + plan_name)
 - [x] Add counterparties (creates shadow entity if needed)
 - [x] List counterparties
+- [x] Auto-assign free plan to personal workspace on registration
+- [x] Bootstrap "Owner" system role on workspace creation
 
 > **Note:** Entity + workspace creation uses hybrid approach:
 > - Synchronous creation during registration (instant, no polling needed for frontend)
 > - Event emitted for audit trail, notifications, and future async consumers
+
+### 3D. ABAC Permission System (NEW)
+
+> Replaced master_roles with per-workspace custom roles.
+> Owner (PEMILIK) always has wildcard `["*"]` permissions.
+
+- [x] Migration 011: workspace_roles, workspace_role_assignments tables
+- [x] Migration 011: Drop master_roles, drop role_id from entity_relations
+- [x] Permission keys defined (transaction:*, report:*, member:invite, role:*, billing:*, etc.)
+- [x] HasPermission() utility with wildcard + resource wildcard support
+- [x] RequirePermission middleware wired to routes (member:manage, member:invite, role:*, etc.)
+- [x] CRUD endpoints: POST/GET/PATCH/DELETE /workspaces/roles
+- [x] Assign/unassign role: POST /workspaces/roles/assign, /workspaces/roles/unassign
+- [x] System "Owner" role auto-created on workspace creation (is_system=true, permissions=["*"])
+- [x] Swagger docs updated
+
+### 3E. Workspace Invite Flow (NEW)
+
+> Email-based invitations with 24h expiry. Replaces old instant InviteMember.
+
+- [x] Migration 012: workspace_invites table
+- [x] Invite service: create, accept, list pending, revoke
+- [x] Validation: email must be registered, no duplicate pending invites, no invite to existing members
+- [x] Secure token generation (32 bytes / 64 hex chars)
+- [x] Email template with styled HTML (invite link to frontend)
+- [x] Accept invite: validate token, check expiry (24h), verify email match, create relation + assign role
+- [x] Endpoints: POST/GET/DELETE /workspaces/invites, POST /workspaces/invites/accept
+- [x] RequirePermission("member:invite") enforced on create/revoke
+- [x] Config: FRONTEND_URL for invite link generation
+- [x] Swagger docs updated
 
 ---
 
@@ -160,14 +192,16 @@
 - [x] Subscription service:
   - [x] Subscribe to free plan (instant activation)
   - [x] Start trial (active for plan.trial_days)
+  - [x] Subscribe to paid plan (status: pending_payment → invoice → Xendit payment → webhook activates)
   - [x] Get active subscription
-  - [x] Check subscription status (active/trial/expired/cancelled)
+  - [x] Check subscription status (active/trial/expired/cancelled/pending_payment)
   - [x] Upgrade/downgrade plan
   - [x] Cancel subscription
 - [x] Feature gate: HasFeature() + CheckQuota()
 - [x] Quota tracking (tenant_usage table, monthly reset)
 - [x] Handler + Swagger docs
 - [x] Admin: list subscriptions
+- [x] Migration 013: Add pending_payment to check_sub_status constraint
 
 ---
 
@@ -194,6 +228,8 @@
 - [x] Webhook signature verification (x-callback-token)
 - [x] Handler + Swagger docs
 - [x] Admin: list all invoices
+- [x] Subscription → Billing integration (paid plan auto-creates invoice + payment)
+- [x] Payment URL returned in subscription response for frontend redirect
 
 ---
 
@@ -578,6 +614,10 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 | 7 | 007_subscriptions.sql | tenant_subscriptions, tenant_usage |
 | 8 | 008_billing.sql | invoices, payments |
 | 9 | 009_events.sql | outbox_events, inbox_consumed_events, LISTEN/NOTIFY trigger |
+| 10 | 010_fix_otp_code_column.sql | OTP code column fix |
+| 11 | 011_abac_permissions.sql | workspace_roles, workspace_role_assignments, drop master_roles + role_id |
+| 12 | 012_workspace_invites.sql | workspace_invites table |
+| 13 | 013_subscription_pending_payment.sql | Add pending_payment to check_sub_status constraint |
 
 ---
 
@@ -603,4 +643,4 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 
 ---
 
-**Last Updated:** 2026-05-20
+**Last Updated:** 2026-05-22

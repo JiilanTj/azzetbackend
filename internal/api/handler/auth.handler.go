@@ -417,7 +417,7 @@ func (h *AuthHandler) setRefreshTokenCookie(w http.ResponseWriter, token string)
 		Expires:  time.Now().Add(h.RefreshTokenExpiry),
 		HttpOnly: true,
 		Secure:   h.SecureCookie,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 	})
 }
 
@@ -430,7 +430,7 @@ func (h *AuthHandler) clearRefreshTokenCookie(w http.ResponseWriter) {
 		Expires:  time.Now().Add(-1 * time.Hour),
 		HttpOnly: true,
 		Secure:   h.SecureCookie,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 	})
 }
 

@@ -72,7 +72,7 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	}
 	authMiddleware := middleware.NewAuthMiddleware(userJWT, userIsBlacklisted)
 
-	secureCookie := cfg.AppEnv != "development"
+	secureCookie := true // Always secure — required for cross-subdomain cookies via HTTPS
 	authHandler := handler.NewAuthHandler(authService, userRefreshExpiry, secureCookie)
 
 	// --- Admin Auth ---
