@@ -828,6 +828,9 @@ definitions:
       id:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
+      payment_url:
+        example: https://checkout.xendit.co/...
+        type: string
       plan_id:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
@@ -846,6 +849,7 @@ definitions:
         - trial
         - expired
         - cancelled
+        - pending_payment
         example: active
         type: string
       trial_ends_at:
@@ -873,6 +877,13 @@ definitions:
       usage_count:
         example: 42
         type: integer
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.AcceptInviteRequest:
+    description: Accept a workspace invite using the token
+    properties:
+      token:
+        example: a1b2c3d4e5f6...
+        type: string
     type: object
   codeberg_org_azzet_azzetbe_internal_workspace.AddCounterpartyRequest:
     description: Add a counterparty (customer/vendor) to workspace. Creates shadow
@@ -907,6 +918,16 @@ definitions:
         example: PELANGGAN
         type: string
     type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest:
+    description: Assign a role to a workspace member
+    properties:
+      member_entity_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      role_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
   codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse:
     description: Counterparty (customer/vendor) information
     properties:
@@ -938,6 +959,33 @@ definitions:
         example: ACTIVE
         type: string
     type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.CreateInviteRequest:
+    description: Invite a user to the workspace via email
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      role_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.CreateRoleRequest:
+    description: Create a custom role for the workspace
+    properties:
+      description:
+        example: Akses laporan dan transaksi
+        type: string
+      name:
+        example: Akuntan
+        type: string
+      permissions:
+        example:
+        - '["transaction:read"'
+        - '"report:read"]'
+        items:
+          type: string
+        type: array
+    type: object
   codeberg_org_azzet_azzetbe_internal_workspace.CreateWorkspaceRequest:
     description: Create a workspace from an existing entity
     properties:
@@ -945,21 +993,35 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.InviteMemberRequest:
-    description: Invite a member to the workspace
+  codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse:
+    description: Workspace invite information
     properties:
-      custom_alias:
-        example: Andi Accounting
+      accepted_at:
+        example: "2026-05-20T12:00:00Z"
         type: string
-      entity_id:
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      expires_at:
+        example: "2026-05-21T10:00:00Z"
+        type: string
+      id:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
-      role:
-        enum:
-        - AKUNTAN
-        - KASIR
-        - VIEWER
-        example: KASIR
+      invited_by:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      invited_email:
+        example: user@example.com
+        type: string
+      role_name:
+        example: Akuntan
+        type: string
+      token:
+        example: a1b2c3d4e5f6...
+        type: string
+      workspace_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
   codeberg_org_azzet_azzetbe_internal_workspace.MemberResponse:
@@ -1000,6 +1062,31 @@ definitions:
         example: Operation successful
         type: string
     type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.RoleAssignmentResponse:
+    description: Role assignment information
+    properties:
+      assigned_by:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      member_entity_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      role_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      role_name:
+        example: Akuntan
+        type: string
+      workspace_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
   codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse:
     description: Available role
     properties:
@@ -1021,17 +1108,10 @@ definitions:
         type: array
     type: object
   codeberg_org_azzet_azzetbe_internal_workspace.UpdateMemberRequest:
-    description: Update member role or status
+    description: Update member alias or status
     properties:
       custom_alias:
         example: Updated Alias
-        type: string
-      role:
-        enum:
-        - AKUNTAN
-        - KASIR
-        - VIEWER
-        example: AKUNTAN
         type: string
       status:
         enum:
@@ -1039,6 +1119,23 @@ definitions:
         - INACTIVE
         example: INACTIVE
         type: string
+    type: object
+  codeberg_org_azzet_azzetbe_internal_workspace.UpdateRoleRequest:
+    description: Update a custom role
+    properties:
+      description:
+        example: Updated description
+        type: string
+      name:
+        example: Akuntan Senior
+        type: string
+      permissions:
+        example:
+        - '["transaction:*"'
+        - '"report:*"]'
+        items:
+          type: string
+        type: array
     type: object
   codeberg_org_azzet_azzetbe_internal_workspace.WorkspaceResponse:
     description: Workspace information
@@ -1058,8 +1155,14 @@ definitions:
       id:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
+      plan_name:
+        example: Professional
+        type: string
       role:
         example: PEMILIK
+        type: string
+      subscription_status:
+        example: active
         type: string
     type: object
 host: localhost:8080
@@ -2607,28 +2710,6 @@ paths:
       summary: Get plan by slug
       tags:
       - Plans
-  /roles:
-    get:
-      description: Returns all available roles that can be assigned to workspace members.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse'
-                  type: array
-              type: object
-      security:
-      - BearerAuth: []
-      summary: List available roles
-      tags:
-      - Workspaces
   /subscription:
     get:
       description: Returns the current active subscription for the workspace.
@@ -3036,6 +3117,145 @@ paths:
       summary: Add counterparty
       tags:
       - Workspace Counterparties
+  /workspaces/invites:
+    get:
+      description: Returns all pending (not yet accepted, not expired) invites for
+        the workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List pending invites
+      tags:
+      - Workspace Invites
+    post:
+      consumes:
+      - application/json
+      description: Send an email invitation to join the workspace. User must be registered.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Invite data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Invite a user to workspace
+      tags:
+      - Workspace Invites
+  /workspaces/invites/{id}:
+    delete:
+      description: Delete a pending invite before it's accepted.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Invite ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke an invite
+      tags:
+      - Workspace Invites
+  /workspaces/invites/accept:
+    post:
+      consumes:
+      - application/json
+      description: Accept an invite using the token. User must be logged in and email
+        must match.
+      parameters:
+      - description: Token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AcceptInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Accept a workspace invite
+      tags:
+      - Workspace Invites
   /workspaces/members:
     get:
       description: Returns all members (PEMILIK + KARYAWAN) of the current workspace.
@@ -3070,52 +3290,6 @@ paths:
       security:
       - BearerAuth: []
       summary: List workspace members
-      tags:
-      - Workspace Members
-    post:
-      consumes:
-      - application/json
-      description: Invite a member (entity) to the current workspace with a specific
-        role.
-      parameters:
-      - description: Workspace ID
-        in: header
-        name: X-Workspace-ID
-        required: true
-        type: string
-      - description: Member data
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteMemberRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MemberResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Invite member to workspace
       tags:
       - Workspace Members
   /workspaces/members/{id}:
@@ -3211,6 +3385,224 @@ paths:
       summary: Update workspace member
       tags:
       - Workspace Members
+  /workspaces/roles:
+    get:
+      description: Returns all custom roles for the current workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List workspace roles
+      tags:
+      - Workspaces
+    post:
+      consumes:
+      - application/json
+      description: Create a new custom role with specific permissions for the workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Role data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a custom workspace role
+      tags:
+      - Workspace Roles
+  /workspaces/roles/{id}:
+    delete:
+      description: Delete a custom role. System roles cannot be deleted.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a workspace role
+      tags:
+      - Workspace Roles
+    patch:
+      consumes:
+      - application/json
+      description: Update name, description, or permissions of a custom role.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.UpdateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a workspace role
+      tags:
+      - Workspace Roles
+  /workspaces/roles/assign:
+    post:
+      consumes:
+      - application/json
+      description: Assign a workspace role to a member entity.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Assignment data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleAssignmentResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign a role to a member
+      tags:
+      - Workspace Roles
+  /workspaces/roles/unassign:
+    post:
+      consumes:
+      - application/json
+      description: Remove a role assignment from a workspace member.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Assignment data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a role from a member
+      tags:
+      - Workspace Roles
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

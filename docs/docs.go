@@ -2571,46 +2571,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/roles": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns all available roles that can be assigned to workspace members.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Workspaces"
-                ],
-                "summary": "List available roles",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/subscription": {
             "get": {
                 "security": [
@@ -3285,6 +3245,239 @@ const docTemplate = `{
                 }
             }
         },
+        "/workspaces/invites": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all pending (not yet accepted, not expired) invites for the workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace Invites"
+                ],
+                "summary": "List pending invites",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Send an email invitation to join the workspace. User must be registered.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace Invites"
+                ],
+                "summary": "Invite a user to workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Invite data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateInviteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/invites/accept": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Accept an invite using the token. User must be logged in and email must match.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace Invites"
+                ],
+                "summary": "Accept a workspace invite",
+                "parameters": [
+                    {
+                        "description": "Token",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AcceptInviteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/invites/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a pending invite before it's accepted.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace Invites"
+                ],
+                "summary": "Revoke an invite",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Invite ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/workspaces/members": {
             "get": {
                 "security": [
@@ -3329,80 +3522,6 @@ const docTemplate = `{
                                     }
                                 }
                             ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Invite a member (entity) to the current workspace with a specific role.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Workspace Members"
-                ],
-                "summary": "Invite member to workspace",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "X-Workspace-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Member data",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteMemberRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MemberResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
                         }
                     },
                     "401": {
@@ -3565,6 +3684,373 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all custom roles for the current workspace.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspaces"
+                ],
+                "summary": "List workspace roles",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new custom role with specific permissions for the workspace.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace Roles"
+                ],
+                "summary": "Create a custom workspace role",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Role data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/roles/assign": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign a workspace role to a member entity.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace Roles"
+                ],
+                "summary": "Assign a role to a member",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Assignment data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleAssignmentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/roles/unassign": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a role assignment from a workspace member.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace Roles"
+                ],
+                "summary": "Remove a role from a member",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Assignment data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/roles/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a custom role. System roles cannot be deleted.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace Roles"
+                ],
+                "summary": "Delete a workspace role",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update name, description, or permissions of a custom role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace Roles"
+                ],
+                "summary": "Update a workspace role",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.UpdateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
                         }
@@ -4703,6 +5189,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
                 },
+                "payment_url": {
+                    "type": "string",
+                    "example": "https://checkout.xendit.co/..."
+                },
                 "plan_id": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
@@ -4725,7 +5215,8 @@ const docTemplate = `{
                         "active",
                         "trial",
                         "expired",
-                        "cancelled"
+                        "cancelled",
+                        "pending_payment"
                     ],
                     "example": "active"
                 },
@@ -4762,6 +5253,16 @@ const docTemplate = `{
                 "usage_count": {
                     "type": "integer",
                     "example": 42
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_workspace.AcceptInviteRequest": {
+            "description": "Accept a workspace invite using the token",
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6..."
                 }
             }
         },
@@ -4808,6 +5309,20 @@ const docTemplate = `{
                 }
             }
         },
+        "codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest": {
+            "description": "Assign a role to a workspace member",
+            "type": "object",
+            "properties": {
+                "member_entity_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "role_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
         "codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse": {
             "description": "Counterparty (customer/vendor) information",
             "type": "object",
@@ -4850,6 +5365,44 @@ const docTemplate = `{
                 }
             }
         },
+        "codeberg_org_azzet_azzetbe_internal_workspace.CreateInviteRequest": {
+            "description": "Invite a user to the workspace via email",
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "role_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_workspace.CreateRoleRequest": {
+            "description": "Create a custom role for the workspace",
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Akses laporan dan transaksi"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Akuntan"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"transaction:read\"",
+                        "\"report:read\"]"
+                    ]
+                }
+            }
+        },
         "codeberg_org_azzet_azzetbe_internal_workspace.CreateWorkspaceRequest": {
             "description": "Create a workspace from an existing entity",
             "type": "object",
@@ -4860,26 +5413,45 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.InviteMemberRequest": {
-            "description": "Invite a member to the workspace",
+        "codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse": {
+            "description": "Workspace invite information",
             "type": "object",
             "properties": {
-                "custom_alias": {
+                "accepted_at": {
                     "type": "string",
-                    "example": "Andi Accounting"
+                    "example": "2026-05-20T12:00:00Z"
                 },
-                "entity_id": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "expires_at": {
+                    "type": "string",
+                    "example": "2026-05-21T10:00:00Z"
+                },
+                "id": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
                 },
-                "role": {
+                "invited_by": {
                     "type": "string",
-                    "enum": [
-                        "AKUNTAN",
-                        "KASIR",
-                        "VIEWER"
-                    ],
-                    "example": "KASIR"
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "invited_email": {
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "role_name": {
+                    "type": "string",
+                    "example": "Akuntan"
+                },
+                "token": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6..."
+                },
+                "workspace_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 }
             }
         },
@@ -4935,6 +5507,40 @@ const docTemplate = `{
                 }
             }
         },
+        "codeberg_org_azzet_azzetbe_internal_workspace.RoleAssignmentResponse": {
+            "description": "Role assignment information",
+            "type": "object",
+            "properties": {
+                "assigned_by": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "member_entity_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "role_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "role_name": {
+                    "type": "string",
+                    "example": "Akuntan"
+                },
+                "workspace_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
         "codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse": {
             "description": "Available role",
             "type": "object",
@@ -4964,21 +5570,12 @@ const docTemplate = `{
             }
         },
         "codeberg_org_azzet_azzetbe_internal_workspace.UpdateMemberRequest": {
-            "description": "Update member role or status",
+            "description": "Update member alias or status",
             "type": "object",
             "properties": {
                 "custom_alias": {
                     "type": "string",
                     "example": "Updated Alias"
-                },
-                "role": {
-                    "type": "string",
-                    "enum": [
-                        "AKUNTAN",
-                        "KASIR",
-                        "VIEWER"
-                    ],
-                    "example": "AKUNTAN"
                 },
                 "status": {
                     "type": "string",
@@ -4987,6 +5584,30 @@ const docTemplate = `{
                         "INACTIVE"
                     ],
                     "example": "INACTIVE"
+                }
+            }
+        },
+        "codeberg_org_azzet_azzetbe_internal_workspace.UpdateRoleRequest": {
+            "description": "Update a custom role",
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Updated description"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Akuntan Senior"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"transaction:*\"",
+                        "\"report:*\"]"
+                    ]
                 }
             }
         },
@@ -5014,9 +5635,17 @@ const docTemplate = `{
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
                 },
+                "plan_name": {
+                    "type": "string",
+                    "example": "Professional"
+                },
                 "role": {
                     "type": "string",
                     "example": "PEMILIK"
+                },
+                "subscription_status": {
+                    "type": "string",
+                    "example": "active"
                 }
             }
         }

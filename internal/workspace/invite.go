@@ -63,12 +63,45 @@ func (s *InviteService) CreateInvite(ctx context.Context, workspaceID, inviterID
 	}
 
 	// Verify the email is registered
-	_, err = s.Queries.GetUserByEmail(ctx, pgtype.Text{String: req.Email, Valid: true})
+	invitedUser, err := s.Queries.GetUserByEmail(ctx, pgtype.Text{String: req.Email, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrEmailNotRegistered
 		}
 		return nil, err
+	}
+
+	// Check if user is already a member of this workspace
+	invitedEntities, _ := s.Queries.ListEntitiesByUserID(ctx, pgtype.UUID{Bytes: invitedUser.ID, Valid: true})
+	for _, e := range invitedEntities {
+		if e.EntityType == "ORANG_PRIBADI" {
+			existsKaryawan, _ := s.Queries.ExistsRelation(ctx, db.ExistsRelationParams{
+				ObjectID:     wsID,
+				SubjectID:    e.ID,
+				RelationType: RelationKaryawan,
+			})
+			existsPemilik, _ := s.Queries.ExistsRelation(ctx, db.ExistsRelationParams{
+				ObjectID:     wsID,
+				SubjectID:    e.ID,
+				RelationType: RelationPemilik,
+			})
+			if existsKaryawan || existsPemilik {
+				return nil, fmt.Errorf("user tersebut sudah menjadi anggota workspace ini")
+			}
+			break
+		}
+	}
+
+	// Check if there's already a pending invite for this email + workspace
+	existsPending, err := s.Queries.ExistsPendingInvite(ctx, db.ExistsPendingInviteParams{
+		WorkspaceID:  wsID,
+		InvitedEmail: req.Email,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if existsPending {
+		return nil, fmt.Errorf("undangan untuk email ini sudah dikirim dan masih berlaku")
 	}
 
 	// Verify role belongs to this workspace
@@ -189,8 +222,8 @@ func (s *InviteService) AcceptInvite(ctx context.Context, token, userID string) 
 		return fmt.Errorf("user has no personal entity")
 	}
 
-	// Check if already a member
-	exists, err := s.Queries.ExistsRelation(ctx, db.ExistsRelationParams{
+	// Check if already a member (KARYAWAN or PEMILIK)
+	existsKaryawan, err := s.Queries.ExistsRelation(ctx, db.ExistsRelationParams{
 		ObjectID:     invite.WorkspaceID,
 		SubjectID:    personalEntityID,
 		RelationType: RelationKaryawan,
@@ -198,7 +231,15 @@ func (s *InviteService) AcceptInvite(ctx context.Context, token, userID string) 
 	if err != nil {
 		return err
 	}
-	if exists {
+	existsPemilik, err := s.Queries.ExistsRelation(ctx, db.ExistsRelationParams{
+		ObjectID:     invite.WorkspaceID,
+		SubjectID:    personalEntityID,
+		RelationType: RelationPemilik,
+	})
+	if err != nil {
+		return err
+	}
+	if existsKaryawan || existsPemilik {
 		// Already a member — just mark invite as accepted
 		return s.Queries.AcceptInvite(ctx, invite.ID)
 	}

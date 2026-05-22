@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -673,12 +674,12 @@ func (s *Service) VerifyWorkspaceAccess(ctx context.Context, workspaceID, userID
 	}
 
 	// Serialize as JSON array
-	permJSON := `["` + joinStrings(perms, `","`) + `"]`
-	if len(perms) == 0 {
-		permJSON = `[]`
+	permJSON, err := json.Marshal(perms)
+	if err != nil {
+		return RelationKaryawan, []byte(`[]`), nil
 	}
 
-	return RelationKaryawan, []byte(permJSON), nil
+	return RelationKaryawan, permJSON, nil
 }
 
 // --- Helpers ---
@@ -704,15 +705,4 @@ func toPgText(s *string) pgtype.Text {
 		return pgtype.Text{Valid: false}
 	}
 	return pgtype.Text{String: *s, Valid: true}
-}
-
-func joinStrings(strs []string, sep string) string {
-	if len(strs) == 0 {
-		return ""
-	}
-	result := strs[0]
-	for _, s := range strs[1:] {
-		result += sep + s
-	}
-	return result
 }

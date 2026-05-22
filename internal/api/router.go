@@ -192,23 +192,23 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 
 				r.Route("/members", func(r chi.Router) {
 					r.Get("/", workspaceHandler.ListMembers)
-					r.Patch("/{id}", workspaceHandler.UpdateMember)
-					r.Delete("/{id}", workspaceHandler.RemoveMember)
+					r.With(workspaceMiddleware.RequirePermission("member:manage")).Patch("/{id}", workspaceHandler.UpdateMember)
+					r.With(workspaceMiddleware.RequirePermission("member:remove")).Delete("/{id}", workspaceHandler.RemoveMember)
 				})
 
 				r.Route("/roles", func(r chi.Router) {
 					r.Get("/", workspaceHandler.ListRoles)
-					r.Post("/", workspaceHandler.CreateRole)
-					r.Patch("/{id}", workspaceHandler.UpdateRole)
-					r.Delete("/{id}", workspaceHandler.DeleteRole)
-					r.Post("/assign", workspaceHandler.AssignRole)
-					r.Post("/unassign", workspaceHandler.UnassignRole)
+					r.With(workspaceMiddleware.RequirePermission("role:create")).Post("/", workspaceHandler.CreateRole)
+					r.With(workspaceMiddleware.RequirePermission("role:update")).Patch("/{id}", workspaceHandler.UpdateRole)
+					r.With(workspaceMiddleware.RequirePermission("role:delete")).Delete("/{id}", workspaceHandler.DeleteRole)
+					r.With(workspaceMiddleware.RequirePermission("role:assign")).Post("/assign", workspaceHandler.AssignRole)
+					r.With(workspaceMiddleware.RequirePermission("role:assign")).Post("/unassign", workspaceHandler.UnassignRole)
 				})
 
 				r.Route("/invites", func(r chi.Router) {
-					r.Post("/", inviteHandler.CreateInvite)
+					r.With(workspaceMiddleware.RequirePermission("member:invite")).Post("/", inviteHandler.CreateInvite)
 					r.Get("/", inviteHandler.ListInvites)
-					r.Delete("/{id}", inviteHandler.RevokeInvite)
+					r.With(workspaceMiddleware.RequirePermission("member:invite")).Delete("/{id}", inviteHandler.RevokeInvite)
 				})
 
 				r.Route("/counterparties", func(r chi.Router) {

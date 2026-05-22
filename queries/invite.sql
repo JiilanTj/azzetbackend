@@ -19,3 +19,9 @@ UPDATE workspace_invites SET accepted_at = NOW() WHERE id = $1;
 
 -- name: DeleteInvite :exec
 DELETE FROM workspace_invites WHERE id = $1;
+
+-- name: ExistsPendingInvite :one
+SELECT EXISTS(
+    SELECT 1 FROM workspace_invites
+    WHERE workspace_id = $1 AND invited_email = $2 AND accepted_at IS NULL AND expires_at > NOW()
+);

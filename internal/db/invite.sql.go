@@ -73,6 +73,25 @@ func (q *Queries) DeleteInvite(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const existsPendingInvite = `-- name: ExistsPendingInvite :one
+SELECT EXISTS(
+    SELECT 1 FROM workspace_invites
+    WHERE workspace_id = $1 AND invited_email = $2 AND accepted_at IS NULL AND expires_at > NOW()
+)
+`
+
+type ExistsPendingInviteParams struct {
+	WorkspaceID  uuid.UUID `json:"workspace_id"`
+	InvitedEmail string    `json:"invited_email"`
+}
+
+func (q *Queries) ExistsPendingInvite(ctx context.Context, arg ExistsPendingInviteParams) (bool, error) {
+	row := q.db.QueryRow(ctx, existsPendingInvite, arg.WorkspaceID, arg.InvitedEmail)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const getInviteByID = `-- name: GetInviteByID :one
 SELECT id, workspace_id, invited_email, role_id, token, invited_by, expires_at, accepted_at, created_at FROM workspace_invites WHERE id = $1
 `
