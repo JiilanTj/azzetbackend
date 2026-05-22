@@ -155,6 +155,31 @@ func (q *Queries) ExistsPlanBySlug(ctx context.Context, slug string) (bool, erro
 	return exists, err
 }
 
+const getFreePlan = `-- name: GetFreePlan :one
+SELECT id, name, slug, description, type, price_monthly, price_yearly, is_trial, trial_days, tier, is_active, created_at, updated_at FROM plans WHERE type = 'free' AND is_active = TRUE ORDER BY tier ASC LIMIT 1
+`
+
+func (q *Queries) GetFreePlan(ctx context.Context) (Plan, error) {
+	row := q.db.QueryRow(ctx, getFreePlan)
+	var i Plan
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.Type,
+		&i.PriceMonthly,
+		&i.PriceYearly,
+		&i.IsTrial,
+		&i.TrialDays,
+		&i.Tier,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getPlanByID = `-- name: GetPlanByID :one
 SELECT id, name, slug, description, type, price_monthly, price_yearly, is_trial, trial_days, tier, is_active, created_at, updated_at FROM plans WHERE id = $1
 `

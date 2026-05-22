@@ -55,3 +55,6 @@ DELETE FROM plan_features WHERE plan_id = $1 AND feature_key = $2;
 
 -- name: DeleteAllPlanFeatures :exec
 DELETE FROM plan_features WHERE plan_id = $1;
+
+-- name: GetFreePlan :one
+SELECT * FROM plans WHERE type = 'free' AND is_active = TRUE ORDER BY tier ASC LIMIT 1;

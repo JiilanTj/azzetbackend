@@ -22,6 +22,7 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/plan"
 	rdb "codeberg.org/azzet/azzetbe/internal/redis"
 	"codeberg.org/azzet/azzetbe/internal/shared"
+	smtpclient "codeberg.org/azzet/azzetbe/internal/smtp"
 	"codeberg.org/azzet/azzetbe/internal/subscription"
 	"codeberg.org/azzet/azzetbe/internal/workspace"
 )
@@ -108,9 +109,17 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	// Wire billing into subscription for paid plan flow
 	subscriptionService.BillingService = billingService
 
+	// Wire subscription into auth for free plan auto-assign on register
+	authService.SubscriptionService = subscriptionService
+
 	// --- Entity & Workspace Handlers ---
 	entityHandler := handler.NewEntityHandler(entityService)
 	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
+
+	// --- Invite ---
+	mailer := smtpclient.New(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
+	inviteService := workspace.NewInviteService(queries, mailer, cfg.FrontendURL)
+	inviteHandler := handler.NewInviteHandler(inviteService)
 
 	// --- Workspace Middleware ---
 	workspaceMiddleware := middleware.NewWorkspaceMiddleware(workspaceService.VerifyWorkspaceAccess)
@@ -174,15 +183,32 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			r.Post("/", workspaceHandler.CreateWorkspace)
 			r.Get("/", workspaceHandler.ListMyWorkspaces)
 
+			// Accept invite (auth-only, no workspace scope needed)
+			r.Post("/invites/accept", inviteHandler.AcceptInvite)
+
 			// Workspace-scoped routes (requires X-Workspace-ID header)
 			r.Group(func(r chi.Router) {
 				r.Use(workspaceMiddleware.RequireWorkspace)
 
 				r.Route("/members", func(r chi.Router) {
-					r.Post("/", workspaceHandler.InviteMember)
 					r.Get("/", workspaceHandler.ListMembers)
 					r.Patch("/{id}", workspaceHandler.UpdateMember)
 					r.Delete("/{id}", workspaceHandler.RemoveMember)
+				})
+
+				r.Route("/roles", func(r chi.Router) {
+					r.Get("/", workspaceHandler.ListRoles)
+					r.Post("/", workspaceHandler.CreateRole)
+					r.Patch("/{id}", workspaceHandler.UpdateRole)
+					r.Delete("/{id}", workspaceHandler.DeleteRole)
+					r.Post("/assign", workspaceHandler.AssignRole)
+					r.Post("/unassign", workspaceHandler.UnassignRole)
+				})
+
+				r.Route("/invites", func(r chi.Router) {
+					r.Post("/", inviteHandler.CreateInvite)
+					r.Get("/", inviteHandler.ListInvites)
+					r.Delete("/{id}", inviteHandler.RevokeInvite)
 				})
 
 				r.Route("/counterparties", func(r chi.Router) {
@@ -216,12 +242,6 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 
 		// Xendit webhook (public, verified by x-callback-token)
 		r.Post("/webhooks/xendit", billingHandler.XenditWebhook)
-
-		// Roles (authenticated, public read)
-		r.Route("/roles", func(r chi.Router) {
-			r.Use(authMiddleware.Authenticate)
-			r.Get("/", workspaceHandler.ListRoles)
-		})
 	})
 
 	// ═══════════════════════════════════════════════════════════════

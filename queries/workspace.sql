@@ -1,6 +1,6 @@
 -- name: CreateRelation :one
-INSERT INTO entity_relations (id, object_id, subject_id, relation_type, custom_alias, role_id, status, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO entity_relations (id, object_id, subject_id, relation_type, custom_alias, status, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: GetRelationByID :one
@@ -32,7 +32,7 @@ ORDER BY created_at DESC;
 
 -- name: UpdateRelation :exec
 UPDATE entity_relations
-SET custom_alias = $2, role_id = $3, status = $4, updated_at = NOW()
+SET custom_alias = $2, status = $3, updated_at = NOW()
 WHERE id = $1;
 
 -- name: UpdateRelationStatus :exec
@@ -47,19 +47,75 @@ SELECT EXISTS(
     WHERE object_id = $1 AND subject_id = $2 AND relation_type = $3
 );
 
--- name: GetUserWorkspaceRole :one
-SELECT er.*, mr.name as role_name, mr.permissions as role_permissions
+-- name: GetUserWorkspaceAccess :one
+SELECT er.id, er.object_id, er.subject_id, er.relation_type, er.custom_alias, er.status, er.created_at, er.updated_at
 FROM entity_relations er
-LEFT JOIN master_roles mr ON er.role_id = mr.id
 WHERE er.object_id = $1 AND er.subject_id = $2 AND er.status = 'ACTIVE'
 AND er.relation_type IN ('PEMILIK', 'KARYAWAN')
 LIMIT 1;
 
--- name: ListRoles :many
-SELECT * FROM master_roles ORDER BY name ASC;
+-- ============================================================
+-- Workspace Roles (ABAC)
+-- ============================================================
 
--- name: GetRoleByName :one
-SELECT * FROM master_roles WHERE name = $1;
+-- name: CreateWorkspaceRole :one
+INSERT INTO workspace_roles (id, workspace_id, name, description, permissions, is_system, created_by, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING *;
 
--- name: GetRoleByID :one
-SELECT * FROM master_roles WHERE id = $1;
+-- name: GetWorkspaceRoleByID :one
+SELECT * FROM workspace_roles WHERE id = $1;
+
+-- name: GetWorkspaceRoleByName :one
+SELECT * FROM workspace_roles WHERE workspace_id = $1 AND name = $2;
+
+-- name: ListWorkspaceRoles :many
+SELECT * FROM workspace_roles WHERE workspace_id = $1 ORDER BY is_system DESC, name ASC;
+
+-- name: UpdateWorkspaceRole :exec
+UPDATE workspace_roles
+SET name = $2, description = $3, permissions = $4, updated_at = NOW()
+WHERE id = $1;
+
+-- name: DeleteWorkspaceRole :exec
+DELETE FROM workspace_roles WHERE id = $1 AND is_system = FALSE;
+
+-- ============================================================
+-- Workspace Role Assignments
+-- ============================================================
+
+-- name: CreateRoleAssignment :one
+INSERT INTO workspace_role_assignments (id, workspace_id, member_entity_id, role_id, assigned_by, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *;
+
+-- name: GetRoleAssignment :one
+SELECT * FROM workspace_role_assignments
+WHERE workspace_id = $1 AND member_entity_id = $2 AND role_id = $3;
+
+-- name: ListRoleAssignmentsByMember :many
+SELECT wra.*, wr.name as role_name, wr.permissions as role_permissions
+FROM workspace_role_assignments wra
+JOIN workspace_roles wr ON wra.role_id = wr.id
+WHERE wra.workspace_id = $1 AND wra.member_entity_id = $2;
+
+-- name: ListRoleAssignmentsByWorkspace :many
+SELECT wra.*, wr.name as role_name, wr.permissions as role_permissions
+FROM workspace_role_assignments wra
+JOIN workspace_roles wr ON wra.role_id = wr.id
+WHERE wra.workspace_id = $1
+ORDER BY wra.created_at DESC;
+
+-- name: DeleteRoleAssignment :exec
+DELETE FROM workspace_role_assignments
+WHERE workspace_id = $1 AND member_entity_id = $2 AND role_id = $3;
+
+-- name: DeleteAllRoleAssignmentsForMember :exec
+DELETE FROM workspace_role_assignments
+WHERE workspace_id = $1 AND member_entity_id = $2;
+
+-- name: GetMemberPermissions :many
+SELECT DISTINCT unnest(wr.permissions) as permission
+FROM workspace_role_assignments wra
+JOIN workspace_roles wr ON wra.role_id = wr.id
+WHERE wra.workspace_id = $1 AND wra.member_entity_id = $2;

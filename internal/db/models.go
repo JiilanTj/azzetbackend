@@ -56,7 +56,6 @@ type EntityRelation struct {
 	SubjectID    uuid.UUID   `json:"subject_id"`
 	RelationType string      `json:"relation_type"`
 	CustomAlias  pgtype.Text `json:"custom_alias"`
-	RoleID       pgtype.UUID `json:"role_id"`
 	Status       string      `json:"status"`
 	CreatedAt    time.Time   `json:"created_at"`
 	UpdatedAt    time.Time   `json:"updated_at"`
@@ -82,14 +81,6 @@ type Invoice struct {
 	PaidAt         *time.Time     `json:"paid_at"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
-}
-
-type MasterRole struct {
-	ID          uuid.UUID   `json:"id"`
-	Name        string      `json:"name"`
-	Description pgtype.Text `json:"description"`
-	Permissions []byte      `json:"permissions"`
-	CreatedAt   time.Time   `json:"created_at"`
 }
 
 type OtpCode struct {
@@ -236,4 +227,37 @@ type User struct {
 	CreatedAt        time.Time   `json:"created_at"`
 	UpdatedAt        time.Time   `json:"updated_at"`
 	Name             pgtype.Text `json:"name"`
+}
+
+type WorkspaceInvite struct {
+	ID           uuid.UUID  `json:"id"`
+	WorkspaceID  uuid.UUID  `json:"workspace_id"`
+	InvitedEmail string     `json:"invited_email"`
+	RoleID       uuid.UUID  `json:"role_id"`
+	Token        string     `json:"token"`
+	InvitedBy    uuid.UUID  `json:"invited_by"`
+	ExpiresAt    time.Time  `json:"expires_at"`
+	AcceptedAt   *time.Time `json:"accepted_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+}
+
+type WorkspaceRole struct {
+	ID          uuid.UUID   `json:"id"`
+	WorkspaceID uuid.UUID   `json:"workspace_id"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+	Permissions []string    `json:"permissions"`
+	IsSystem    bool        `json:"is_system"`
+	CreatedBy   uuid.UUID   `json:"created_by"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+}
+
+type WorkspaceRoleAssignment struct {
+	ID             uuid.UUID `json:"id"`
+	WorkspaceID    uuid.UUID `json:"workspace_id"`
+	MemberEntityID uuid.UUID `json:"member_entity_id"`
+	RoleID         uuid.UUID `json:"role_id"`
+	AssignedBy     uuid.UUID `json:"assigned_by"`
+	CreatedAt      time.Time `json:"created_at"`
 }

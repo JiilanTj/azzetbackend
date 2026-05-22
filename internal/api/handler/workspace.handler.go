@@ -75,43 +75,6 @@ func (h *WorkspaceHandler) ListMyWorkspaces(w http.ResponseWriter, r *http.Reque
 	shared.OK(w, r, workspaces)
 }
 
-// InviteMember godoc
-// @Summary      Invite member to workspace
-// @Description  Invite a member (entity) to the current workspace with a specific role.
-// @Tags         Workspace Members
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        X-Workspace-ID  header    string                          true  "Workspace ID"
-// @Param        body            body      workspace.InviteMemberRequest   true  "Member data"
-// @Success      201             {object}  shared.APIResponse{data=workspace.MemberResponse}
-// @Failure      400             {object}  shared.ErrorResponse
-// @Failure      401             {object}  shared.ErrorResponse
-// @Failure      403             {object}  shared.ErrorResponse
-// @Router       /workspaces/members [post]
-func (h *WorkspaceHandler) InviteMember(w http.ResponseWriter, r *http.Request) {
-	workspaceID := middleware.GetWorkspaceID(r.Context())
-
-	var req workspace.InviteMemberRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		shared.BadRequest(w, r, "workspace", "invalid request body")
-		return
-	}
-
-	if req.EntityID == "" || req.Role == "" {
-		shared.BadRequest(w, r, "workspace", "entity_id and role are required")
-		return
-	}
-
-	resp, err := h.Service.InviteMember(r.Context(), workspaceID, &req)
-	if err != nil {
-		shared.BadRequest(w, r, "workspace", err.Error())
-		return
-	}
-
-	shared.Created(w, r, resp)
-}
-
 // ListMembers godoc
 // @Summary      List workspace members
 // @Description  Returns all members (PEMILIK + KARYAWAN) of the current workspace.
@@ -252,19 +215,165 @@ func (h *WorkspaceHandler) ListCounterparties(w http.ResponseWriter, r *http.Req
 }
 
 // ListRoles godoc
-// @Summary      List available roles
-// @Description  Returns all available roles that can be assigned to workspace members.
+// @Summary      List workspace roles
+// @Description  Returns all custom roles for the current workspace.
 // @Tags         Workspaces
 // @Produce      json
 // @Security     BearerAuth
+// @Param        X-Workspace-ID  header    string  true  "Workspace ID"
 // @Success      200  {object}  shared.APIResponse{data=[]workspace.RoleResponse}
-// @Router       /roles [get]
+// @Router       /workspaces/roles [get]
 func (h *WorkspaceHandler) ListRoles(w http.ResponseWriter, r *http.Request) {
-	roles, err := h.Service.ListRoles(r.Context())
+	workspaceID := middleware.GetWorkspaceID(r.Context())
+
+	roles, err := h.Service.ListWorkspaceRoles(r.Context(), workspaceID)
 	if err != nil {
 		shared.InternalError(w, r, "workspace", "failed to list roles")
 		return
 	}
 
 	shared.OK(w, r, roles)
+}
+
+// CreateRole godoc
+// @Summary      Create a custom workspace role
+// @Description  Create a new custom role with specific permissions for the workspace.
+// @Tags         Workspace Roles
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        X-Workspace-ID  header    string                          true  "Workspace ID"
+// @Param        body            body      workspace.CreateRoleRequest     true  "Role data"
+// @Success      201             {object}  shared.APIResponse{data=workspace.RoleResponse}
+// @Failure      400             {object}  shared.ErrorResponse
+// @Router       /workspaces/roles [post]
+func (h *WorkspaceHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
+	workspaceID := middleware.GetWorkspaceID(r.Context())
+	userID := middleware.GetUserID(r.Context())
+
+	var req workspace.CreateRoleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.BadRequest(w, r, "workspace", "invalid request body")
+		return
+	}
+
+	role, err := h.Service.CreateWorkspaceRole(r.Context(), workspaceID, userID, &req)
+	if err != nil {
+		shared.BadRequest(w, r, "workspace", err.Error())
+		return
+	}
+
+	shared.Created(w, r, role)
+}
+
+// UpdateRole godoc
+// @Summary      Update a workspace role
+// @Description  Update name, description, or permissions of a custom role.
+// @Tags         Workspace Roles
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        X-Workspace-ID  header    string                          true  "Workspace ID"
+// @Param        id              path      string                          true  "Role ID"
+// @Param        body            body      workspace.UpdateRoleRequest     true  "Role data"
+// @Success      200             {object}  shared.APIResponse{data=workspace.MessageResponse}
+// @Failure      400             {object}  shared.ErrorResponse
+// @Router       /workspaces/roles/{id} [patch]
+func (h *WorkspaceHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
+	roleID := chi.URLParam(r, "id")
+
+	var req workspace.UpdateRoleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.BadRequest(w, r, "workspace", "invalid request body")
+		return
+	}
+
+	if err := h.Service.UpdateWorkspaceRole(r.Context(), roleID, &req); err != nil {
+		shared.BadRequest(w, r, "workspace", err.Error())
+		return
+	}
+
+	shared.OK(w, r, workspace.MessageResponse{Message: "Role updated"})
+}
+
+// DeleteRole godoc
+// @Summary      Delete a workspace role
+// @Description  Delete a custom role. System roles cannot be deleted.
+// @Tags         Workspace Roles
+// @Produce      json
+// @Security     BearerAuth
+// @Param        X-Workspace-ID  header    string  true  "Workspace ID"
+// @Param        id              path      string  true  "Role ID"
+// @Success      200             {object}  shared.APIResponse{data=workspace.MessageResponse}
+// @Failure      400             {object}  shared.ErrorResponse
+// @Router       /workspaces/roles/{id} [delete]
+func (h *WorkspaceHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
+	roleID := chi.URLParam(r, "id")
+
+	if err := h.Service.DeleteWorkspaceRole(r.Context(), roleID); err != nil {
+		shared.BadRequest(w, r, "workspace", err.Error())
+		return
+	}
+
+	shared.OK(w, r, workspace.MessageResponse{Message: "Role deleted"})
+}
+
+// AssignRole godoc
+// @Summary      Assign a role to a member
+// @Description  Assign a workspace role to a member entity.
+// @Tags         Workspace Roles
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        X-Workspace-ID  header    string                          true  "Workspace ID"
+// @Param        body            body      workspace.AssignRoleRequest     true  "Assignment data"
+// @Success      201             {object}  shared.APIResponse{data=workspace.RoleAssignmentResponse}
+// @Failure      400             {object}  shared.ErrorResponse
+// @Router       /workspaces/roles/assign [post]
+func (h *WorkspaceHandler) AssignRole(w http.ResponseWriter, r *http.Request) {
+	workspaceID := middleware.GetWorkspaceID(r.Context())
+	userID := middleware.GetUserID(r.Context())
+
+	var req workspace.AssignRoleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.BadRequest(w, r, "workspace", "invalid request body")
+		return
+	}
+
+	assignment, err := h.Service.AssignRole(r.Context(), workspaceID, userID, &req)
+	if err != nil {
+		shared.BadRequest(w, r, "workspace", err.Error())
+		return
+	}
+
+	shared.Created(w, r, assignment)
+}
+
+// UnassignRole godoc
+// @Summary      Remove a role from a member
+// @Description  Remove a role assignment from a workspace member.
+// @Tags         Workspace Roles
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        X-Workspace-ID  header    string                          true  "Workspace ID"
+// @Param        body            body      workspace.AssignRoleRequest     true  "Assignment data"
+// @Success      200             {object}  shared.APIResponse{data=workspace.MessageResponse}
+// @Failure      400             {object}  shared.ErrorResponse
+// @Router       /workspaces/roles/unassign [post]
+func (h *WorkspaceHandler) UnassignRole(w http.ResponseWriter, r *http.Request) {
+	workspaceID := middleware.GetWorkspaceID(r.Context())
+
+	var req workspace.AssignRoleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.BadRequest(w, r, "workspace", "invalid request body")
+		return
+	}
+
+	if err := h.Service.UnassignRole(r.Context(), workspaceID, &req); err != nil {
+		shared.BadRequest(w, r, "workspace", err.Error())
+		return
+	}
+
+	shared.OK(w, r, workspace.MessageResponse{Message: "Role unassigned"})
 }

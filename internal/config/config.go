@@ -58,6 +58,9 @@ type Config struct {
 	SMTPPass string
 	SMTPFrom string
 
+	// Frontend
+	FrontendURL string
+
 	// Worker
 	WorkerConcurrency int
 }
@@ -107,6 +110,8 @@ func Load() (*Config, error) {
 		SMTPUser: getEnv("SMTP_USER", ""),
 		SMTPPass: getEnv("SMTP_PASS", ""),
 		SMTPFrom: getEnv("SMTP_FROM", "noreply@azzet.com"),
+
+		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 
 		WorkerConcurrency: getEnvInt("WORKER_CONCURRENCY", 50),
 	}

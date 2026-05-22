@@ -67,12 +67,6 @@ func (s *Service) CreateWorkspace(ctx context.Context, userID string, req *Creat
 		return nil, fmt.Errorf("workspace already exists for this entity")
 	}
 
-	// Get PEMILIK role
-	role, err := s.Queries.GetRoleByName(ctx, "PEMILIK")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get PEMILIK role")
-	}
-
 	// Create relation: entity (object/workspace) ← user's personal entity (subject/member) as PEMILIK
 	now := time.Now()
 	rel, err := s.Queries.CreateRelation(ctx, db.CreateRelationParams{
@@ -80,7 +74,6 @@ func (s *Service) CreateWorkspace(ctx context.Context, userID string, req *Creat
 		ObjectID:     entityID,
 		SubjectID:    personalEntity.ID,
 		RelationType: RelationPemilik,
-		RoleID:       pgtype.UUID{Bytes: role.ID, Valid: true},
 		Status:       "ACTIVE",
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -88,6 +81,9 @@ func (s *Service) CreateWorkspace(ctx context.Context, userID string, req *Creat
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workspace: %w", err)
 	}
+
+	// Bootstrap system "Owner" role with wildcard permissions
+	_ = s.bootstrapOwnerRole(ctx, entityID, uid, now)
 
 	return &WorkspaceResponse{
 		ID:         rel.ID.String(),
@@ -100,24 +96,25 @@ func (s *Service) CreateWorkspace(ctx context.Context, userID string, req *Creat
 }
 
 // CreatePersonalWorkspace creates the personal workspace for a user (called during registration)
-func (s *Service) CreatePersonalWorkspace(ctx context.Context, personalEntityID uuid.UUID) error {
-	role, err := s.Queries.GetRoleByName(ctx, "PEMILIK")
-	if err != nil {
-		return fmt.Errorf("failed to get PEMILIK role")
-	}
-
+func (s *Service) CreatePersonalWorkspace(ctx context.Context, personalEntityID uuid.UUID, userID uuid.UUID) error {
 	now := time.Now()
-	_, err = s.Queries.CreateRelation(ctx, db.CreateRelationParams{
+	_, err := s.Queries.CreateRelation(ctx, db.CreateRelationParams{
 		ID:           uuid.New(),
 		ObjectID:     personalEntityID, // workspace = personal entity
 		SubjectID:    personalEntityID, // member = same entity (self-owned)
 		RelationType: RelationPemilik,
-		RoleID:       pgtype.UUID{Bytes: role.ID, Valid: true},
 		Status:       "ACTIVE",
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Bootstrap system "Owner" role with wildcard permissions
+	_ = s.bootstrapOwnerRole(ctx, personalEntityID, userID, now)
+
+	return nil
 }
 
 // ListMyWorkspaces returns all workspaces the user has access to
@@ -139,89 +136,32 @@ func (s *Service) ListMyWorkspaces(ctx context.Context, userID string) ([]Worksp
 			continue
 		}
 
-		roleName := r.RelationType
-		if r.RoleID.Valid {
-			if role, err := s.Queries.GetRoleByID(ctx, r.RoleID.Bytes); err == nil {
-				roleName = role.Name
-			}
-		}
-
-		resp = append(resp, WorkspaceResponse{
+		ws := WorkspaceResponse{
 			ID:         r.ID.String(),
 			EntityID:   r.ObjectID.String(),
 			EntityName: e.NamaUtama,
 			EntityType: e.EntityType,
-			Role:       roleName,
+			Role:       r.RelationType,
 			CreatedAt:  r.CreatedAt.Format(time.RFC3339),
-		})
+		}
+
+		// Fetch subscription status for this workspace
+		sub, err := s.Queries.GetActiveSubscription(ctx, r.ObjectID)
+		if err == nil {
+			ws.SubscriptionStatus = &sub.Status
+			// Fetch plan name
+			plan, err := s.Queries.GetPlanByID(ctx, sub.PlanID)
+			if err == nil {
+				ws.PlanName = &plan.Name
+			}
+		}
+
+		resp = append(resp, ws)
 	}
 	if resp == nil {
 		resp = []WorkspaceResponse{}
 	}
 	return resp, nil
-}
-
-// InviteMember invites a member to the workspace
-func (s *Service) InviteMember(ctx context.Context, workspaceID string, req *InviteMemberRequest) (*MemberResponse, error) {
-	wsID, err := uuid.Parse(workspaceID)
-	if err != nil {
-		return nil, ErrWorkspaceNotFound
-	}
-
-	memberEntityID, err := uuid.Parse(req.EntityID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid entity_id")
-	}
-
-	// Verify member entity exists
-	memberEntity, err := s.Queries.GetEntityByID(ctx, memberEntityID)
-	if err != nil {
-		return nil, fmt.Errorf("member entity not found")
-	}
-
-	// Check if relation already exists
-	exists, err := s.Queries.ExistsRelation(ctx, db.ExistsRelationParams{
-		ObjectID:     wsID,
-		SubjectID:    memberEntityID,
-		RelationType: RelationKaryawan,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, ErrRelationExists
-	}
-
-	// Get role
-	var roleID pgtype.UUID
-	var roleName *string
-	if req.Role != "" {
-		role, err := s.Queries.GetRoleByName(ctx, req.Role)
-		if err != nil {
-			return nil, fmt.Errorf("invalid role: %s", req.Role)
-		}
-		roleID = pgtype.UUID{Bytes: role.ID, Valid: true}
-		roleName = &role.Name
-	}
-
-	now := time.Now()
-	rel, err := s.Queries.CreateRelation(ctx, db.CreateRelationParams{
-		ID:           uuid.New(),
-		ObjectID:     wsID,
-		SubjectID:    memberEntityID,
-		RelationType: RelationKaryawan,
-		CustomAlias:  toPgText(req.CustomAlias),
-		RoleID:       roleID,
-		Status:       "ACTIVE",
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to invite member: %w", err)
-	}
-
-	resp := RelationToMemberResponse(&rel, &memberEntity, roleName)
-	return &resp, nil
 }
 
 // ListMembers returns all members (PEMILIK + KARYAWAN) of a workspace
@@ -247,11 +187,14 @@ func (s *Service) ListMembers(ctx context.Context, workspaceID string) ([]Member
 			continue
 		}
 
+		// Get role name from workspace_role_assignments
 		var roleName *string
-		if r.RoleID.Valid {
-			if role, err := s.Queries.GetRoleByID(ctx, r.RoleID.Bytes); err == nil {
-				roleName = &role.Name
-			}
+		assignments, err := s.Queries.ListRoleAssignmentsByMember(ctx, db.ListRoleAssignmentsByMemberParams{
+			WorkspaceID:    r.ObjectID,
+			MemberEntityID: r.SubjectID,
+		})
+		if err == nil && len(assignments) > 0 {
+			roleName = &assignments[0].RoleName
 		}
 
 		resp = append(resp, RelationToMemberResponse(&r, &e, roleName))
@@ -262,7 +205,7 @@ func (s *Service) ListMembers(ctx context.Context, workspaceID string) ([]Member
 	return resp, nil
 }
 
-// UpdateMember updates a member's role/alias/status
+// UpdateMember updates a member's alias/status
 func (s *Service) UpdateMember(ctx context.Context, relationID string, req *UpdateMemberRequest) error {
 	relID, err := uuid.Parse(relationID)
 	if err != nil {
@@ -278,18 +221,10 @@ func (s *Service) UpdateMember(ctx context.Context, relationID string, req *Upda
 	}
 
 	customAlias := rel.CustomAlias
-	roleID := rel.RoleID
 	status := rel.Status
 
 	if req.CustomAlias != nil {
 		customAlias = pgtype.Text{String: *req.CustomAlias, Valid: true}
-	}
-	if req.Role != nil {
-		role, err := s.Queries.GetRoleByName(ctx, *req.Role)
-		if err != nil {
-			return fmt.Errorf("invalid role: %s", *req.Role)
-		}
-		roleID = pgtype.UUID{Bytes: role.ID, Valid: true}
 	}
 	if req.Status != nil {
 		if *req.Status != "ACTIVE" && *req.Status != "INACTIVE" {
@@ -301,7 +236,6 @@ func (s *Service) UpdateMember(ctx context.Context, relationID string, req *Upda
 	return s.Queries.UpdateRelation(ctx, db.UpdateRelationParams{
 		ID:          relID,
 		CustomAlias: customAlias,
-		RoleID:      roleID,
 		Status:      status,
 	})
 }
@@ -442,21 +376,20 @@ func (s *Service) ListCounterparties(ctx context.Context, workspaceID string) ([
 	return resp, nil
 }
 
-// ListRoles returns all available roles
-func (s *Service) ListRoles(ctx context.Context) ([]RoleResponse, error) {
-	roles, err := s.Queries.ListRoles(ctx)
+// ListWorkspaceRoles returns all custom roles for a workspace
+func (s *Service) ListWorkspaceRoles(ctx context.Context, workspaceID string) ([]RoleResponse, error) {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return nil, ErrWorkspaceNotFound
+	}
+
+	roles, err := s.Queries.ListWorkspaceRoles(ctx, wsID)
 	if err != nil {
 		return nil, err
 	}
 
 	var resp []RoleResponse
 	for _, r := range roles {
-		var perms []string
-		if r.Permissions != nil {
-			// Parse JSONB permissions
-			_ = r.Permissions // TODO: parse JSON array
-		}
-
 		var desc *string
 		if r.Description.Valid {
 			desc = &r.Description.String
@@ -466,7 +399,7 @@ func (s *Service) ListRoles(ctx context.Context) ([]RoleResponse, error) {
 			ID:          r.ID.String(),
 			Name:        r.Name,
 			Description: desc,
-			Permissions: perms,
+			Permissions: r.Permissions,
 		})
 	}
 	if resp == nil {
@@ -475,7 +408,217 @@ func (s *Service) ListRoles(ctx context.Context) ([]RoleResponse, error) {
 	return resp, nil
 }
 
-// VerifyWorkspaceAccess checks if a user has access to a workspace and returns their role
+// CreateWorkspaceRole creates a custom role for a workspace
+func (s *Service) CreateWorkspaceRole(ctx context.Context, workspaceID, userID string, req *CreateRoleRequest) (*RoleResponse, error) {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return nil, ErrWorkspaceNotFound
+	}
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user_id")
+	}
+
+	if req.Name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+	if len(req.Permissions) == 0 {
+		return nil, fmt.Errorf("at least one permission is required")
+	}
+
+	// Validate permissions
+	for _, p := range req.Permissions {
+		if !IsValidPermission(p) {
+			return nil, fmt.Errorf("invalid permission: %s", p)
+		}
+		// Non-owner cannot create roles with wildcard
+		if p == PermAll {
+			return nil, fmt.Errorf("cannot assign wildcard permission to custom roles")
+		}
+	}
+
+	now := time.Now()
+	role, err := s.Queries.CreateWorkspaceRole(ctx, db.CreateWorkspaceRoleParams{
+		ID:          uuid.New(),
+		WorkspaceID: wsID,
+		Name:        req.Name,
+		Description: toPgText(req.Description),
+		Permissions: req.Permissions,
+		IsSystem:    false,
+		CreatedBy:   uid,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create role: %w", err)
+	}
+
+	var desc *string
+	if role.Description.Valid {
+		desc = &role.Description.String
+	}
+
+	return &RoleResponse{
+		ID:          role.ID.String(),
+		Name:        role.Name,
+		Description: desc,
+		Permissions: role.Permissions,
+	}, nil
+}
+
+// UpdateWorkspaceRole updates a custom role
+func (s *Service) UpdateWorkspaceRole(ctx context.Context, roleID string, req *UpdateRoleRequest) error {
+	rID, err := uuid.Parse(roleID)
+	if err != nil {
+		return fmt.Errorf("invalid role_id")
+	}
+
+	role, err := s.Queries.GetWorkspaceRoleByID(ctx, rID)
+	if err != nil {
+		return fmt.Errorf("role not found")
+	}
+
+	if role.IsSystem {
+		return fmt.Errorf("cannot modify system roles")
+	}
+
+	name := role.Name
+	description := role.Description
+	permissions := role.Permissions
+
+	if req.Name != nil {
+		name = *req.Name
+	}
+	if req.Description != nil {
+		description = pgtype.Text{String: *req.Description, Valid: true}
+	}
+	if req.Permissions != nil {
+		for _, p := range req.Permissions {
+			if !IsValidPermission(p) {
+				return fmt.Errorf("invalid permission: %s", p)
+			}
+			if p == PermAll {
+				return fmt.Errorf("cannot assign wildcard permission to custom roles")
+			}
+		}
+		permissions = req.Permissions
+	}
+
+	return s.Queries.UpdateWorkspaceRole(ctx, db.UpdateWorkspaceRoleParams{
+		ID:          rID,
+		Name:        name,
+		Description: description,
+		Permissions: permissions,
+	})
+}
+
+// DeleteWorkspaceRole deletes a custom role (system roles cannot be deleted)
+func (s *Service) DeleteWorkspaceRole(ctx context.Context, roleID string) error {
+	rID, err := uuid.Parse(roleID)
+	if err != nil {
+		return fmt.Errorf("invalid role_id")
+	}
+
+	role, err := s.Queries.GetWorkspaceRoleByID(ctx, rID)
+	if err != nil {
+		return fmt.Errorf("role not found")
+	}
+
+	if role.IsSystem {
+		return fmt.Errorf("cannot delete system roles")
+	}
+
+	return s.Queries.DeleteWorkspaceRole(ctx, rID)
+}
+
+// AssignRole assigns a role to a workspace member
+func (s *Service) AssignRole(ctx context.Context, workspaceID, userID string, req *AssignRoleRequest) (*RoleAssignmentResponse, error) {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return nil, ErrWorkspaceNotFound
+	}
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user_id")
+	}
+	memberEntityID, err := uuid.Parse(req.MemberEntityID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid member_entity_id")
+	}
+	roleID, err := uuid.Parse(req.RoleID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid role_id")
+	}
+
+	// Verify role belongs to this workspace
+	role, err := s.Queries.GetWorkspaceRoleByID(ctx, roleID)
+	if err != nil {
+		return nil, fmt.Errorf("role not found")
+	}
+	if role.WorkspaceID != wsID {
+		return nil, fmt.Errorf("role does not belong to this workspace")
+	}
+
+	// Verify member exists in workspace
+	exists, err := s.Queries.ExistsRelation(ctx, db.ExistsRelationParams{
+		ObjectID:     wsID,
+		SubjectID:    memberEntityID,
+		RelationType: RelationKaryawan,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, fmt.Errorf("member not found in workspace")
+	}
+
+	now := time.Now()
+	assignment, err := s.Queries.CreateRoleAssignment(ctx, db.CreateRoleAssignmentParams{
+		ID:             uuid.New(),
+		WorkspaceID:    wsID,
+		MemberEntityID: memberEntityID,
+		RoleID:         roleID,
+		AssignedBy:     uid,
+		CreatedAt:      now,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to assign role: %w", err)
+	}
+
+	return &RoleAssignmentResponse{
+		ID:             assignment.ID.String(),
+		WorkspaceID:    assignment.WorkspaceID.String(),
+		MemberEntityID: assignment.MemberEntityID.String(),
+		RoleID:         assignment.RoleID.String(),
+		RoleName:       role.Name,
+		AssignedBy:     assignment.AssignedBy.String(),
+		CreatedAt:      assignment.CreatedAt.Format(time.RFC3339),
+	}, nil
+}
+
+// UnassignRole removes a role assignment from a member
+func (s *Service) UnassignRole(ctx context.Context, workspaceID string, req *AssignRoleRequest) error {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return ErrWorkspaceNotFound
+	}
+	memberEntityID, err := uuid.Parse(req.MemberEntityID)
+	if err != nil {
+		return fmt.Errorf("invalid member_entity_id")
+	}
+	roleID, err := uuid.Parse(req.RoleID)
+	if err != nil {
+		return fmt.Errorf("invalid role_id")
+	}
+
+	return s.Queries.DeleteRoleAssignment(ctx, db.DeleteRoleAssignmentParams{
+		WorkspaceID:    wsID,
+		MemberEntityID: memberEntityID,
+		RoleID:         roleID,
+	})
+}
+
+// VerifyWorkspaceAccess checks if a user has access to a workspace and returns their relation type + permissions
 func (s *Service) VerifyWorkspaceAccess(ctx context.Context, workspaceID, userID string) (string, []byte, error) {
 	wsID, err := uuid.Parse(workspaceID)
 	if err != nil {
@@ -488,8 +631,8 @@ func (s *Service) VerifyWorkspaceAccess(ctx context.Context, workspaceID, userID
 		return "", nil, ErrNotAuthorized
 	}
 
-	// Check if user has workspace access
-	row, err := s.Queries.GetUserWorkspaceRole(ctx, db.GetUserWorkspaceRoleParams{
+	// Check if user has workspace access via entity_relations
+	rel, err := s.Queries.GetUserWorkspaceAccess(ctx, db.GetUserWorkspaceAccessParams{
 		ObjectID:  wsID,
 		SubjectID: personalEntity.ID,
 	})
@@ -500,24 +643,76 @@ func (s *Service) VerifyWorkspaceAccess(ctx context.Context, workspaceID, userID
 		return "", nil, err
 	}
 
-	roleName := ""
-	if row.RoleName.Valid {
-		roleName = row.RoleName.String
+	// PEMILIK always has wildcard permissions
+	if rel.RelationType == RelationPemilik {
+		return RelationPemilik, []byte(`["*"]`), nil
 	}
 
-	var permissions []byte
-	if row.RolePermissions != nil {
-		permissions = row.RolePermissions
+	// For KARYAWAN, get permissions from workspace_role_assignments
+	assignments, err := s.Queries.ListRoleAssignmentsByMember(ctx, db.ListRoleAssignmentsByMemberParams{
+		WorkspaceID:    wsID,
+		MemberEntityID: personalEntity.ID,
+	})
+	if err != nil || len(assignments) == 0 {
+		// Member exists but has no role assigned — minimal access
+		return RelationKaryawan, []byte(`[]`), nil
 	}
 
-	return roleName, permissions, nil
+	// Merge all permissions from all assigned roles
+	permSet := make(map[string]bool)
+	for _, a := range assignments {
+		for _, p := range a.RolePermissions {
+			permSet[p] = true
+		}
+	}
+
+	// Build JSON array
+	perms := make([]string, 0, len(permSet))
+	for p := range permSet {
+		perms = append(perms, p)
+	}
+
+	// Serialize as JSON array
+	permJSON := `["` + joinStrings(perms, `","`) + `"]`
+	if len(perms) == 0 {
+		permJSON = `[]`
+	}
+
+	return RelationKaryawan, []byte(permJSON), nil
 }
 
 // --- Helpers ---
+
+// bootstrapOwnerRole creates the system "Owner" role with wildcard permissions for a new workspace
+func (s *Service) bootstrapOwnerRole(ctx context.Context, workspaceID, userID uuid.UUID, now time.Time) error {
+	_, err := s.Queries.CreateWorkspaceRole(ctx, db.CreateWorkspaceRoleParams{
+		ID:          uuid.New(),
+		WorkspaceID: workspaceID,
+		Name:        "Owner",
+		Description: pgtype.Text{String: "Full access to all workspace features", Valid: true},
+		Permissions: []string{PermAll},
+		IsSystem:    true,
+		CreatedBy:   userID,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	})
+	return err
+}
 
 func toPgText(s *string) pgtype.Text {
 	if s == nil || *s == "" {
 		return pgtype.Text{Valid: false}
 	}
 	return pgtype.Text{String: *s, Valid: true}
+}
+
+func joinStrings(strs []string, sep string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	result := strs[0]
+	for _, s := range strs[1:] {
+		result += sep + s
+	}
+	return result
 }

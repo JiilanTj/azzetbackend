@@ -14,9 +14,9 @@ import (
 )
 
 const createRelation = `-- name: CreateRelation :one
-INSERT INTO entity_relations (id, object_id, subject_id, relation_type, custom_alias, role_id, status, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, object_id, subject_id, relation_type, custom_alias, role_id, status, created_at, updated_at
+INSERT INTO entity_relations (id, object_id, subject_id, relation_type, custom_alias, status, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, object_id, subject_id, relation_type, custom_alias, status, created_at, updated_at
 `
 
 type CreateRelationParams struct {
@@ -25,7 +25,6 @@ type CreateRelationParams struct {
 	SubjectID    uuid.UUID   `json:"subject_id"`
 	RelationType string      `json:"relation_type"`
 	CustomAlias  pgtype.Text `json:"custom_alias"`
-	RoleID       pgtype.UUID `json:"role_id"`
 	Status       string      `json:"status"`
 	CreatedAt    time.Time   `json:"created_at"`
 	UpdatedAt    time.Time   `json:"updated_at"`
@@ -38,7 +37,6 @@ func (q *Queries) CreateRelation(ctx context.Context, arg CreateRelationParams) 
 		arg.SubjectID,
 		arg.RelationType,
 		arg.CustomAlias,
-		arg.RoleID,
 		arg.Status,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -50,12 +48,115 @@ func (q *Queries) CreateRelation(ctx context.Context, arg CreateRelationParams) 
 		&i.SubjectID,
 		&i.RelationType,
 		&i.CustomAlias,
-		&i.RoleID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const createRoleAssignment = `-- name: CreateRoleAssignment :one
+
+INSERT INTO workspace_role_assignments (id, workspace_id, member_entity_id, role_id, assigned_by, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, workspace_id, member_entity_id, role_id, assigned_by, created_at
+`
+
+type CreateRoleAssignmentParams struct {
+	ID             uuid.UUID `json:"id"`
+	WorkspaceID    uuid.UUID `json:"workspace_id"`
+	MemberEntityID uuid.UUID `json:"member_entity_id"`
+	RoleID         uuid.UUID `json:"role_id"`
+	AssignedBy     uuid.UUID `json:"assigned_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// ============================================================
+// Workspace Role Assignments
+// ============================================================
+func (q *Queries) CreateRoleAssignment(ctx context.Context, arg CreateRoleAssignmentParams) (WorkspaceRoleAssignment, error) {
+	row := q.db.QueryRow(ctx, createRoleAssignment,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.MemberEntityID,
+		arg.RoleID,
+		arg.AssignedBy,
+		arg.CreatedAt,
+	)
+	var i WorkspaceRoleAssignment
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.MemberEntityID,
+		&i.RoleID,
+		&i.AssignedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createWorkspaceRole = `-- name: CreateWorkspaceRole :one
+
+INSERT INTO workspace_roles (id, workspace_id, name, description, permissions, is_system, created_by, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, workspace_id, name, description, permissions, is_system, created_by, created_at, updated_at
+`
+
+type CreateWorkspaceRoleParams struct {
+	ID          uuid.UUID   `json:"id"`
+	WorkspaceID uuid.UUID   `json:"workspace_id"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+	Permissions []string    `json:"permissions"`
+	IsSystem    bool        `json:"is_system"`
+	CreatedBy   uuid.UUID   `json:"created_by"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+}
+
+// ============================================================
+// Workspace Roles (ABAC)
+// ============================================================
+func (q *Queries) CreateWorkspaceRole(ctx context.Context, arg CreateWorkspaceRoleParams) (WorkspaceRole, error) {
+	row := q.db.QueryRow(ctx, createWorkspaceRole,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.Name,
+		arg.Description,
+		arg.Permissions,
+		arg.IsSystem,
+		arg.CreatedBy,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	var i WorkspaceRole
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Description,
+		&i.Permissions,
+		&i.IsSystem,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteAllRoleAssignmentsForMember = `-- name: DeleteAllRoleAssignmentsForMember :exec
+DELETE FROM workspace_role_assignments
+WHERE workspace_id = $1 AND member_entity_id = $2
+`
+
+type DeleteAllRoleAssignmentsForMemberParams struct {
+	WorkspaceID    uuid.UUID `json:"workspace_id"`
+	MemberEntityID uuid.UUID `json:"member_entity_id"`
+}
+
+func (q *Queries) DeleteAllRoleAssignmentsForMember(ctx context.Context, arg DeleteAllRoleAssignmentsForMemberParams) error {
+	_, err := q.db.Exec(ctx, deleteAllRoleAssignmentsForMember, arg.WorkspaceID, arg.MemberEntityID)
+	return err
 }
 
 const deleteRelation = `-- name: DeleteRelation :exec
@@ -64,6 +165,31 @@ DELETE FROM entity_relations WHERE id = $1
 
 func (q *Queries) DeleteRelation(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteRelation, id)
+	return err
+}
+
+const deleteRoleAssignment = `-- name: DeleteRoleAssignment :exec
+DELETE FROM workspace_role_assignments
+WHERE workspace_id = $1 AND member_entity_id = $2 AND role_id = $3
+`
+
+type DeleteRoleAssignmentParams struct {
+	WorkspaceID    uuid.UUID `json:"workspace_id"`
+	MemberEntityID uuid.UUID `json:"member_entity_id"`
+	RoleID         uuid.UUID `json:"role_id"`
+}
+
+func (q *Queries) DeleteRoleAssignment(ctx context.Context, arg DeleteRoleAssignmentParams) error {
+	_, err := q.db.Exec(ctx, deleteRoleAssignment, arg.WorkspaceID, arg.MemberEntityID, arg.RoleID)
+	return err
+}
+
+const deleteWorkspaceRole = `-- name: DeleteWorkspaceRole :exec
+DELETE FROM workspace_roles WHERE id = $1 AND is_system = FALSE
+`
+
+func (q *Queries) DeleteWorkspaceRole(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspaceRole, id)
 	return err
 }
 
@@ -87,8 +213,40 @@ func (q *Queries) ExistsRelation(ctx context.Context, arg ExistsRelationParams) 
 	return exists, err
 }
 
+const getMemberPermissions = `-- name: GetMemberPermissions :many
+SELECT DISTINCT unnest(wr.permissions) as permission
+FROM workspace_role_assignments wra
+JOIN workspace_roles wr ON wra.role_id = wr.id
+WHERE wra.workspace_id = $1 AND wra.member_entity_id = $2
+`
+
+type GetMemberPermissionsParams struct {
+	WorkspaceID    uuid.UUID `json:"workspace_id"`
+	MemberEntityID uuid.UUID `json:"member_entity_id"`
+}
+
+func (q *Queries) GetMemberPermissions(ctx context.Context, arg GetMemberPermissionsParams) ([]interface{}, error) {
+	rows, err := q.db.Query(ctx, getMemberPermissions, arg.WorkspaceID, arg.MemberEntityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []interface{}{}
+	for rows.Next() {
+		var permission interface{}
+		if err := rows.Scan(&permission); err != nil {
+			return nil, err
+		}
+		items = append(items, permission)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRelation = `-- name: GetRelation :one
-SELECT id, object_id, subject_id, relation_type, custom_alias, role_id, status, created_at, updated_at FROM entity_relations
+SELECT id, object_id, subject_id, relation_type, custom_alias, status, created_at, updated_at FROM entity_relations
 WHERE object_id = $1 AND subject_id = $2 AND relation_type = $3
 `
 
@@ -107,7 +265,6 @@ func (q *Queries) GetRelation(ctx context.Context, arg GetRelationParams) (Entit
 		&i.SubjectID,
 		&i.RelationType,
 		&i.CustomAlias,
-		&i.RoleID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -116,7 +273,7 @@ func (q *Queries) GetRelation(ctx context.Context, arg GetRelationParams) (Entit
 }
 
 const getRelationByID = `-- name: GetRelationByID :one
-SELECT id, object_id, subject_id, relation_type, custom_alias, role_id, status, created_at, updated_at FROM entity_relations WHERE id = $1
+SELECT id, object_id, subject_id, relation_type, custom_alias, status, created_at, updated_at FROM entity_relations WHERE id = $1
 `
 
 func (q *Queries) GetRelationByID(ctx context.Context, id uuid.UUID) (EntityRelation, error) {
@@ -128,7 +285,6 @@ func (q *Queries) GetRelationByID(ctx context.Context, id uuid.UUID) (EntityRela
 		&i.SubjectID,
 		&i.RelationType,
 		&i.CustomAlias,
-		&i.RoleID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -136,89 +292,109 @@ func (q *Queries) GetRelationByID(ctx context.Context, id uuid.UUID) (EntityRela
 	return i, err
 }
 
-const getRoleByID = `-- name: GetRoleByID :one
-SELECT id, name, description, permissions, created_at FROM master_roles WHERE id = $1
+const getRoleAssignment = `-- name: GetRoleAssignment :one
+SELECT id, workspace_id, member_entity_id, role_id, assigned_by, created_at FROM workspace_role_assignments
+WHERE workspace_id = $1 AND member_entity_id = $2 AND role_id = $3
 `
 
-func (q *Queries) GetRoleByID(ctx context.Context, id uuid.UUID) (MasterRole, error) {
-	row := q.db.QueryRow(ctx, getRoleByID, id)
-	var i MasterRole
+type GetRoleAssignmentParams struct {
+	WorkspaceID    uuid.UUID `json:"workspace_id"`
+	MemberEntityID uuid.UUID `json:"member_entity_id"`
+	RoleID         uuid.UUID `json:"role_id"`
+}
+
+func (q *Queries) GetRoleAssignment(ctx context.Context, arg GetRoleAssignmentParams) (WorkspaceRoleAssignment, error) {
+	row := q.db.QueryRow(ctx, getRoleAssignment, arg.WorkspaceID, arg.MemberEntityID, arg.RoleID)
+	var i WorkspaceRoleAssignment
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.Permissions,
+		&i.WorkspaceID,
+		&i.MemberEntityID,
+		&i.RoleID,
+		&i.AssignedBy,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
-const getRoleByName = `-- name: GetRoleByName :one
-SELECT id, name, description, permissions, created_at FROM master_roles WHERE name = $1
-`
-
-func (q *Queries) GetRoleByName(ctx context.Context, name string) (MasterRole, error) {
-	row := q.db.QueryRow(ctx, getRoleByName, name)
-	var i MasterRole
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.Permissions,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getUserWorkspaceRole = `-- name: GetUserWorkspaceRole :one
-SELECT er.id, er.object_id, er.subject_id, er.relation_type, er.custom_alias, er.role_id, er.status, er.created_at, er.updated_at, mr.name as role_name, mr.permissions as role_permissions
+const getUserWorkspaceAccess = `-- name: GetUserWorkspaceAccess :one
+SELECT er.id, er.object_id, er.subject_id, er.relation_type, er.custom_alias, er.status, er.created_at, er.updated_at
 FROM entity_relations er
-LEFT JOIN master_roles mr ON er.role_id = mr.id
 WHERE er.object_id = $1 AND er.subject_id = $2 AND er.status = 'ACTIVE'
 AND er.relation_type IN ('PEMILIK', 'KARYAWAN')
 LIMIT 1
 `
 
-type GetUserWorkspaceRoleParams struct {
+type GetUserWorkspaceAccessParams struct {
 	ObjectID  uuid.UUID `json:"object_id"`
 	SubjectID uuid.UUID `json:"subject_id"`
 }
 
-type GetUserWorkspaceRoleRow struct {
-	ID              uuid.UUID   `json:"id"`
-	ObjectID        uuid.UUID   `json:"object_id"`
-	SubjectID       uuid.UUID   `json:"subject_id"`
-	RelationType    string      `json:"relation_type"`
-	CustomAlias     pgtype.Text `json:"custom_alias"`
-	RoleID          pgtype.UUID `json:"role_id"`
-	Status          string      `json:"status"`
-	CreatedAt       time.Time   `json:"created_at"`
-	UpdatedAt       time.Time   `json:"updated_at"`
-	RoleName        pgtype.Text `json:"role_name"`
-	RolePermissions []byte      `json:"role_permissions"`
-}
-
-func (q *Queries) GetUserWorkspaceRole(ctx context.Context, arg GetUserWorkspaceRoleParams) (GetUserWorkspaceRoleRow, error) {
-	row := q.db.QueryRow(ctx, getUserWorkspaceRole, arg.ObjectID, arg.SubjectID)
-	var i GetUserWorkspaceRoleRow
+func (q *Queries) GetUserWorkspaceAccess(ctx context.Context, arg GetUserWorkspaceAccessParams) (EntityRelation, error) {
+	row := q.db.QueryRow(ctx, getUserWorkspaceAccess, arg.ObjectID, arg.SubjectID)
+	var i EntityRelation
 	err := row.Scan(
 		&i.ID,
 		&i.ObjectID,
 		&i.SubjectID,
 		&i.RelationType,
 		&i.CustomAlias,
-		&i.RoleID,
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.RoleName,
-		&i.RolePermissions,
+	)
+	return i, err
+}
+
+const getWorkspaceRoleByID = `-- name: GetWorkspaceRoleByID :one
+SELECT id, workspace_id, name, description, permissions, is_system, created_by, created_at, updated_at FROM workspace_roles WHERE id = $1
+`
+
+func (q *Queries) GetWorkspaceRoleByID(ctx context.Context, id uuid.UUID) (WorkspaceRole, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceRoleByID, id)
+	var i WorkspaceRole
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Description,
+		&i.Permissions,
+		&i.IsSystem,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getWorkspaceRoleByName = `-- name: GetWorkspaceRoleByName :one
+SELECT id, workspace_id, name, description, permissions, is_system, created_by, created_at, updated_at FROM workspace_roles WHERE workspace_id = $1 AND name = $2
+`
+
+type GetWorkspaceRoleByNameParams struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	Name        string    `json:"name"`
+}
+
+func (q *Queries) GetWorkspaceRoleByName(ctx context.Context, arg GetWorkspaceRoleByNameParams) (WorkspaceRole, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceRoleByName, arg.WorkspaceID, arg.Name)
+	var i WorkspaceRole
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Description,
+		&i.Permissions,
+		&i.IsSystem,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const listRelationsByObject = `-- name: ListRelationsByObject :many
-SELECT id, object_id, subject_id, relation_type, custom_alias, role_id, status, created_at, updated_at FROM entity_relations
+SELECT id, object_id, subject_id, relation_type, custom_alias, status, created_at, updated_at FROM entity_relations
 WHERE object_id = $1 AND status = 'ACTIVE'
 ORDER BY relation_type, created_at DESC
 `
@@ -238,7 +414,6 @@ func (q *Queries) ListRelationsByObject(ctx context.Context, objectID uuid.UUID)
 			&i.SubjectID,
 			&i.RelationType,
 			&i.CustomAlias,
-			&i.RoleID,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -254,7 +429,7 @@ func (q *Queries) ListRelationsByObject(ctx context.Context, objectID uuid.UUID)
 }
 
 const listRelationsByObjectAndType = `-- name: ListRelationsByObjectAndType :many
-SELECT id, object_id, subject_id, relation_type, custom_alias, role_id, status, created_at, updated_at FROM entity_relations
+SELECT id, object_id, subject_id, relation_type, custom_alias, status, created_at, updated_at FROM entity_relations
 WHERE object_id = $1 AND relation_type = $2 AND status = 'ACTIVE'
 ORDER BY created_at DESC
 `
@@ -279,7 +454,6 @@ func (q *Queries) ListRelationsByObjectAndType(ctx context.Context, arg ListRela
 			&i.SubjectID,
 			&i.RelationType,
 			&i.CustomAlias,
-			&i.RoleID,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -295,7 +469,7 @@ func (q *Queries) ListRelationsByObjectAndType(ctx context.Context, arg ListRela
 }
 
 const listRelationsBySubject = `-- name: ListRelationsBySubject :many
-SELECT id, object_id, subject_id, relation_type, custom_alias, role_id, status, created_at, updated_at FROM entity_relations
+SELECT id, object_id, subject_id, relation_type, custom_alias, status, created_at, updated_at FROM entity_relations
 WHERE subject_id = $1 AND status = 'ACTIVE'
 ORDER BY created_at DESC
 `
@@ -315,7 +489,6 @@ func (q *Queries) ListRelationsBySubject(ctx context.Context, subjectID uuid.UUI
 			&i.SubjectID,
 			&i.RelationType,
 			&i.CustomAlias,
-			&i.RoleID,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -330,25 +503,129 @@ func (q *Queries) ListRelationsBySubject(ctx context.Context, subjectID uuid.UUI
 	return items, nil
 }
 
-const listRoles = `-- name: ListRoles :many
-SELECT id, name, description, permissions, created_at FROM master_roles ORDER BY name ASC
+const listRoleAssignmentsByMember = `-- name: ListRoleAssignmentsByMember :many
+SELECT wra.id, wra.workspace_id, wra.member_entity_id, wra.role_id, wra.assigned_by, wra.created_at, wr.name as role_name, wr.permissions as role_permissions
+FROM workspace_role_assignments wra
+JOIN workspace_roles wr ON wra.role_id = wr.id
+WHERE wra.workspace_id = $1 AND wra.member_entity_id = $2
 `
 
-func (q *Queries) ListRoles(ctx context.Context) ([]MasterRole, error) {
-	rows, err := q.db.Query(ctx, listRoles)
+type ListRoleAssignmentsByMemberParams struct {
+	WorkspaceID    uuid.UUID `json:"workspace_id"`
+	MemberEntityID uuid.UUID `json:"member_entity_id"`
+}
+
+type ListRoleAssignmentsByMemberRow struct {
+	ID              uuid.UUID `json:"id"`
+	WorkspaceID     uuid.UUID `json:"workspace_id"`
+	MemberEntityID  uuid.UUID `json:"member_entity_id"`
+	RoleID          uuid.UUID `json:"role_id"`
+	AssignedBy      uuid.UUID `json:"assigned_by"`
+	CreatedAt       time.Time `json:"created_at"`
+	RoleName        string    `json:"role_name"`
+	RolePermissions []string  `json:"role_permissions"`
+}
+
+func (q *Queries) ListRoleAssignmentsByMember(ctx context.Context, arg ListRoleAssignmentsByMemberParams) ([]ListRoleAssignmentsByMemberRow, error) {
+	rows, err := q.db.Query(ctx, listRoleAssignmentsByMember, arg.WorkspaceID, arg.MemberEntityID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []MasterRole{}
+	items := []ListRoleAssignmentsByMemberRow{}
 	for rows.Next() {
-		var i MasterRole
+		var i ListRoleAssignmentsByMemberRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.WorkspaceID,
+			&i.MemberEntityID,
+			&i.RoleID,
+			&i.AssignedBy,
+			&i.CreatedAt,
+			&i.RoleName,
+			&i.RolePermissions,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoleAssignmentsByWorkspace = `-- name: ListRoleAssignmentsByWorkspace :many
+SELECT wra.id, wra.workspace_id, wra.member_entity_id, wra.role_id, wra.assigned_by, wra.created_at, wr.name as role_name, wr.permissions as role_permissions
+FROM workspace_role_assignments wra
+JOIN workspace_roles wr ON wra.role_id = wr.id
+WHERE wra.workspace_id = $1
+ORDER BY wra.created_at DESC
+`
+
+type ListRoleAssignmentsByWorkspaceRow struct {
+	ID              uuid.UUID `json:"id"`
+	WorkspaceID     uuid.UUID `json:"workspace_id"`
+	MemberEntityID  uuid.UUID `json:"member_entity_id"`
+	RoleID          uuid.UUID `json:"role_id"`
+	AssignedBy      uuid.UUID `json:"assigned_by"`
+	CreatedAt       time.Time `json:"created_at"`
+	RoleName        string    `json:"role_name"`
+	RolePermissions []string  `json:"role_permissions"`
+}
+
+func (q *Queries) ListRoleAssignmentsByWorkspace(ctx context.Context, workspaceID uuid.UUID) ([]ListRoleAssignmentsByWorkspaceRow, error) {
+	rows, err := q.db.Query(ctx, listRoleAssignmentsByWorkspace, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRoleAssignmentsByWorkspaceRow{}
+	for rows.Next() {
+		var i ListRoleAssignmentsByWorkspaceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.MemberEntityID,
+			&i.RoleID,
+			&i.AssignedBy,
+			&i.CreatedAt,
+			&i.RoleName,
+			&i.RolePermissions,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkspaceRoles = `-- name: ListWorkspaceRoles :many
+SELECT id, workspace_id, name, description, permissions, is_system, created_by, created_at, updated_at FROM workspace_roles WHERE workspace_id = $1 ORDER BY is_system DESC, name ASC
+`
+
+func (q *Queries) ListWorkspaceRoles(ctx context.Context, workspaceID uuid.UUID) ([]WorkspaceRole, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceRoles, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WorkspaceRole{}
+	for rows.Next() {
+		var i WorkspaceRole
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
 			&i.Name,
 			&i.Description,
 			&i.Permissions,
+			&i.IsSystem,
+			&i.CreatedBy,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -361,7 +638,7 @@ func (q *Queries) ListRoles(ctx context.Context) ([]MasterRole, error) {
 }
 
 const listWorkspacesBySubject = `-- name: ListWorkspacesBySubject :many
-SELECT id, object_id, subject_id, relation_type, custom_alias, role_id, status, created_at, updated_at FROM entity_relations
+SELECT id, object_id, subject_id, relation_type, custom_alias, status, created_at, updated_at FROM entity_relations
 WHERE subject_id = $1 AND relation_type IN ('PEMILIK', 'KARYAWAN') AND status = 'ACTIVE'
 ORDER BY created_at DESC
 `
@@ -381,7 +658,6 @@ func (q *Queries) ListWorkspacesBySubject(ctx context.Context, subjectID uuid.UU
 			&i.SubjectID,
 			&i.RelationType,
 			&i.CustomAlias,
-			&i.RoleID,
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -398,24 +674,18 @@ func (q *Queries) ListWorkspacesBySubject(ctx context.Context, subjectID uuid.UU
 
 const updateRelation = `-- name: UpdateRelation :exec
 UPDATE entity_relations
-SET custom_alias = $2, role_id = $3, status = $4, updated_at = NOW()
+SET custom_alias = $2, status = $3, updated_at = NOW()
 WHERE id = $1
 `
 
 type UpdateRelationParams struct {
 	ID          uuid.UUID   `json:"id"`
 	CustomAlias pgtype.Text `json:"custom_alias"`
-	RoleID      pgtype.UUID `json:"role_id"`
 	Status      string      `json:"status"`
 }
 
 func (q *Queries) UpdateRelation(ctx context.Context, arg UpdateRelationParams) error {
-	_, err := q.db.Exec(ctx, updateRelation,
-		arg.ID,
-		arg.CustomAlias,
-		arg.RoleID,
-		arg.Status,
-	)
+	_, err := q.db.Exec(ctx, updateRelation, arg.ID, arg.CustomAlias, arg.Status)
 	return err
 }
 
@@ -430,5 +700,28 @@ type UpdateRelationStatusParams struct {
 
 func (q *Queries) UpdateRelationStatus(ctx context.Context, arg UpdateRelationStatusParams) error {
 	_, err := q.db.Exec(ctx, updateRelationStatus, arg.ID, arg.Status)
+	return err
+}
+
+const updateWorkspaceRole = `-- name: UpdateWorkspaceRole :exec
+UPDATE workspace_roles
+SET name = $2, description = $3, permissions = $4, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateWorkspaceRoleParams struct {
+	ID          uuid.UUID   `json:"id"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+	Permissions []string    `json:"permissions"`
+}
+
+func (q *Queries) UpdateWorkspaceRole(ctx context.Context, arg UpdateWorkspaceRoleParams) error {
+	_, err := q.db.Exec(ctx, updateWorkspaceRole,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Permissions,
+	)
 	return err
 }

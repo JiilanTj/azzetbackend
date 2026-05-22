@@ -18,6 +18,7 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/events"
 	rdb "codeberg.org/azzet/azzetbe/internal/redis"
 	"codeberg.org/azzet/azzetbe/internal/shared"
+	"codeberg.org/azzet/azzetbe/internal/subscription"
 	"codeberg.org/azzet/azzetbe/internal/workspace"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,16 +27,17 @@ import (
 var ErrUserNotFound = errors.New("user not found")
 
 type Service struct {
-	Queries          *db.Queries
-	Pool             *pgxpool.Pool
-	Redis            *rdb.Redis
-	JWT              *shared.JWTService
-	OTP              *shared.OTPService
-	Zenziva          *shared.ZenzivaClient
-	Email            *shared.EmailOTPSender
-	Config           *ServiceConfig
-	EntityService    *entity.Service
-	WorkspaceService *workspace.Service
+	Queries             *db.Queries
+	Pool                *pgxpool.Pool
+	Redis               *rdb.Redis
+	JWT                 *shared.JWTService
+	OTP                 *shared.OTPService
+	Zenziva             *shared.ZenzivaClient
+	Email               *shared.EmailOTPSender
+	Config              *ServiceConfig
+	EntityService       *entity.Service
+	WorkspaceService    *workspace.Service
+	SubscriptionService *subscription.Service
 }
 
 type ServiceConfig struct {
@@ -141,7 +143,17 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 	}
 	personalEntity, err := s.EntityService.CreatePersonalEntity(ctx, user.ID, name)
 	if err == nil {
-		_ = s.WorkspaceService.CreatePersonalWorkspace(ctx, personalEntity.ID)
+		_ = s.WorkspaceService.CreatePersonalWorkspace(ctx, personalEntity.ID, user.ID)
+
+		// Auto-assign free plan to personal workspace (if a free plan exists)
+		if s.SubscriptionService != nil {
+			freePlan, err := s.Queries.GetFreePlan(ctx)
+			if err == nil {
+				_, _ = s.SubscriptionService.Subscribe(ctx, personalEntity.ID.String(), &subscription.SubscribeRequest{
+					PlanID: freePlan.ID.String(),
+				})
+			}
+		}
 	}
 
 	// Emit user.registered event (for audit, notifications, future consumers)
