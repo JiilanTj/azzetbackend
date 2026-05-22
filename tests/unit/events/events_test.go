@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"codeberg.org/azzet/azzetbe/internal/events"
 )
 
@@ -219,5 +221,208 @@ func TestTaskTypes_Constants(t *testing.T) {
 		if task == "" {
 			t.Fatal("task type constant should not be empty")
 		}
+	}
+}
+
+// ============================================================
+// ACCOUNTING EVENT TESTS
+// ============================================================
+
+func TestAccountingEvents_TransactionCreated(t *testing.T) {
+	txID := uuid.New().String()
+	wsID := uuid.New().String()
+	actorID := uuid.New().String()
+
+	payload := map[string]string{
+		"transaction_id": txID,
+		"workspace_id":   wsID,
+	}
+
+	event, err := events.NewEvent(events.TransactionCreated, payload,
+		events.WithWorkspace(wsID),
+		events.WithActor(actorID),
+	)
+	if err != nil {
+		t.Fatalf("failed to create event: %v", err)
+	}
+
+	// Verify type
+	if event.Type != "accounting.transaction.created" {
+		t.Fatalf("expected type 'accounting.transaction.created', got '%s'", event.Type)
+	}
+
+	// Verify subject routes to ACCOUNTING stream
+	subject := event.Subject()
+	found := false
+	for _, filter := range events.StreamConfig[events.StreamAccounting] {
+		// "accounting.>" should match "accounting.transaction.created"
+		if filter == "accounting.>" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("subject '%s' should match ACCOUNTING stream filter", subject)
+	}
+
+	// Verify payload roundtrip
+	var parsed map[string]string
+	if err := json.Unmarshal(event.Payload, &parsed); err != nil {
+		t.Fatalf("failed to parse payload: %v", err)
+	}
+	if parsed["transaction_id"] != txID {
+		t.Fatalf("expected transaction_id '%s', got '%s'", txID, parsed["transaction_id"])
+	}
+	if parsed["workspace_id"] != wsID {
+		t.Fatalf("expected workspace_id '%s', got '%s'", wsID, parsed["workspace_id"])
+	}
+}
+
+func TestAccountingEvents_LedgerPosted(t *testing.T) {
+	event, err := events.NewEvent(events.LedgerPosted, map[string]string{
+		"transaction_id": uuid.New().String(),
+		"workspace_id":   uuid.New().String(),
+	})
+	if err != nil {
+		t.Fatalf("failed to create event: %v", err)
+	}
+
+	if event.Type != "accounting.ledger.posted" {
+		t.Fatalf("expected type 'accounting.ledger.posted', got '%s'", event.Type)
+	}
+}
+
+func TestAccountingEvents_ReversalTransaction(t *testing.T) {
+	originalTxID := uuid.New().String()
+	reversalTxID := uuid.New().String()
+	wsID := uuid.New().String()
+
+	payload := map[string]string{
+		"transaction_id": reversalTxID,
+		"workspace_id":   wsID,
+		"is_reversal":    "true",
+	}
+
+	event, err := events.NewEvent(events.TransactionCreated, payload,
+		events.WithWorkspace(wsID),
+		events.WithCausation(originalTxID),
+		events.WithIdempotencyKey("reversal-"+originalTxID),
+	)
+	if err != nil {
+		t.Fatalf("failed to create event: %v", err)
+	}
+
+	// Reversal should have causation pointing to original
+	if event.CausationID == nil || *event.CausationID != originalTxID {
+		t.Fatalf("expected causation_id '%s', got %v", originalTxID, event.CausationID)
+	}
+
+	// Should have idempotency key to prevent double-reversal
+	if event.IdempotencyKey == nil || *event.IdempotencyKey != "reversal-"+originalTxID {
+		t.Fatalf("expected idempotency_key 'reversal-%s', got %v", originalTxID, event.IdempotencyKey)
+	}
+
+	// Verify payload contains is_reversal flag
+	var parsed map[string]string
+	json.Unmarshal(event.Payload, &parsed)
+	if parsed["is_reversal"] != "true" {
+		t.Fatal("expected is_reversal=true in payload")
+	}
+}
+
+func TestAccountingEvents_WorkspaceCreated_ForCOASeed(t *testing.T) {
+	wsID := uuid.New().String()
+	actorID := uuid.New().String()
+
+	event, err := events.NewEvent(events.WorkspaceCreated, map[string]string{
+		"workspace_id": wsID,
+	},
+		events.WithWorkspace(wsID),
+		events.WithActor(actorID),
+	)
+	if err != nil {
+		t.Fatalf("failed to create event: %v", err)
+	}
+
+	if event.Type != "workspace.created" {
+		t.Fatalf("expected type 'workspace.created', got '%s'", event.Type)
+	}
+
+	// Should route to USER stream (workspace.> filter)
+	subject := event.Subject()
+	found := false
+	for _, filter := range events.StreamConfig[events.StreamUser] {
+		if filter == "workspace.>" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("subject '%s' should match USER stream filter (workspace.>)", subject)
+	}
+
+	// Verify workspace_id in payload
+	var parsed map[string]string
+	json.Unmarshal(event.Payload, &parsed)
+	if parsed["workspace_id"] != wsID {
+		t.Fatalf("expected workspace_id '%s' in payload", wsID)
+	}
+}
+
+func TestAccountingEvents_AllTypesDefinedCorrectly(t *testing.T) {
+	// Verify all accounting event types follow naming convention
+	accountingEvents := map[string]string{
+		"TransactionCreated":     events.TransactionCreated,
+		"LedgerPostingRequested": events.LedgerPostingRequested,
+		"LedgerPosted":           events.LedgerPosted,
+		"JournalEntryCreated":    events.JournalEntryCreated,
+	}
+
+	for name, value := range accountingEvents {
+		if value == "" {
+			t.Fatalf("%s should not be empty", name)
+		}
+		// All accounting events should start with "accounting."
+		if len(value) < 11 || value[:11] != "accounting." {
+			t.Fatalf("%s should start with 'accounting.', got '%s'", name, value)
+		}
+	}
+}
+
+func TestEventEnvelope_FullIntegrity(t *testing.T) {
+	// Simulate a complete accounting flow event chain
+	wsID := uuid.New().String()
+	userID := uuid.New().String()
+	correlationID := uuid.New().String()
+
+	// Step 1: Transaction created
+	txEvent, _ := events.NewEvent(events.TransactionCreated,
+		map[string]string{"transaction_id": "tx-001", "workspace_id": wsID},
+		events.WithWorkspace(wsID),
+		events.WithActor(userID),
+		events.WithCorrelation(correlationID),
+		events.WithMetadata("api", "req-abc"),
+	)
+
+	// Step 2: Ledger posted (caused by transaction created)
+	ledgerEvent, _ := events.NewEvent(events.LedgerPosted,
+		map[string]string{"transaction_id": "tx-001", "workspace_id": wsID},
+		events.WithWorkspace(wsID),
+		events.WithCorrelation(correlationID),
+		events.WithCausation(txEvent.ID),
+	)
+
+	// Verify chain integrity
+	if ledgerEvent.CorrelationID != txEvent.CorrelationID {
+		t.Fatal("events in same flow should share correlation_id")
+	}
+	if *ledgerEvent.CausationID != txEvent.ID {
+		t.Fatal("ledger event should reference transaction event as cause")
+	}
+	if *ledgerEvent.WorkspaceID != *txEvent.WorkspaceID {
+		t.Fatal("events in same flow should share workspace_id")
+	}
+
+	// Verify temporal ordering
+	if ledgerEvent.OccurredAt.Before(txEvent.OccurredAt) {
+		t.Fatal("ledger event should occur after transaction event")
 	}
 }

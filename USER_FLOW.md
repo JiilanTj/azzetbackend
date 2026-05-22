@@ -1424,4 +1424,844 @@ afterResponse: [
 
 ---
 
+## Flow 13: Accounting (Phase 7)
+
+> **Prerequisite:** User sudah punya workspace aktif dengan subscription aktif.
+> COA (Chart of Accounts) otomatis ter-seed saat workspace dibuat.
+
+### Overview: Dari Setup Sampai Laporan
+
+```
+Owner creates workspace
+       │
+       ▼ (auto via workspace.created event)
+COA ter-seed (55+ akun SAK EMKM/ETAP)
+       │
+       ▼
+Owner bootstrap roles + assign permissions
+       │
+       ▼
+Owner invite team members (Kasir, Akuntan, dll)
+       │
+       ▼
+Team mulai kerja:
+  ├── Kasir: buat transaksi (SIMPLE mode)
+  ├── Akuntan: buat transaksi (ADVANCED mode) + lihat laporan
+  └── Owner: semua akses + void transaksi
+       │
+       ▼
+Ledger Worker posting otomatis (async)
+       │
+       ▼
+Laporan keuangan tersedia (Neraca, Laba Rugi, dll)
+```
+
+---
+
+### 13A. Owner Bootstrap: Setup Roles & Permissions
+
+**Page:** `/workspace/settings/roles`
+
+**Context:** Setelah workspace dibuat, Owner perlu setup roles untuk tim.
+
+**Step 1:** Lihat roles yang ada (Owner role sudah auto-created)
+
+```http
+GET /api/v1/workspaces/roles
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "role-uuid-owner",
+      "name": "Owner",
+      "description": "Full access",
+      "permissions": ["*"],
+      "is_system": true,
+      "created_at": "2026-05-20T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Step 2:** Owner buat role "Kasir"
+
+```http
+POST /api/v1/workspaces/roles
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "name": "Kasir",
+  "description": "Bisa buat dan lihat transaksi, tidak bisa void atau lihat laporan",
+  "permissions": [
+    "transaction:create",
+    "transaction:read"
+  ]
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "role-uuid-kasir",
+    "name": "Kasir",
+    "permissions": ["transaction:create", "transaction:read"],
+    "is_system": false,
+    "created_at": "2026-05-20T10:05:00Z"
+  }
+}
+```
+
+**Step 3:** Owner buat role "Akuntan"
+
+```http
+POST /api/v1/workspaces/roles
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "name": "Akuntan",
+  "description": "Full akses transaksi + laporan, bisa void",
+  "permissions": [
+    "transaction:create",
+    "transaction:read",
+    "transaction:void",
+    "report:read",
+    "report:export"
+  ]
+}
+```
+
+**Step 4:** Owner invite Kasir via email
+
+```http
+POST /api/v1/workspaces/invites
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "email": "kasir@example.com",
+  "role_id": "role-uuid-kasir"
+}
+```
+
+**Result:** Email terkirim ke kasir@example.com dengan link invite (expire 24 jam).
+
+**Step 5:** Kasir accept invite (harus sudah login)
+
+```http
+POST /api/v1/workspaces/invites/accept
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "token": "invite-token-from-email"
+}
+```
+
+**Result:** Kasir sekarang punya akses ke workspace dengan role "Kasir".
+
+---
+
+### 13B. Lihat Chart of Accounts (COA)
+
+**Page:** `/workspace/accounts`
+
+**Permission required:** `transaction:read`
+
+```http
+GET /api/v1/accounts
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "acc-uuid-1",
+      "code": "1-0000",
+      "name": "Aset",
+      "account_type": "ASSET",
+      "normal_balance": "DEBIT",
+      "level": 1,
+      "is_system": true,
+      "is_active": true
+    },
+    {
+      "id": "acc-uuid-2",
+      "code": "1-1001",
+      "name": "Kas",
+      "account_type": "ASSET",
+      "normal_balance": "DEBIT",
+      "level": 3,
+      "parent_id": "acc-uuid-parent",
+      "is_system": true,
+      "is_active": true
+    }
+  ]
+}
+```
+
+**Filter by type:**
+```http
+GET /api/v1/accounts?type=EXPENSE
+```
+
+**Owner bisa tambah akun custom:**
+```http
+POST /api/v1/accounts
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "code": "5-1013",
+  "name": "Beban Parkir",
+  "account_type": "EXPENSE",
+  "parent_id": "acc-uuid-beban-operasional"
+}
+```
+
+**Note:** System accounts (is_system=true) tidak bisa diedit/dihapus.
+
+---
+
+### 13C. Manage Items (Produk/Jasa)
+
+**Page:** `/workspace/items`
+
+**Permission required:** `transaction:create` (untuk buat/edit), `transaction:read` (untuk lihat)
+
+**Buat item baru:**
+```http
+POST /api/v1/items
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "name": "Nasi Goreng Spesial",
+  "item_type": "BARANG",
+  "unit": "Pcs",
+  "unit_price": 25000,
+  "description": "Nasi goreng dengan telur dan ayam"
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "item-uuid",
+    "name": "Nasi Goreng Spesial",
+    "item_type": "BARANG",
+    "unit": "Pcs",
+    "unit_price": "25000.00",
+    "description": "Nasi goreng dengan telur dan ayam",
+    "is_active": true,
+    "created_at": "2026-05-20T10:10:00Z"
+  }
+}
+```
+
+**Item types:** `BARANG`, `JASA`, `PROYEK`, `AHSP_RAKITAN`
+
+**Units:** `Pcs`, `Kg`, `Liter`, `Meter`, `M2`, `M3`, `Jam`, `Hari`, `Paket`, `Unit`, `Box`, `Lusin`, `Set`, `Rim`
+
+**List items:**
+```http
+GET /api/v1/items?limit=50&offset=0
+GET /api/v1/items?type=JASA
+```
+
+**Soft-delete item:**
+```http
+DELETE /api/v1/items/<item-id>
+```
+
+---
+
+### 13D. Buat Transaksi — SIMPLE Mode (Kasir-friendly)
+
+**Page:** `/workspace/transactions/new`
+
+**Permission required:** `transaction:create`
+
+**Scenario:** Kasir terima uang Rp 100.000 dari Pak Budi untuk jual nasi goreng.
+
+**Step 1 (Optional):** Minta AI suggestion dulu
+
+```http
+POST /api/v1/transactions/categorize
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "transaction_type": "CASH_IN",
+  "description": "Terima uang dari Pak Budi untuk nasi goreng",
+  "amount": 100000
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "category": "pendapatan_usaha",
+    "confidence": 0.94,
+    "used_fallback": false
+  }
+}
+```
+
+**Frontend:** Tampilkan "Suggested: Pendapatan Usaha (94%)" — user bisa confirm atau override.
+
+**Step 2:** Buat transaksi
+
+```http
+POST /api/v1/transactions
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "transaction_type": "CASH_IN",
+  "input_mode": "SIMPLE",
+  "description": "Terima uang dari Pak Budi untuk nasi goreng",
+  "transaction_date": "2026-05-20",
+  "amount": 100000,
+  "category": "pendapatan_usaha",
+  "counterparty_name": "Pak Budi"
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "tx-uuid",
+    "workspace_id": "ws-uuid",
+    "transaction_number": "TXN-000001",
+    "transaction_type": "CASH_IN",
+    "input_mode": "SIMPLE",
+    "status": "DRAFT",
+    "description": "Terima uang dari Pak Budi untuk nasi goreng",
+    "transaction_date": "2026-05-20",
+    "amount": "100000.00",
+    "currency": "IDR",
+    "category": "pendapatan_usaha",
+    "ai_confidence": 0.94,
+    "counterparty_name": "Pak Budi",
+    "created_by": "user-uuid",
+    "created_at": "2026-05-20T10:15:00Z"
+  }
+}
+```
+
+**Apa yang terjadi di balik layar:**
+1. Rule engine lookup: `CASH_IN` + `pendapatan_usaha` → Debit 1-1001 (Kas), Credit 4-1001 (Pendapatan Usaha)
+2. Journal entries auto-created:
+   - Debit: Kas Rp 100.000
+   - Credit: Pendapatan Usaha Rp 100.000
+3. Status = DRAFT
+4. Event `accounting.transaction.created` emitted ke NATS
+5. Ledger Worker (async) akan posting → status jadi POSTED
+
+**Setelah beberapa detik (async posting):**
+```
+Status: DRAFT → POSTED
+posted_at: "2026-05-20T10:15:02Z"
+```
+
+---
+
+### 13E. Buat Transaksi — CASH_OUT (Bayar Beban)
+
+**Scenario:** Bayar listrik Rp 500.000
+
+```http
+POST /api/v1/transactions
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "transaction_type": "CASH_OUT",
+  "input_mode": "SIMPLE",
+  "description": "Bayar listrik bulan Mei",
+  "transaction_date": "2026-05-20",
+  "amount": 500000,
+  "category": "beban_listrik",
+  "counterparty_name": "PLN"
+}
+```
+
+**Di balik layar:**
+- Debit: 5-1003 (Beban Listrik & Air) Rp 500.000
+- Credit: 1-1001 (Kas) Rp 500.000
+
+---
+
+### 13F. Buat Transaksi — SALES dengan Multi-Item + PPN
+
+**Scenario:** Jual 5 Nasi Goreng @25.000 + 3 Es Teh @8.000 ke PT Maju, kredit (piutang), include PPN 11%.
+
+```http
+POST /api/v1/transactions
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "transaction_type": "SALES",
+  "input_mode": "SIMPLE",
+  "description": "Penjualan catering ke PT Maju",
+  "transaction_date": "2026-05-20",
+  "amount": 149000,
+  "category": "penjualan_barang_kredit",
+  "payment_method": "KREDIT",
+  "includes_tax": true,
+  "counterparty_name": "PT Maju",
+  "line_items": [
+    {
+      "item_id": "item-uuid-nasi-goreng",
+      "description": "Nasi Goreng Spesial",
+      "quantity": 5,
+      "unit": "Pcs",
+      "unit_price": 25000
+    },
+    {
+      "item_id": "item-uuid-es-teh",
+      "description": "Es Teh Manis",
+      "quantity": 3,
+      "unit": "Pcs",
+      "unit_price": 8000
+    }
+  ]
+}
+```
+
+**Di balik layar (auto-generated journal):**
+```
+Debit:  1-1003 Piutang Usaha      Rp 134.234 (base amount = 149000/1.11)
+Credit: 4-1001 Pendapatan Usaha   Rp 134.234
+Debit:  5-3001 HPP                Rp 134.234
+Credit: 1-1004 Persediaan         Rp 134.234
+Debit:  1-1003 Piutang Usaha      Rp  14.766 (PPN 11%)
+Credit: 2-1005 PPN Keluaran       Rp  14.766
+```
+
+---
+
+### 13G. Buat Transaksi — ADVANCED Mode (Akuntan)
+
+**Scenario:** Akuntan mau buat jurnal manual (penyesuaian akhir bulan).
+
+**Permission required:** `transaction:create`
+
+```http
+POST /api/v1/transactions
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "transaction_type": "JOURNAL",
+  "input_mode": "ADVANCED",
+  "description": "Penyesuaian beban penyusutan peralatan bulan Mei",
+  "transaction_date": "2026-05-31",
+  "amount": 500000,
+  "journal_entries": [
+    {
+      "account_code": "5-1008",
+      "description": "Beban Penyusutan",
+      "debit": 500000,
+      "credit": 0
+    },
+    {
+      "account_code": "1-2099",
+      "description": "Akumulasi Penyusutan",
+      "debit": 0,
+      "credit": 500000
+    }
+  ]
+}
+```
+
+**Validasi backend:**
+- sum(debit) HARUS = sum(credit) → 500.000 = 500.000 PASS
+- Semua account_code harus ada di COA workspace ini
+- Kalau tidak balance → 400 "total debit must equal total credit"
+
+---
+
+### 13H. Lihat Detail Transaksi
+
+**Page:** `/workspace/transactions/<id>`
+
+**Permission required:** `transaction:read`
+
+```http
+GET /api/v1/transactions/<tx-uuid>
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "tx-uuid",
+    "transaction_number": "TXN-000001",
+    "transaction_type": "CASH_IN",
+    "input_mode": "SIMPLE",
+    "status": "POSTED",
+    "description": "Terima uang dari Pak Budi untuk nasi goreng",
+    "transaction_date": "2026-05-20",
+    "amount": "100000.00",
+    "currency": "IDR",
+    "category": "pendapatan_usaha",
+    "ai_confidence": 0.94,
+    "counterparty_name": "Pak Budi",
+    "posted_at": "2026-05-20T10:15:02Z",
+    "journal_entries": [
+      {
+        "id": "je-uuid-1",
+        "account_id": "acc-uuid-kas",
+        "account_code": "1-1001",
+        "account_name": "Kas",
+        "debit": "100000.00",
+        "credit": "0.00",
+        "sort_order": 0
+      },
+      {
+        "id": "je-uuid-2",
+        "account_id": "acc-uuid-pendapatan",
+        "account_code": "4-1001",
+        "account_name": "Pendapatan Usaha",
+        "debit": "0.00",
+        "credit": "100000.00",
+        "sort_order": 1
+      }
+    ],
+    "line_items": []
+  }
+}
+```
+
+---
+
+### 13I. List Transaksi
+
+**Page:** `/workspace/transactions`
+
+```http
+GET /api/v1/transactions?limit=50&offset=0
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+---
+
+### 13J. Void Transaksi (Jurnal Pembalik)
+
+**Page:** `/workspace/transactions/<id>` → tombol "Void"
+
+**Permission required:** `transaction:void` (Owner dan Akuntan punya ini, Kasir tidak)
+
+**Scenario:** Transaksi TXN-000001 salah, perlu di-void.
+
+```http
+POST /api/v1/transactions/<tx-uuid>/void
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Validasi:**
+- Transaksi HARUS berstatus `POSTED` (tidak bisa void DRAFT atau yang sudah VOID)
+- User HARUS punya permission `transaction:void`
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "reversal-tx-uuid",
+    "transaction_number": "TXN-000002",
+    "transaction_type": "REVERSAL",
+    "status": "DRAFT",
+    "description": "Jurnal Pembalik: TXN-000001",
+    "amount": "100000.00",
+    "reversed_transaction_id": "tx-uuid-original"
+  }
+}
+```
+
+**Apa yang terjadi:**
+1. Transaksi asli (TXN-000001) di-mark `VOID`
+2. Transaksi baru (TXN-000002) dibuat dengan type `REVERSAL`
+3. Journal entries di-swap (debit↔credit):
+   - Debit: 4-1001 Pendapatan Usaha Rp 100.000
+   - Credit: 1-1001 Kas Rp 100.000
+4. Reversal di-posting async → net effect = 0
+5. Kedua transaksi tetap ada di audit trail selamanya
+
+**Kasir coba void → DITOLAK:**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "insufficient permissions",
+    "domain": "workspace"
+  }
+}
+```
+
+---
+
+### 13K. Laporan Keuangan
+
+**Page:** `/workspace/reports`
+
+**Permission required:** `report:read`
+
+#### Trial Balance (Neraca Saldo)
+
+```http
+GET /api/v1/reports/trial-balance?period_from=2026-01&period_to=2026-05
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "account_id": "acc-uuid",
+      "code": "1-1001",
+      "name": "Kas",
+      "account_type": "ASSET",
+      "normal_balance": "DEBIT",
+      "total_debit": "5000000.00",
+      "total_credit": "2000000.00",
+      "balance": "3000000.00"
+    },
+    {
+      "code": "4-1001",
+      "name": "Pendapatan Usaha",
+      "account_type": "REVENUE",
+      "normal_balance": "CREDIT",
+      "total_debit": "0.00",
+      "total_credit": "5000000.00",
+      "balance": "-5000000.00"
+    }
+  ]
+}
+```
+
+#### Balance Sheet (Neraca)
+
+```http
+GET /api/v1/reports/balance-sheet?period=2026-05
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "assets": [
+      {"code": "1-1001", "name": "Kas", "balance": "3000000.00"},
+      {"code": "1-1003", "name": "Piutang Usaha", "balance": "500000.00"}
+    ],
+    "liabilities": [
+      {"code": "2-1001", "name": "Hutang Usaha", "balance": "-200000.00"}
+    ],
+    "equity": [
+      {"code": "3-1001", "name": "Modal Pemilik", "balance": "-1000000.00"}
+    ],
+    "total_assets": "3500000.00",
+    "total_liabilities": "200000.00",
+    "total_equity": "3300000.00",
+    "is_balanced": true
+  }
+}
+```
+
+#### Income Statement (Laba Rugi)
+
+```http
+GET /api/v1/reports/income-statement?period_from=2026-05&period_to=2026-05
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "revenue": [
+      {"code": "4-1001", "name": "Pendapatan Usaha", "balance": "5000000.00"},
+      {"code": "4-1002", "name": "Pendapatan Jasa", "balance": "1000000.00"}
+    ],
+    "expenses": [
+      {"code": "5-1001", "name": "Beban Gaji & Tunjangan", "balance": "2000000.00"},
+      {"code": "5-1003", "name": "Beban Listrik & Air", "balance": "500000.00"}
+    ],
+    "total_revenue": "6000000.00",
+    "total_expenses": "2500000.00",
+    "net_income": "3500000.00"
+  }
+}
+```
+
+#### Cash Flow (Arus Kas)
+
+```http
+GET /api/v1/reports/cash-flow?date_from=2026-05-01&date_to=2026-05-31
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {"date": "2026-05-01", "total_debit": "1000000.00", "total_credit": "200000.00", "net_flow": "800000.00"},
+    {"date": "2026-05-02", "total_debit": "500000.00", "total_credit": "1500000.00", "net_flow": "-1000000.00"}
+  ]
+}
+```
+
+#### General Ledger / Buku Besar (per akun)
+
+```http
+GET /api/v1/reports/ledger/<account-uuid>?limit=50&offset=0
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "ledger-uuid",
+      "transaction_number": "TXN-000001",
+      "tx_description": "Terima uang dari Pak Budi",
+      "transaction_date": "2026-05-20",
+      "debit": "100000.00",
+      "credit": "0.00",
+      "running_balance": "100000.00",
+      "posted_at": "2026-05-20T10:15:02Z"
+    },
+    {
+      "id": "ledger-uuid-2",
+      "transaction_number": "TXN-000003",
+      "tx_description": "Bayar listrik",
+      "transaction_date": "2026-05-20",
+      "debit": "0.00",
+      "credit": "500000.00",
+      "running_balance": "-400000.00",
+      "posted_at": "2026-05-20T11:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### 13L. Permission Matrix (Siapa Bisa Apa)
+
+| Action | Owner | Akuntan | Kasir |
+|--------|-------|---------|-------|
+| Lihat COA | Yes | Yes | Yes |
+| Tambah akun custom | Yes | Yes | No |
+| Buat item | Yes | Yes | Yes |
+| Buat transaksi (SIMPLE) | Yes | Yes | Yes |
+| Buat transaksi (ADVANCED/JOURNAL) | Yes | Yes | Yes |
+| Lihat transaksi | Yes | Yes | Yes |
+| Void transaksi | Yes | Yes | **No** |
+| Lihat laporan | Yes | Yes | **No** |
+| Export laporan | Yes | Yes | **No** |
+| Invite member | Yes | No | No |
+| Manage roles | Yes | No | No |
+
+**Permission keys yang dipakai:**
+```
+transaction:create  → buat/edit transaksi + items + akun custom
+transaction:read    → lihat transaksi + items + COA
+transaction:void    → void transaksi (jurnal pembalik)
+report:read         → lihat semua laporan keuangan
+report:export       → export laporan (future)
+member:invite       → invite member baru
+role:create/update/delete/assign → manage roles
+```
+
+---
+
+### 13M. Transaction Status Lifecycle
+
+```
+                    ┌─────────────────────────────────────┐
+                    │                                     │
+User creates  ──►  DRAFT  ──► (Ledger Worker) ──►  POSTED
+                    │                                     │
+                    │ (validation fail)                   │ (void request)
+                    ▼                                     ▼
+                  FAILED                                VOID
+                                                         │
+                                                         ▼
+                                              New REVERSAL transaction
+                                              (DRAFT → POSTED)
+```
+
+- **DRAFT:** Baru dibuat, belum di-posting ke ledger
+- **POSTED:** Sudah di-posting, mempengaruhi saldo akun
+- **VOID:** Di-void via jurnal pembalik, efek net = 0
+- **FAILED:** Gagal posting (debit != credit, akun tidak ditemukan, dll)
+
+---
+
+### 13N. AI Categorization — Kapan Dipanggil
+
+| Kondisi | AI Dipanggil? | Alasan |
+|---------|---------------|--------|
+| SIMPLE mode, category kosong | **Ya** | AI suggest category |
+| SIMPLE mode, category diisi user | Tidak | User sudah pilih sendiri |
+| ADVANCED mode | Tidak | User manual input journal |
+| JOURNAL type | Tidak | Tidak butuh category |
+| Endpoint `/categorize` | **Ya** | User minta suggestion eksplisit |
+
+**Security:** AI hanya terima description + amount + type. Tidak ada data tenant, financials, atau info sensitif yang dikirim ke OpenAI.
+
+---
+
 **Last Updated:** 2026-05-22

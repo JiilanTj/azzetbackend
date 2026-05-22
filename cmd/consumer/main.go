@@ -9,8 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/google/uuid"
+
+	"codeberg.org/azzet/azzetbe/internal/accounting"
 	"codeberg.org/azzet/azzetbe/internal/config"
 	"codeberg.org/azzet/azzetbe/internal/database"
+	dbpkg "codeberg.org/azzet/azzetbe/internal/db"
 	"codeberg.org/azzet/azzetbe/internal/events"
 	"codeberg.org/azzet/azzetbe/internal/shared"
 )
@@ -61,37 +65,74 @@ func main() {
 	// Create consumer base
 	consumer := events.NewConsumer(db.Pool, natsClient)
 
+	// --- Services for workers ---
+	queries := dbpkg.New(db.Pool)
+	ledgerWorker := accounting.NewLedgerWorker(queries, db.Pool)
+	coaService := accounting.NewCOAService(queries, db.Pool)
+
 	// --- Register Event Handlers ---
 
-	// User stream: handle user.registered (audit + future use)
-	// Entity + workspace are created synchronously during registration.
-	// This consumer handles additional async tasks (e.g., welcome email, analytics)
+	// User stream: handle user.registered + workspace.created
 	_, err = natsClient.Subscribe(ctx, events.StreamUser, "user-entity-worker",
 		consumer.HandleWithIdempotency("user-entity-worker", func(ctx context.Context, event *events.Event) error {
-			if event.Type != events.UserRegistered {
+			switch event.Type {
+			case events.UserRegistered:
+				var payload struct {
+					UserID string `json:"user_id"`
+					Name   string `json:"name"`
+				}
+				if err := json.Unmarshal(event.Payload, &payload); err != nil {
+					return fmt.Errorf("failed to parse user.registered payload: %w", err)
+				}
+
+				slog.Info("user-entity-worker: user registered event received",
+					"user_id", payload.UserID,
+					"name", payload.Name,
+				)
+
+				// Entity + workspace already created synchronously during registration.
+				// This handler is for future async tasks:
+				// - Send welcome email (via Asynq)
+				// - Track analytics
+				// - Notify admin of new signup
+				return nil
+
+			case events.WorkspaceCreated:
+				var payload struct {
+					WorkspaceID string `json:"workspace_id"`
+				}
+				if err := json.Unmarshal(event.Payload, &payload); err != nil {
+					return fmt.Errorf("failed to parse workspace.created payload: %w", err)
+				}
+
+				slog.Info("user-entity-worker: workspace created, seeding COA",
+					"workspace_id", payload.WorkspaceID,
+				)
+
+				wsID, err := parseUUID(payload.WorkspaceID)
+				if err != nil {
+					return fmt.Errorf("invalid workspace_id: %w", err)
+				}
+
+				if err := coaService.SeedDefaultCOA(ctx, wsID); err != nil {
+					// If already seeded, that's fine
+					if err == accounting.ErrCOAAlreadySeeded {
+						slog.Info("user-entity-worker: COA already seeded, skipping",
+							"workspace_id", payload.WorkspaceID,
+						)
+						return nil
+					}
+					return fmt.Errorf("failed to seed COA: %w", err)
+				}
+
+				slog.Info("user-entity-worker: COA seeded successfully",
+					"workspace_id", payload.WorkspaceID,
+				)
+				return nil
+
+			default:
 				return nil
 			}
-
-			var payload struct {
-				UserID string `json:"user_id"`
-				Name   string `json:"name"`
-			}
-			if err := json.Unmarshal(event.Payload, &payload); err != nil {
-				return fmt.Errorf("failed to parse user.registered payload: %w", err)
-			}
-
-			slog.Info("user-entity-worker: user registered event received",
-				"user_id", payload.UserID,
-				"name", payload.Name,
-			)
-
-			// Entity + workspace already created synchronously during registration.
-			// This handler is for future async tasks:
-			// - Send welcome email (via Asynq)
-			// - Track analytics
-			// - Notify admin of new signup
-
-			return nil
 		}),
 	)
 	if err != nil {
@@ -102,9 +143,10 @@ func main() {
 	// Accounting stream: ledger posting
 	_, err = natsClient.Subscribe(ctx, events.StreamAccounting, "ledger-worker",
 		consumer.HandleWithIdempotency("ledger-worker", func(ctx context.Context, event *events.Event) error {
-			slog.Info("ledger-worker: processing event", "type", event.Type, "id", event.ID)
-			// TODO: Implement ledger posting logic in Phase 7
-			return nil
+			if event.Type != events.TransactionCreated {
+				return nil
+			}
+			return ledgerWorker.HandleTransactionCreated(ctx, event)
 		}),
 	)
 	if err != nil {
@@ -174,4 +216,8 @@ func main() {
 	slog.Info("shutting down consumer...")
 	cancel()
 	slog.Info("consumer stopped")
+}
+
+func parseUUID(s string) (uuid.UUID, error) {
+	return uuid.Parse(s)
 }

@@ -5,14 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"codeberg.org/azzet/azzetbe/internal/db"
 	"codeberg.org/azzet/azzetbe/internal/entity"
+	"codeberg.org/azzet/azzetbe/internal/events"
 )
 
 var ErrWorkspaceNotFound = errors.New("workspace not found")
@@ -21,6 +24,7 @@ var ErrRelationExists = errors.New("relation already exists")
 
 type Service struct {
 	Queries       *db.Queries
+	Pool          *pgxpool.Pool
 	EntityService *entity.Service
 }
 
@@ -86,6 +90,15 @@ func (s *Service) CreateWorkspace(ctx context.Context, userID string, req *Creat
 	// Bootstrap system "Owner" role with wildcard permissions
 	_ = s.bootstrapOwnerRole(ctx, entityID, uid, now)
 
+	// Emit workspace.created event for COA seeding
+	if s.Pool != nil {
+		if err := events.EmitEventDirect(ctx, s.Pool, events.WorkspaceCreated, map[string]string{
+			"workspace_id": entityID.String(),
+		}, events.WithWorkspace(entityID.String()), events.WithActor(uid.String())); err != nil {
+			slog.Warn("failed to emit workspace.created event", "error", err, "workspace_id", entityID.String())
+		}
+	}
+
 	return &WorkspaceResponse{
 		ID:         rel.ID.String(),
 		EntityID:   entityID.String(),
@@ -114,6 +127,15 @@ func (s *Service) CreatePersonalWorkspace(ctx context.Context, personalEntityID 
 
 	// Bootstrap system "Owner" role with wildcard permissions
 	_ = s.bootstrapOwnerRole(ctx, personalEntityID, userID, now)
+
+	// Emit workspace.created event for COA seeding
+	if s.Pool != nil {
+		if err := events.EmitEventDirect(ctx, s.Pool, events.WorkspaceCreated, map[string]string{
+			"workspace_id": personalEntityID.String(),
+		}, events.WithWorkspace(personalEntityID.String()), events.WithActor(userID.String())); err != nil {
+			slog.Warn("failed to emit workspace.created event", "error", err, "workspace_id", personalEntityID.String())
+		}
+	}
 
 	return nil
 }

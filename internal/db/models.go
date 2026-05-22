@@ -12,6 +12,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Account struct {
+	ID            uuid.UUID   `json:"id"`
+	WorkspaceID   uuid.UUID   `json:"workspace_id"`
+	ParentID      pgtype.UUID `json:"parent_id"`
+	Code          string      `json:"code"`
+	Name          string      `json:"name"`
+	AccountType   string      `json:"account_type"`
+	NormalBalance string      `json:"normal_balance"`
+	Level         int32       `json:"level"`
+	IsSystem      bool        `json:"is_system"`
+	IsActive      bool        `json:"is_active"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+}
+
+type AccountBalance struct {
+	WorkspaceID      uuid.UUID      `json:"workspace_id"`
+	AccountID        uuid.UUID      `json:"account_id"`
+	Period           string         `json:"period"`
+	TotalDebit       pgtype.Numeric `json:"total_debit"`
+	TotalCredit      pgtype.Numeric `json:"total_credit"`
+	EndingBalance    pgtype.Numeric `json:"ending_balance"`
+	TransactionCount int32          `json:"transaction_count"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+}
+
 type AuditLog struct {
 	ID           uuid.UUID   `json:"id"`
 	UserID       pgtype.UUID `json:"user_id"`
@@ -81,6 +107,45 @@ type Invoice struct {
 	PaidAt         *time.Time     `json:"paid_at"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
+}
+
+type Item struct {
+	ID          uuid.UUID      `json:"id"`
+	WorkspaceID uuid.UUID      `json:"workspace_id"`
+	Name        string         `json:"name"`
+	ItemType    string         `json:"item_type"`
+	Unit        string         `json:"unit"`
+	UnitPrice   pgtype.Numeric `json:"unit_price"`
+	AccountID   pgtype.UUID    `json:"account_id"`
+	Description pgtype.Text    `json:"description"`
+	IsActive    bool           `json:"is_active"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+}
+
+type JournalEntry struct {
+	ID            uuid.UUID      `json:"id"`
+	TransactionID uuid.UUID      `json:"transaction_id"`
+	WorkspaceID   uuid.UUID      `json:"workspace_id"`
+	AccountID     uuid.UUID      `json:"account_id"`
+	Description   pgtype.Text    `json:"description"`
+	Debit         pgtype.Numeric `json:"debit"`
+	Credit        pgtype.Numeric `json:"credit"`
+	SortOrder     int32          `json:"sort_order"`
+	CreatedAt     time.Time      `json:"created_at"`
+}
+
+type LedgerEntry struct {
+	ID              uuid.UUID      `json:"id"`
+	WorkspaceID     uuid.UUID      `json:"workspace_id"`
+	AccountID       uuid.UUID      `json:"account_id"`
+	JournalEntryID  uuid.UUID      `json:"journal_entry_id"`
+	TransactionID   uuid.UUID      `json:"transaction_id"`
+	TransactionDate pgtype.Date    `json:"transaction_date"`
+	Debit           pgtype.Numeric `json:"debit"`
+	Credit          pgtype.Numeric `json:"credit"`
+	RunningBalance  pgtype.Numeric `json:"running_balance"`
+	PostedAt        time.Time      `json:"posted_at"`
 }
 
 type OtpCode struct {
@@ -212,6 +277,48 @@ type TenantUsage struct {
 	PeriodEnd   time.Time `json:"period_end"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type Transaction struct {
+	ID                    uuid.UUID      `json:"id"`
+	WorkspaceID           uuid.UUID      `json:"workspace_id"`
+	TransactionNumber     string         `json:"transaction_number"`
+	TransactionType       string         `json:"transaction_type"`
+	InputMode             string         `json:"input_mode"`
+	Status                string         `json:"status"`
+	CounterpartyEntityID  pgtype.UUID    `json:"counterparty_entity_id"`
+	CounterpartyName      pgtype.Text    `json:"counterparty_name"`
+	Description           pgtype.Text    `json:"description"`
+	TransactionDate       pgtype.Date    `json:"transaction_date"`
+	Amount                pgtype.Numeric `json:"amount"`
+	Currency              string         `json:"currency"`
+	Category              pgtype.Text    `json:"category"`
+	AiConfidence          pgtype.Numeric `json:"ai_confidence"`
+	PaymentMethod         pgtype.Text    `json:"payment_method"`
+	IncludesTax           bool           `json:"includes_tax"`
+	TaxAmount             pgtype.Numeric `json:"tax_amount"`
+	ReversedTransactionID pgtype.UUID    `json:"reversed_transaction_id"`
+	CreatedBy             uuid.UUID      `json:"created_by"`
+	PostedAt              *time.Time     `json:"posted_at"`
+	VoidedAt              *time.Time     `json:"voided_at"`
+	CreatedAt             time.Time      `json:"created_at"`
+	UpdatedAt             time.Time      `json:"updated_at"`
+}
+
+type TransactionLineItem struct {
+	ID             uuid.UUID      `json:"id"`
+	TransactionID  uuid.UUID      `json:"transaction_id"`
+	WorkspaceID    uuid.UUID      `json:"workspace_id"`
+	ItemID         pgtype.UUID    `json:"item_id"`
+	Description    string         `json:"description"`
+	Quantity       pgtype.Numeric `json:"quantity"`
+	Unit           string         `json:"unit"`
+	UnitPrice      pgtype.Numeric `json:"unit_price"`
+	DiscountAmount pgtype.Numeric `json:"discount_amount"`
+	TaxAmount      pgtype.Numeric `json:"tax_amount"`
+	LineTotal      pgtype.Numeric `json:"line_total"`
+	SortOrder      int32          `json:"sort_order"`
+	CreatedAt      time.Time      `json:"created_at"`
 }
 
 type User struct {

@@ -36,7 +36,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -44,7 +44,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse"
+                                                "$ref": "#/definitions/admin.AdminResponse"
                                             }
                                         }
                                     }
@@ -55,13 +55,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -90,7 +90,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.InviteAdminRequest"
+                            "$ref": "#/definitions/admin.InviteAdminRequest"
                         }
                     }
                 ],
@@ -100,13 +100,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse"
+                                            "$ref": "#/definitions/admin.AdminResponse"
                                         }
                                     }
                                 }
@@ -116,19 +116,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -164,13 +164,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse"
+                                            "$ref": "#/definitions/admin.MessageResponse"
                                         }
                                     }
                                 }
@@ -180,19 +180,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -228,7 +228,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.UpdateAdminRequest"
+                            "$ref": "#/definitions/admin.UpdateAdminRequest"
                         }
                     }
                 ],
@@ -238,13 +238,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse"
+                                            "$ref": "#/definitions/admin.MessageResponse"
                                         }
                                     }
                                 }
@@ -254,19 +254,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -292,7 +292,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.LoginRequest"
+                            "$ref": "#/definitions/admin.LoginRequest"
                         }
                     }
                 ],
@@ -302,13 +302,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.LoginResponse"
+                                            "$ref": "#/definitions/admin.LoginResponse"
                                         }
                                     }
                                 }
@@ -318,7 +318,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -345,13 +345,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse"
+                                            "$ref": "#/definitions/admin.MessageResponse"
                                         }
                                     }
                                 }
@@ -361,7 +361,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -388,13 +388,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse"
+                                            "$ref": "#/definitions/admin.AdminResponse"
                                         }
                                     }
                                 }
@@ -404,7 +404,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -435,7 +435,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFASetupConfirmRequest"
+                            "$ref": "#/definitions/admin.MFASetupConfirmRequest"
                         }
                     }
                 ],
@@ -445,13 +445,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse"
+                                            "$ref": "#/definitions/admin.AuthResponse"
                                         }
                                     }
                                 }
@@ -467,13 +467,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -500,13 +500,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFASetupResponse"
+                                            "$ref": "#/definitions/admin.MFASetupResponse"
                                         }
                                     }
                                 }
@@ -516,13 +516,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -548,7 +548,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFAVerifyRequest"
+                            "$ref": "#/definitions/admin.MFAVerifyRequest"
                         }
                     }
                 ],
@@ -558,13 +558,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse"
+                                            "$ref": "#/definitions/admin.AuthResponse"
                                         }
                                     }
                                 }
@@ -580,7 +580,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -602,13 +602,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse"
+                                            "$ref": "#/definitions/admin.AuthResponse"
                                         }
                                     }
                                 }
@@ -624,7 +624,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -665,7 +665,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -673,7 +673,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse"
+                                                "$ref": "#/definitions/billing.InvoiceResponse"
                                             }
                                         }
                                     }
@@ -684,13 +684,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -717,7 +717,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -725,7 +725,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse"
+                                                "$ref": "#/definitions/plan.PlanResponse"
                                             }
                                         }
                                     }
@@ -736,13 +736,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -771,7 +771,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.CreatePlanRequest"
+                            "$ref": "#/definitions/plan.CreatePlanRequest"
                         }
                     }
                 ],
@@ -781,13 +781,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse"
+                                            "$ref": "#/definitions/plan.PlanResponse"
                                         }
                                     }
                                 }
@@ -797,7 +797,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -833,13 +833,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse"
+                                            "$ref": "#/definitions/plan.PlanResponse"
                                         }
                                     }
                                 }
@@ -849,7 +849,7 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -883,13 +883,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse"
+                                            "$ref": "#/definitions/plan.MessageResponse"
                                         }
                                     }
                                 }
@@ -899,7 +899,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -935,7 +935,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.UpdatePlanRequest"
+                            "$ref": "#/definitions/plan.UpdatePlanRequest"
                         }
                     }
                 ],
@@ -945,13 +945,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse"
+                                            "$ref": "#/definitions/plan.MessageResponse"
                                         }
                                     }
                                 }
@@ -961,13 +961,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1005,7 +1005,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.SetFeatureRequest"
+                            "$ref": "#/definitions/plan.SetFeatureRequest"
                         }
                     }
                 ],
@@ -1015,13 +1015,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse"
+                                            "$ref": "#/definitions/plan.FeatureResponse"
                                         }
                                     }
                                 }
@@ -1031,13 +1031,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1080,13 +1080,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse"
+                                            "$ref": "#/definitions/plan.MessageResponse"
                                         }
                                     }
                                 }
@@ -1096,7 +1096,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1137,7 +1137,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1145,7 +1145,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse"
+                                                "$ref": "#/definitions/subscription.SubscriptionResponse"
                                             }
                                         }
                                     }
@@ -1156,13 +1156,1067 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts": {
+            "get": {
+                "description": "Returns all active accounts for the workspace",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "List chart of accounts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "ASSET",
+                            "LIABILITY",
+                            "EQUITY",
+                            "REVENUE",
+                            "EXPENSE"
+                        ],
+                        "type": "string",
+                        "description": "Filter by account type",
+                        "name": "type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/accounting.AccountResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "Create a custom account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Account data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/accounting.CreateAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/accounting.AccountResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "Get account by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/accounting.AccountResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "Update a custom account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/accounting.UpdateAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/items": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "List items",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "BARANG",
+                            "JASA",
+                            "PROYEK",
+                            "AHSP_RAKITAN"
+                        ],
+                        "type": "string",
+                        "description": "Filter by item type",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/accounting.ItemResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "Create an item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Item data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/accounting.CreateItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/accounting.ItemResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/items/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "Get item by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Item ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/accounting.ItemResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "Soft-delete an item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Item ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "Update an item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Item ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/accounting.UpdateItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/balance-sheet": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Get Balance Sheet (Neraca)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"2026-05\"",
+                        "description": "Period up to (YYYY-MM)",
+                        "name": "period",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/accounting.BalanceSheetReport"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/cash-flow": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Get Cash Flow (Arus Kas)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Date from (YYYY-MM-DD)",
+                        "name": "date_from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Date to (YYYY-MM-DD)",
+                        "name": "date_to",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/accounting.CashFlowEntry"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/income-statement": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Get Income Statement (Laba Rugi)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Period from (YYYY-MM)",
+                        "name": "period_from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Period to (YYYY-MM)",
+                        "name": "period_to",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/accounting.IncomeStatementReport"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/ledger/{account_id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Get General Ledger (Buku Besar) for an account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Account ID",
+                        "name": "account_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/accounting.LedgerEntryResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/trial-balance": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Get Trial Balance (Neraca Saldo)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"2026-01\"",
+                        "description": "Period from (YYYY-MM)",
+                        "name": "period_from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"2026-05\"",
+                        "description": "Period to (YYYY-MM)",
+                        "name": "period_to",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/accounting.TrialBalanceEntry"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transactions": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "List transactions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/accounting.TransactionResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a transaction with auto-generated journal entries (SIMPLE mode) or manual entries (ADVANCED mode)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "Create a transaction",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Transaction data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/accounting.CreateTransactionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/accounting.TransactionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transactions/categorize": {
+            "post": {
+                "description": "Suggests a category for a transaction based on description. Strict whitelist enforced.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "AI-powered transaction categorization",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Categorization input",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/accounting.CategorizationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/accounting.CategorizationResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transactions/{id}": {
+            "get": {
+                "description": "Returns transaction with journal entries and line items",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "Get transaction by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Transaction ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/accounting.TransactionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/transactions/{id}/void": {
+            "post": {
+                "description": "Creates a reversal transaction that swaps debit/credit. Original is marked VOID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounting"
+                ],
+                "summary": "Void a posted transaction (Jurnal Pembalik)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Transaction ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/shared.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/accounting.TransactionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/shared.APIResponse"
                         }
                     }
                 }
@@ -1188,7 +2242,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.LoginEmailRequest"
+                            "$ref": "#/definitions/auth.LoginEmailRequest"
                         }
                     }
                 ],
@@ -1198,13 +2252,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.AuthResponse"
+                                            "$ref": "#/definitions/auth.AuthResponse"
                                         }
                                     }
                                 }
@@ -1220,13 +2274,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1252,7 +2306,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.LoginOTPRequest"
+                            "$ref": "#/definitions/auth.LoginOTPRequest"
                         }
                     }
                 ],
@@ -1262,13 +2316,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.AuthResponse"
+                                            "$ref": "#/definitions/auth.AuthResponse"
                                         }
                                     }
                                 }
@@ -1284,13 +2338,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1317,13 +2371,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse"
+                                            "$ref": "#/definitions/auth.MessageResponse"
                                         }
                                     }
                                 }
@@ -1333,13 +2387,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1366,13 +2420,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse"
+                                            "$ref": "#/definitions/auth.MessageResponse"
                                         }
                                     }
                                 }
@@ -1382,13 +2436,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1415,13 +2469,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.UserResponse"
+                                            "$ref": "#/definitions/auth.UserResponse"
                                         }
                                     }
                                 }
@@ -1431,13 +2485,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1463,7 +2517,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.RequestOTPRequest"
+                            "$ref": "#/definitions/auth.RequestOTPRequest"
                         }
                     }
                 ],
@@ -1473,13 +2527,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse"
+                                            "$ref": "#/definitions/auth.MessageResponse"
                                         }
                                     }
                                 }
@@ -1489,7 +2543,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1520,7 +2574,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.ChangePasswordRequest"
+                            "$ref": "#/definitions/auth.ChangePasswordRequest"
                         }
                     }
                 ],
@@ -1530,13 +2584,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse"
+                                            "$ref": "#/definitions/auth.MessageResponse"
                                         }
                                     }
                                 }
@@ -1546,13 +2600,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1578,7 +2632,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.ResetPasswordRequest"
+                            "$ref": "#/definitions/auth.ResetPasswordRequest"
                         }
                     }
                 ],
@@ -1588,13 +2642,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse"
+                                            "$ref": "#/definitions/auth.MessageResponse"
                                         }
                                     }
                                 }
@@ -1604,7 +2658,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1626,13 +2680,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.AuthResponse"
+                                            "$ref": "#/definitions/auth.AuthResponse"
                                         }
                                     }
                                 }
@@ -1648,7 +2702,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1674,7 +2728,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.RegisterRequest"
+                            "$ref": "#/definitions/auth.RegisterRequest"
                         }
                     }
                 ],
@@ -1684,13 +2738,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.RegisterResponse"
+                                            "$ref": "#/definitions/auth.RegisterResponse"
                                         }
                                     }
                                 }
@@ -1700,7 +2754,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1727,7 +2781,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1735,7 +2789,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.SessionResponse"
+                                                "$ref": "#/definitions/auth.SessionResponse"
                                             }
                                         }
                                     }
@@ -1746,13 +2800,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1788,13 +2842,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse"
+                                            "$ref": "#/definitions/auth.MessageResponse"
                                         }
                                     }
                                 }
@@ -1804,13 +2858,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1836,7 +2890,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.VerifyOTPRequest"
+                            "$ref": "#/definitions/auth.VerifyOTPRequest"
                         }
                     }
                 ],
@@ -1846,13 +2900,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse"
+                                            "$ref": "#/definitions/auth.MessageResponse"
                                         }
                                     }
                                 }
@@ -1862,7 +2916,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1910,7 +2964,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1918,7 +2972,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse"
+                                                "$ref": "#/definitions/billing.InvoiceResponse"
                                             }
                                         }
                                     }
@@ -1929,7 +2983,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -1972,13 +3026,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse"
+                                            "$ref": "#/definitions/billing.InvoiceResponse"
                                         }
                                     }
                                 }
@@ -1988,7 +3042,7 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2026,7 +3080,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_billing.CreatePaymentRequest"
+                            "$ref": "#/definitions/billing.CreatePaymentRequest"
                         }
                     }
                 ],
@@ -2036,13 +3090,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_billing.PaymentResponse"
+                                            "$ref": "#/definitions/billing.PaymentResponse"
                                         }
                                     }
                                 }
@@ -2052,7 +3106,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2100,7 +3154,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2108,7 +3162,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_billing.PaymentResponse"
+                                                "$ref": "#/definitions/billing.PaymentResponse"
                                             }
                                         }
                                     }
@@ -2119,7 +3173,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2146,7 +3200,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2154,7 +3208,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse"
+                                                "$ref": "#/definitions/entity.EntityResponse"
                                             }
                                         }
                                     }
@@ -2165,7 +3219,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2194,7 +3248,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_entity.CreateEntityRequest"
+                            "$ref": "#/definitions/entity.CreateEntityRequest"
                         }
                     }
                 ],
@@ -2204,13 +3258,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse"
+                                            "$ref": "#/definitions/entity.EntityResponse"
                                         }
                                     }
                                 }
@@ -2220,13 +3274,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2274,7 +3328,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2282,7 +3336,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse"
+                                                "$ref": "#/definitions/entity.EntityResponse"
                                             }
                                         }
                                     }
@@ -2293,7 +3347,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2329,13 +3383,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse"
+                                            "$ref": "#/definitions/entity.EntityResponse"
                                         }
                                     }
                                 }
@@ -2345,7 +3399,7 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2381,7 +3435,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityRequest"
+                            "$ref": "#/definitions/entity.UpdateEntityRequest"
                         }
                     }
                 ],
@@ -2391,13 +3445,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_entity.MessageResponse"
+                                            "$ref": "#/definitions/entity.MessageResponse"
                                         }
                                     }
                                 }
@@ -2407,13 +3461,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2451,7 +3505,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityMetaRequest"
+                            "$ref": "#/definitions/entity.UpdateEntityMetaRequest"
                         }
                     }
                 ],
@@ -2461,13 +3515,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_entity.MessageResponse"
+                                            "$ref": "#/definitions/entity.MessageResponse"
                                         }
                                     }
                                 }
@@ -2477,13 +3531,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2505,7 +3559,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2513,7 +3567,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse"
+                                                "$ref": "#/definitions/plan.PlanListResponse"
                                             }
                                         }
                                     }
@@ -2549,13 +3603,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse"
+                                            "$ref": "#/definitions/plan.PlanResponse"
                                         }
                                     }
                                 }
@@ -2565,7 +3619,7 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2601,13 +3655,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse"
+                                            "$ref": "#/definitions/subscription.SubscriptionResponse"
                                         }
                                     }
                                 }
@@ -2617,13 +3671,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2659,7 +3713,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest"
+                            "$ref": "#/definitions/subscription.SubscribeRequest"
                         }
                     }
                 ],
@@ -2669,13 +3723,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse"
+                                            "$ref": "#/definitions/subscription.SubscriptionResponse"
                                         }
                                     }
                                 }
@@ -2685,19 +3739,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2733,13 +3787,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.MessageResponse"
+                                            "$ref": "#/definitions/subscription.MessageResponse"
                                         }
                                     }
                                 }
@@ -2749,13 +3803,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2793,7 +3847,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest"
+                            "$ref": "#/definitions/subscription.SubscribeRequest"
                         }
                     }
                 ],
@@ -2803,13 +3857,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse"
+                                            "$ref": "#/definitions/subscription.SubscriptionResponse"
                                         }
                                     }
                                 }
@@ -2819,13 +3873,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2861,7 +3915,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2869,7 +3923,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse"
+                                                "$ref": "#/definitions/subscription.SubscriptionResponse"
                                             }
                                         }
                                     }
@@ -2880,7 +3934,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2916,7 +3970,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2924,7 +3978,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.UsageResponse"
+                                                "$ref": "#/definitions/subscription.UsageResponse"
                                             }
                                         }
                                     }
@@ -2935,13 +3989,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -2975,13 +4029,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_billing.MessageResponse"
+                                            "$ref": "#/definitions/billing.MessageResponse"
                                         }
                                     }
                                 }
@@ -2991,13 +4045,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3024,7 +4078,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3032,7 +4086,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.WorkspaceResponse"
+                                                "$ref": "#/definitions/workspace.WorkspaceResponse"
                                             }
                                         }
                                     }
@@ -3043,7 +4097,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3072,7 +4126,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateWorkspaceRequest"
+                            "$ref": "#/definitions/workspace.CreateWorkspaceRequest"
                         }
                     }
                 ],
@@ -3082,13 +4136,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.WorkspaceResponse"
+                                            "$ref": "#/definitions/workspace.WorkspaceResponse"
                                         }
                                     }
                                 }
@@ -3098,13 +4152,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3140,7 +4194,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3148,7 +4202,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse"
+                                                "$ref": "#/definitions/workspace.CounterpartyResponse"
                                             }
                                         }
                                     }
@@ -3159,13 +4213,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3201,7 +4255,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AddCounterpartyRequest"
+                            "$ref": "#/definitions/workspace.AddCounterpartyRequest"
                         }
                     }
                 ],
@@ -3211,13 +4265,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse"
+                                            "$ref": "#/definitions/workspace.CounterpartyResponse"
                                         }
                                     }
                                 }
@@ -3227,19 +4281,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3275,7 +4329,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3283,7 +4337,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse"
+                                                "$ref": "#/definitions/workspace.InviteResponse"
                                             }
                                         }
                                     }
@@ -3294,7 +4348,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3330,7 +4384,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateInviteRequest"
+                            "$ref": "#/definitions/workspace.CreateInviteRequest"
                         }
                     }
                 ],
@@ -3340,13 +4394,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse"
+                                            "$ref": "#/definitions/workspace.InviteResponse"
                                         }
                                     }
                                 }
@@ -3356,7 +4410,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3387,7 +4441,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AcceptInviteRequest"
+                            "$ref": "#/definitions/workspace.AcceptInviteRequest"
                         }
                     }
                 ],
@@ -3397,13 +4451,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                            "$ref": "#/definitions/workspace.MessageResponse"
                                         }
                                     }
                                 }
@@ -3413,7 +4467,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3456,13 +4510,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                            "$ref": "#/definitions/workspace.MessageResponse"
                                         }
                                     }
                                 }
@@ -3472,7 +4526,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3508,7 +4562,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3516,7 +4570,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MemberResponse"
+                                                "$ref": "#/definitions/workspace.MemberResponse"
                                             }
                                         }
                                     }
@@ -3527,13 +4581,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3576,13 +4630,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                            "$ref": "#/definitions/workspace.MessageResponse"
                                         }
                                     }
                                 }
@@ -3592,19 +4646,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3647,7 +4701,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.UpdateMemberRequest"
+                            "$ref": "#/definitions/workspace.UpdateMemberRequest"
                         }
                     }
                 ],
@@ -3657,13 +4711,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                            "$ref": "#/definitions/workspace.MessageResponse"
                                         }
                                     }
                                 }
@@ -3673,19 +4727,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3721,7 +4775,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3729,7 +4783,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse"
+                                                "$ref": "#/definitions/workspace.RoleResponse"
                                             }
                                         }
                                     }
@@ -3770,7 +4824,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateRoleRequest"
+                            "$ref": "#/definitions/workspace.CreateRoleRequest"
                         }
                     }
                 ],
@@ -3780,13 +4834,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse"
+                                            "$ref": "#/definitions/workspace.RoleResponse"
                                         }
                                     }
                                 }
@@ -3796,7 +4850,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3834,7 +4888,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest"
+                            "$ref": "#/definitions/workspace.AssignRoleRequest"
                         }
                     }
                 ],
@@ -3844,13 +4898,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleAssignmentResponse"
+                                            "$ref": "#/definitions/workspace.RoleAssignmentResponse"
                                         }
                                     }
                                 }
@@ -3860,7 +4914,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3898,7 +4952,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest"
+                            "$ref": "#/definitions/workspace.AssignRoleRequest"
                         }
                     }
                 ],
@@ -3908,13 +4962,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                            "$ref": "#/definitions/workspace.MessageResponse"
                                         }
                                     }
                                 }
@@ -3924,7 +4978,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -3967,13 +5021,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                            "$ref": "#/definitions/workspace.MessageResponse"
                                         }
                                     }
                                 }
@@ -3983,7 +5037,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -4026,7 +5080,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.UpdateRoleRequest"
+                            "$ref": "#/definitions/workspace.UpdateRoleRequest"
                         }
                     }
                 ],
@@ -4036,13 +5090,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse"
+                                    "$ref": "#/definitions/shared.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse"
+                                            "$ref": "#/definitions/workspace.MessageResponse"
                                         }
                                     }
                                 }
@@ -4052,7 +5106,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse"
+                            "$ref": "#/definitions/shared.ErrorResponse"
                         }
                     }
                 }
@@ -4060,7 +5114,607 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "codeberg_org_azzet_azzetbe_internal_admin.AdminResponse": {
+        "accounting.AccountResponse": {
+            "type": "object",
+            "properties": {
+                "account_type": {
+                    "type": "string",
+                    "example": "ASSET"
+                },
+                "code": {
+                    "type": "string",
+                    "example": "1-1001"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "is_system": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "level": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Kas"
+                },
+                "normal_balance": {
+                    "type": "string",
+                    "example": "DEBIT"
+                },
+                "parent_id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "workspace_id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                }
+            }
+        },
+        "accounting.BalanceSheetEntry": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "account_type": {
+                    "type": "string",
+                    "example": "ASSET"
+                },
+                "balance": {
+                    "type": "string",
+                    "example": "300000.00"
+                },
+                "code": {
+                    "type": "string",
+                    "example": "1-1001"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Kas"
+                },
+                "normal_balance": {
+                    "type": "string",
+                    "example": "DEBIT"
+                }
+            }
+        },
+        "accounting.BalanceSheetReport": {
+            "type": "object",
+            "properties": {
+                "assets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/accounting.BalanceSheetEntry"
+                    }
+                },
+                "equity": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/accounting.BalanceSheetEntry"
+                    }
+                },
+                "is_balanced": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "liabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/accounting.BalanceSheetEntry"
+                    }
+                },
+                "total_assets": {
+                    "type": "string",
+                    "example": "1000000.00"
+                },
+                "total_equity": {
+                    "type": "string",
+                    "example": "700000.00"
+                },
+                "total_liabilities": {
+                    "type": "string",
+                    "example": "300000.00"
+                }
+            }
+        },
+        "accounting.CashFlowEntry": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "example": "2026-05-20"
+                },
+                "net_flow": {
+                    "type": "string",
+                    "example": "50000.00"
+                },
+                "total_credit": {
+                    "type": "string",
+                    "example": "50000.00"
+                },
+                "total_debit": {
+                    "type": "string",
+                    "example": "100000.00"
+                }
+            }
+        },
+        "accounting.CategorizationRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number",
+                    "example": 500000
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Bayar listrik bulan Mei"
+                },
+                "transaction_type": {
+                    "type": "string",
+                    "enum": [
+                        "CASH_IN",
+                        "CASH_OUT",
+                        "SALES",
+                        "PURCHASE"
+                    ],
+                    "example": "CASH_OUT"
+                }
+            }
+        },
+        "accounting.CategorizationResult": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "confidence": {
+                    "type": "number"
+                },
+                "used_fallback": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "accounting.CreateAccountRequest": {
+            "type": "object",
+            "properties": {
+                "account_type": {
+                    "type": "string",
+                    "enum": [
+                        "ASSET",
+                        "LIABILITY",
+                        "EQUITY",
+                        "REVENUE",
+                        "EXPENSE"
+                    ],
+                    "example": "ASSET"
+                },
+                "code": {
+                    "type": "string",
+                    "example": "1-3001"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Deposito"
+                },
+                "parent_id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                }
+            }
+        },
+        "accounting.CreateItemRequest": {
+            "type": "object"
+        },
+        "accounting.CreateTransactionRequest": {
+            "type": "object"
+        },
+        "accounting.IncomeStatementEntry": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "account_type": {
+                    "type": "string",
+                    "example": "REVENUE"
+                },
+                "balance": {
+                    "type": "string",
+                    "example": "500000.00"
+                },
+                "code": {
+                    "type": "string",
+                    "example": "4-1001"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Pendapatan Usaha"
+                },
+                "normal_balance": {
+                    "type": "string",
+                    "example": "CREDIT"
+                },
+                "total_credit": {
+                    "type": "string",
+                    "example": "500000.00"
+                },
+                "total_debit": {
+                    "type": "string",
+                    "example": "0.00"
+                }
+            }
+        },
+        "accounting.IncomeStatementReport": {
+            "type": "object",
+            "properties": {
+                "expenses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/accounting.IncomeStatementEntry"
+                    }
+                },
+                "net_income": {
+                    "type": "string",
+                    "example": "300000.00"
+                },
+                "revenue": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/accounting.IncomeStatementEntry"
+                    }
+                },
+                "total_expenses": {
+                    "type": "string",
+                    "example": "200000.00"
+                },
+                "total_revenue": {
+                    "type": "string",
+                    "example": "500000.00"
+                }
+            }
+        },
+        "accounting.ItemResponse": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Nasi goreng spesial"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "item_type": {
+                    "type": "string",
+                    "example": "BARANG"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Nasi Goreng"
+                },
+                "unit": {
+                    "type": "string",
+                    "example": "Pcs"
+                },
+                "unit_price": {
+                    "type": "string",
+                    "example": "15000.00"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "workspace_id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                }
+            }
+        },
+        "accounting.JournalEntryResponse": {
+            "type": "object",
+            "properties": {
+                "account_code": {
+                    "type": "string",
+                    "example": "1-1001"
+                },
+                "account_id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                },
+                "account_name": {
+                    "type": "string",
+                    "example": "Kas"
+                },
+                "credit": {
+                    "type": "string",
+                    "example": "0.00"
+                },
+                "debit": {
+                    "type": "string",
+                    "example": "100000.00"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                },
+                "sort_order": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
+        "accounting.LedgerEntryResponse": {
+            "type": "object",
+            "properties": {
+                "credit": {
+                    "type": "string",
+                    "example": "0.00"
+                },
+                "debit": {
+                    "type": "string",
+                    "example": "100000.00"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "posted_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "running_balance": {
+                    "type": "string",
+                    "example": "100000.00"
+                },
+                "transaction_date": {
+                    "type": "string",
+                    "example": "2026-05-20"
+                },
+                "transaction_number": {
+                    "type": "string",
+                    "example": "TXN-000001"
+                },
+                "tx_description": {
+                    "type": "string"
+                }
+            }
+        },
+        "accounting.LineItemResponse": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Nasi Goreng"
+                },
+                "discount_amount": {
+                    "type": "string",
+                    "example": "0.00"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                },
+                "item_id": {
+                    "type": "string"
+                },
+                "line_total": {
+                    "type": "string",
+                    "example": "75000.00"
+                },
+                "quantity": {
+                    "type": "string",
+                    "example": "5.0000"
+                },
+                "sort_order": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "tax_amount": {
+                    "type": "string",
+                    "example": "0.00"
+                },
+                "unit": {
+                    "type": "string",
+                    "example": "Pcs"
+                },
+                "unit_price": {
+                    "type": "string",
+                    "example": "15000.00"
+                }
+            }
+        },
+        "accounting.TransactionResponse": {
+            "type": "object",
+            "properties": {
+                "ai_confidence": {
+                    "type": "number",
+                    "example": 0.92
+                },
+                "amount": {
+                    "type": "string",
+                    "example": "100000.00"
+                },
+                "category": {
+                    "type": "string",
+                    "example": "pendapatan_usaha"
+                },
+                "counterparty_entity_id": {
+                    "type": "string"
+                },
+                "counterparty_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "created_by": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "IDR"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                },
+                "includes_tax": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "input_mode": {
+                    "type": "string",
+                    "example": "SIMPLE"
+                },
+                "journal_entries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/accounting.JournalEntryResponse"
+                    }
+                },
+                "line_items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/accounting.LineItemResponse"
+                    }
+                },
+                "payment_method": {
+                    "type": "string",
+                    "example": "TUNAI"
+                },
+                "posted_at": {
+                    "type": "string"
+                },
+                "reversed_transaction_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "DRAFT"
+                },
+                "tax_amount": {
+                    "type": "string",
+                    "example": "0.00"
+                },
+                "transaction_date": {
+                    "type": "string",
+                    "example": "2026-05-20"
+                },
+                "transaction_number": {
+                    "type": "string",
+                    "example": "TXN-000001"
+                },
+                "transaction_type": {
+                    "type": "string",
+                    "example": "CASH_IN"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-05-20T10:00:00Z"
+                },
+                "voided_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                }
+            }
+        },
+        "accounting.TrialBalanceEntry": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "account_type": {
+                    "type": "string",
+                    "example": "ASSET"
+                },
+                "balance": {
+                    "type": "string",
+                    "example": "300000.00"
+                },
+                "code": {
+                    "type": "string",
+                    "example": "1-1001"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Kas"
+                },
+                "normal_balance": {
+                    "type": "string",
+                    "example": "DEBIT"
+                },
+                "total_credit": {
+                    "type": "string",
+                    "example": "200000.00"
+                },
+                "total_debit": {
+                    "type": "string",
+                    "example": "500000.00"
+                }
+            }
+        },
+        "accounting.UpdateAccountRequest": {
+            "type": "object",
+            "properties": {
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Deposito Berjangka"
+                },
+                "parent_id": {
+                    "type": "string",
+                    "example": "550e8400-..."
+                }
+            }
+        },
+        "accounting.UpdateItemRequest": {
+            "type": "object"
+        },
+        "admin.AdminResponse": {
             "description": "Platform admin profile information",
             "type": "object",
             "properties": {
@@ -4109,7 +5763,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_admin.AuthResponse": {
+        "admin.AuthResponse": {
             "description": "Full auth response after MFA verification",
             "type": "object",
             "properties": {
@@ -4118,7 +5772,7 @@ const docTemplate = `{
                     "example": "eyJhbGciOiJIUzI1NiIs..."
                 },
                 "admin": {
-                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse"
+                    "$ref": "#/definitions/admin.AdminResponse"
                 },
                 "expires_in": {
                     "type": "integer",
@@ -4126,7 +5780,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_admin.InviteAdminRequest": {
+        "admin.InviteAdminRequest": {
             "description": "Invite a new platform admin (SUPER_ADMIN only)",
             "type": "object",
             "properties": {
@@ -4154,7 +5808,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_admin.LoginRequest": {
+        "admin.LoginRequest": {
             "description": "Admin login with email and password",
             "type": "object",
             "properties": {
@@ -4168,7 +5822,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_admin.LoginResponse": {
+        "admin.LoginResponse": {
             "description": "Response after password verification. If MFA enabled, requires second step.",
             "type": "object",
             "properties": {
@@ -4177,7 +5831,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "admin": {
-                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse"
+                    "$ref": "#/definitions/admin.AdminResponse"
                 },
                 "expires_in": {
                     "type": "integer",
@@ -4193,7 +5847,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_admin.MFASetupConfirmRequest": {
+        "admin.MFASetupConfirmRequest": {
             "description": "Confirm MFA setup by providing the first TOTP code from authenticator app",
             "type": "object",
             "properties": {
@@ -4203,7 +5857,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_admin.MFASetupResponse": {
+        "admin.MFASetupResponse": {
             "description": "MFA setup response with QR code URL and secret",
             "type": "object",
             "properties": {
@@ -4217,7 +5871,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_admin.MFAVerifyRequest": {
+        "admin.MFAVerifyRequest": {
             "description": "Verify TOTP code after password authentication",
             "type": "object",
             "properties": {
@@ -4231,7 +5885,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_admin.MessageResponse": {
+        "admin.MessageResponse": {
             "description": "Simple message response",
             "type": "object",
             "properties": {
@@ -4241,7 +5895,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_admin.UpdateAdminRequest": {
+        "admin.UpdateAdminRequest": {
             "description": "Update admin role or status",
             "type": "object",
             "properties": {
@@ -4269,7 +5923,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.AuthResponse": {
+        "auth.AuthResponse": {
             "description": "Authentication response with access token and user info. Refresh token is set as HttpOnly cookie.",
             "type": "object",
             "properties": {
@@ -4282,11 +5936,11 @@ const docTemplate = `{
                     "example": 900
                 },
                 "user": {
-                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.UserResponse"
+                    "$ref": "#/definitions/auth.UserResponse"
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.ChangePasswordRequest": {
+        "auth.ChangePasswordRequest": {
             "description": "Change password (requires authentication)",
             "type": "object",
             "properties": {
@@ -4300,7 +5954,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.LoginEmailRequest": {
+        "auth.LoginEmailRequest": {
             "description": "Login with email and password",
             "type": "object",
             "properties": {
@@ -4314,7 +5968,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.LoginOTPRequest": {
+        "auth.LoginOTPRequest": {
             "description": "Login with WhatsApp number and OTP code",
             "type": "object",
             "properties": {
@@ -4328,7 +5982,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.MessageResponse": {
+        "auth.MessageResponse": {
             "description": "Simple message response",
             "type": "object",
             "properties": {
@@ -4338,7 +5992,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.RegisterRequest": {
+        "auth.RegisterRequest": {
             "description": "Registration request body. Either email or whatsapp is required. Password is always required.",
             "type": "object",
             "properties": {
@@ -4360,7 +6014,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.RegisterResponse": {
+        "auth.RegisterResponse": {
             "description": "Registration response with user info and verification message",
             "type": "object",
             "properties": {
@@ -4369,11 +6023,11 @@ const docTemplate = `{
                     "example": "Registration successful. Please verify your account."
                 },
                 "user": {
-                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_auth.UserResponse"
+                    "$ref": "#/definitions/auth.UserResponse"
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.RequestOTPRequest": {
+        "auth.RequestOTPRequest": {
             "description": "Request an OTP code to be sent via WhatsApp",
             "type": "object",
             "properties": {
@@ -4392,7 +6046,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.ResetPasswordRequest": {
+        "auth.ResetPasswordRequest": {
             "description": "Reset password using OTP verification",
             "type": "object",
             "properties": {
@@ -4410,7 +6064,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.SessionResponse": {
+        "auth.SessionResponse": {
             "description": "Active session information",
             "type": "object",
             "properties": {
@@ -4436,7 +6090,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.UserResponse": {
+        "auth.UserResponse": {
             "description": "User profile information",
             "type": "object",
             "properties": {
@@ -4480,7 +6134,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_auth.VerifyOTPRequest": {
+        "auth.VerifyOTPRequest": {
             "description": "Verify OTP to activate account",
             "type": "object",
             "properties": {
@@ -4502,7 +6156,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_billing.CreatePaymentRequest": {
+        "billing.CreatePaymentRequest": {
             "description": "Initiate payment for a subscription invoice",
             "type": "object",
             "properties": {
@@ -4512,7 +6166,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse": {
+        "billing.InvoiceResponse": {
             "description": "Invoice information",
             "type": "object",
             "properties": {
@@ -4569,7 +6223,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_billing.MessageResponse": {
+        "billing.MessageResponse": {
             "description": "Simple message response",
             "type": "object",
             "properties": {
@@ -4579,7 +6233,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_billing.PaymentResponse": {
+        "billing.PaymentResponse": {
             "description": "Payment attempt information",
             "type": "object",
             "properties": {
@@ -4632,7 +6286,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_entity.CreateEntityRequest": {
+        "entity.CreateEntityRequest": {
             "description": "Create a new entity (personal or business)",
             "type": "object",
             "properties": {
@@ -4662,7 +6316,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_entity.EntityMetaResponse": {
+        "entity.EntityMetaResponse": {
             "description": "Entity meta/administrative information",
             "type": "object",
             "properties": {
@@ -4688,7 +6342,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_entity.EntityResponse": {
+        "entity.EntityResponse": {
             "description": "Entity information",
             "type": "object",
             "properties": {
@@ -4713,7 +6367,7 @@ const docTemplate = `{
                     "example": false
                 },
                 "meta": {
-                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityMetaResponse"
+                    "$ref": "#/definitions/entity.EntityMetaResponse"
                 },
                 "nama_utama": {
                     "type": "string",
@@ -4741,7 +6395,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_entity.MessageResponse": {
+        "entity.MessageResponse": {
             "description": "Simple message response",
             "type": "object",
             "properties": {
@@ -4751,7 +6405,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityMetaRequest": {
+        "entity.UpdateEntityMetaRequest": {
             "description": "Update entity administrative data",
             "type": "object",
             "properties": {
@@ -4777,7 +6431,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityRequest": {
+        "entity.UpdateEntityRequest": {
             "description": "Update an existing entity",
             "type": "object",
             "properties": {
@@ -4799,7 +6453,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_plan.CreatePlanRequest": {
+        "plan.CreatePlanRequest": {
             "description": "Create a new plan (SUPER_ADMIN/ENGINEER only)",
             "type": "object",
             "properties": {
@@ -4845,7 +6499,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse": {
+        "plan.FeatureResponse": {
             "description": "Feature permission/quota for a plan",
             "type": "object",
             "properties": {
@@ -4871,7 +6525,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_plan.MessageResponse": {
+        "plan.MessageResponse": {
             "description": "Simple message response",
             "type": "object",
             "properties": {
@@ -4881,7 +6535,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse": {
+        "plan.PlanListResponse": {
             "description": "Plan summary for listing",
             "type": "object",
             "properties": {
@@ -4935,7 +6589,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_plan.PlanResponse": {
+        "plan.PlanResponse": {
             "description": "Plan information with feature list",
             "type": "object",
             "properties": {
@@ -4950,7 +6604,7 @@ const docTemplate = `{
                 "features": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse"
+                        "$ref": "#/definitions/plan.FeatureResponse"
                     }
                 },
                 "id": {
@@ -4999,7 +6653,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_plan.SetFeatureRequest": {
+        "plan.SetFeatureRequest": {
             "description": "Set a feature permission on a plan. Use value_bool for boolean features, value_int for quotas (-1 = unlimited).",
             "type": "object",
             "properties": {
@@ -5030,7 +6684,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_plan.UpdatePlanRequest": {
+        "plan.UpdatePlanRequest": {
             "description": "Update an existing plan",
             "type": "object",
             "properties": {
@@ -5080,7 +6734,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_shared.APIError": {
+        "shared.APIError": {
             "type": "object",
             "properties": {
                 "code": {
@@ -5089,7 +6743,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.FieldError"
+                        "$ref": "#/definitions/shared.FieldError"
                     }
                 },
                 "domain": {
@@ -5106,7 +6760,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_shared.APIResponse": {
+        "shared.APIResponse": {
             "type": "object",
             "properties": {
                 "data": {},
@@ -5116,18 +6770,18 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse": {
+        "shared.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIError"
+                    "$ref": "#/definitions/shared.APIError"
                 },
                 "success": {
                     "type": "boolean"
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_shared.FieldError": {
+        "shared.FieldError": {
             "type": "object",
             "properties": {
                 "field": {
@@ -5138,7 +6792,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_subscription.MessageResponse": {
+        "subscription.MessageResponse": {
             "description": "Simple message response",
             "type": "object",
             "properties": {
@@ -5148,7 +6802,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest": {
+        "subscription.SubscribeRequest": {
             "description": "Subscribe a workspace to a plan",
             "type": "object",
             "properties": {
@@ -5166,7 +6820,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse": {
+        "subscription.SubscriptionResponse": {
             "description": "Workspace subscription information",
             "type": "object",
             "properties": {
@@ -5230,7 +6884,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_subscription.UsageResponse": {
+        "subscription.UsageResponse": {
             "description": "Feature usage tracking",
             "type": "object",
             "properties": {
@@ -5256,7 +6910,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.AcceptInviteRequest": {
+        "workspace.AcceptInviteRequest": {
             "description": "Accept a workspace invite using the token",
             "type": "object",
             "properties": {
@@ -5266,7 +6920,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.AddCounterpartyRequest": {
+        "workspace.AddCounterpartyRequest": {
             "description": "Add a counterparty (customer/vendor) to workspace. Creates shadow entity if needed.",
             "type": "object",
             "properties": {
@@ -5309,7 +6963,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest": {
+        "workspace.AssignRoleRequest": {
             "description": "Assign a role to a workspace member",
             "type": "object",
             "properties": {
@@ -5323,7 +6977,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse": {
+        "workspace.CounterpartyResponse": {
             "description": "Counterparty (customer/vendor) information",
             "type": "object",
             "properties": {
@@ -5365,7 +7019,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.CreateInviteRequest": {
+        "workspace.CreateInviteRequest": {
             "description": "Invite a user to the workspace via email",
             "type": "object",
             "properties": {
@@ -5379,7 +7033,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.CreateRoleRequest": {
+        "workspace.CreateRoleRequest": {
             "description": "Create a custom role for the workspace",
             "type": "object",
             "properties": {
@@ -5403,7 +7057,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.CreateWorkspaceRequest": {
+        "workspace.CreateWorkspaceRequest": {
             "description": "Create a workspace from an existing entity",
             "type": "object",
             "properties": {
@@ -5413,7 +7067,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse": {
+        "workspace.InviteResponse": {
             "description": "Workspace invite information",
             "type": "object",
             "properties": {
@@ -5455,7 +7109,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.MemberResponse": {
+        "workspace.MemberResponse": {
             "description": "Workspace member information",
             "type": "object",
             "properties": {
@@ -5497,7 +7151,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse": {
+        "workspace.MessageResponse": {
             "description": "Simple message response",
             "type": "object",
             "properties": {
@@ -5507,7 +7161,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.RoleAssignmentResponse": {
+        "workspace.RoleAssignmentResponse": {
             "description": "Role assignment information",
             "type": "object",
             "properties": {
@@ -5541,7 +7195,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse": {
+        "workspace.RoleResponse": {
             "description": "Available role",
             "type": "object",
             "properties": {
@@ -5569,7 +7223,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.UpdateMemberRequest": {
+        "workspace.UpdateMemberRequest": {
             "description": "Update member alias or status",
             "type": "object",
             "properties": {
@@ -5587,7 +7241,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.UpdateRoleRequest": {
+        "workspace.UpdateRoleRequest": {
             "description": "Update a custom role",
             "type": "object",
             "properties": {
@@ -5611,7 +7265,7 @@ const docTemplate = `{
                 }
             }
         },
-        "codeberg_org_azzet_azzetbe_internal_workspace.WorkspaceResponse": {
+        "workspace.WorkspaceResponse": {
             "description": "Workspace information",
             "type": "object",
             "properties": {

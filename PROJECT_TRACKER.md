@@ -269,54 +269,447 @@
 > **Key Principle:** Every transaction affects at least 2 entities and 4 accounts
 > (2 per entity). The system handles this complexity behind the scenes.
 
+### Architecture: "Simple Input to Proper Accounting"
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      USER INPUT MODES                             │
+│                                                                   │
+│  Mode A: Simple Cash     Mode B: Sales/Purchase    Mode C: OCR   │
+│  "Terima 100rb"          "Jual 5 nasi @15rb"      [scan struk]  │
+│  dari Pak Budi           ke Pak Budi               (Phase 9)     │
+└──────────────┬────────────────────┬────────────────────┬─────────┘
+               │                    │                    │
+               v                    v                    v
+┌─────────────────────────────────────────────────────────────────┐
+│         AI CATEGORIZATION LAYER (Sandboxed, Strict)              │
+│                                                                   │
+│  • Input: user text/description                                  │
+│  • Output: ONLY valid category enum from whitelist               │
+│  • Double-check: AI output validated against DB enum             │
+│  • Security: no prompt injection, no data leakage                │
+│  • Fallback: if confidence < 0.7 → "lain_lain" category         │
+│  • Token-efficient: structured prompt, minimal context           │
+└──────────────────────────────┬───────────────────────────────────┘
+                               │
+                               v
+┌─────────────────────────────────────────────────────────────────┐
+│              TRANSACTION SERVICE (Synchronous)                    │
+│                                                                   │
+│  1. Validate input + AI category against strict enum whitelist   │
+│  2. Resolve/create counterparty (shadow entity if unknown)       │
+│  3. Rule Engine: category → COA account codes (deterministic)    │
+│  4. Build journal entries (enforce sum(debit) = sum(credit))     │
+│  5. Support multi-line items (1 transaksi = N line items)        │
+│  6. Save transaction + journal_entries as DRAFT                  │
+│  7. Emit event: accounting.transaction.created                   │
+└──────────────────────────────┬───────────────────────────────────┘
+                               │
+                               v (async via NATS)
+┌─────────────────────────────────────────────────────────────────┐
+│              LEDGER WORKER (Async Consumer)                       │
+│                                                                   │
+│  1. Receive accounting.transaction.created                       │
+│  2. Validate: sum(debit) == sum(credit) per transaction          │
+│  3. Generate ledger_entries from journal_entries                  │
+│  4. Calculate running_balance per account                        │
+│  5. Upsert account_balances (period summary: YYYY-MM)            │
+│  6. Validate accounting equation: A = L + E                      │
+│  7. UPDATE transaction status → POSTED                           │
+│  8. Emit: accounting.ledger.posted                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Architecture Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Void = Jurnal Pembalik (Reverse Entry)** | Standar akuntansi Indonesia. Jurnal asli TIDAK dihapus. Sistem buat jurnal baru yang membalik debit↔credit. Audit trail tetap utuh. |
+| **Multi-line items per transaction** | Standar SAK EMKM & industri (Accurate, Jurnal.id). Satu faktur/struk bisa berisi banyak barang/jasa. |
+| **IDR only (NUMERIC 15,2)** | Fokus pasar Indonesia. Max ~9.99 triliun. Cukup untuk UMKM-enterprise. |
+| **AI categorization with strict whitelist** | AI hanya output category enum yang valid. Double-check di backend. Tidak bisa inject/hallucinate akun baru. |
+| **COA auto-seed via workspace.created event** | Consumer listen event, seed template COA standar SAK EMKM otomatis. |
+| **account_balances table terpisah** | Avoid full ledger scan untuk report. Ledger worker upsert per posting. |
+| **Status DRAFT → POSTED async** | User dapat response cepat. Ledger worker posting di background via NATS. |
+| **Rule engine hardcoded** | Aturan akuntansi jarang berubah. Performa tinggi. Bisa extend ke DB-based nanti. |
+| **Shadow entity via existing counterparty flow** | Reuse Phase 3 logic. Tidak perlu table baru. |
+
+### AI Categorization Security Design
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AI CATEGORIZATION SERVICE                      │
+│                                                                   │
+│  STRICT RULES:                                                   │
+│  1. System prompt is HARDCODED, not user-configurable            │
+│  2. User input is SANITIZED before sending to OpenAI             │
+│  3. AI output MUST be one of the valid category enums            │
+│  4. Backend VALIDATES AI output against whitelist (double-check) │
+│  5. If AI returns invalid category → fallback to "lain_lain"    │
+│  6. NO platform data (tenant info, financials) sent to AI        │
+│  7. Only send: transaction description + amount + direction      │
+│  8. Token budget: max ~200 input tokens, ~50 output tokens       │
+│  9. Prompt injection defense: input wrapped in delimiters        │
+│ 10. Response format: JSON with category + confidence only        │
+│                                                                   │
+│  VALID CATEGORIES (strict enum, no others accepted):             │
+│                                                                   │
+│  CASH_IN categories:                                             │
+│    pendapatan_usaha, pendapatan_jasa, pendapatan_bunga,          │
+│    piutang_dibayar, hutang_diterima, modal_disetor,              │
+│    uang_muka_diterima, pendapatan_lain                           │
+│                                                                   │
+│  CASH_OUT categories:                                            │
+│    beban_gaji, beban_sewa, beban_listrik, beban_telepon,         │
+│    beban_transport, beban_makan, beban_perlengkapan,             │
+│    beban_asuransi, beban_admin, beban_bank, beban_pemasaran,     │
+│    beban_bunga, beban_pajak, pembelian_barang, bayar_hutang,     │
+│    bayar_pajak, uang_muka_beli, prive, beban_lain               │
+│                                                                   │
+│  SALES categories:                                               │
+│    penjualan_barang_tunai, penjualan_barang_kredit,              │
+│    penjualan_jasa_tunai, penjualan_jasa_kredit,                  │
+│    penjualan_dengan_ppn                                          │
+│                                                                   │
+│  PURCHASE categories:                                            │
+│    pembelian_barang_tunai, pembelian_barang_kredit,              │
+│    pembelian_jasa_tunai, pembelian_jasa_kredit,                  │
+│    pembelian_dengan_ppn                                          │
+│                                                                   │
+│  SPECIAL categories:                                             │
+│    diskon_penjualan, retur_penjualan, retur_pembelian            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### COA Template (SAK EMKM + SAK ETAP Compatible)
+
+> Covers: Orang Pribadi, UMKM, dan Enterprise (PKP).
+> User bisa tambah akun custom via API. Template ini adalah starting point.
+
+```
+1-0000  ASET (normal_balance: DEBIT)
+├── 1-1000  Aset Lancar
+│   ├── 1-1001  Kas
+│   ├── 1-1002  Bank
+│   ├── 1-1003  Piutang Usaha
+│   ├── 1-1004  Persediaan Barang
+│   ├── 1-1005  Piutang Lain-lain
+│   ├── 1-1006  Perlengkapan
+│   ├── 1-1007  Uang Muka Pembelian
+│   ├── 1-1008  PPN Masukan (normal: DEBIT)
+│   └── 1-1009  Biaya Dibayar di Muka
+├── 1-2000  Aset Tetap
+│   ├── 1-2001  Peralatan
+│   ├── 1-2002  Kendaraan
+│   ├── 1-2003  Bangunan
+│   ├── 1-2004  Tanah
+│   └── 1-2099  Akumulasi Penyusutan (normal: CREDIT)
+
+2-0000  LIABILITAS (normal_balance: CREDIT)
+├── 2-1000  Hutang Lancar
+│   ├── 2-1001  Hutang Usaha
+│   ├── 2-1002  Hutang Gaji
+│   ├── 2-1003  Hutang Pajak (PPh 21/23/25/29)
+│   ├── 2-1004  Pendapatan Diterima di Muka
+│   ├── 2-1005  PPN Keluaran (normal: CREDIT)
+│   ├── 2-1006  Uang Muka Penjualan
+│   └── 2-1007  Hutang Lain-lain
+├── 2-2000  Hutang Jangka Panjang
+│   └── 2-2001  Hutang Bank
+
+3-0000  EKUITAS (normal_balance: CREDIT)
+├── 3-1001  Modal Pemilik
+├── 3-1002  Prive (normal: DEBIT)
+├── 3-1003  Laba Ditahan
+└── 3-1004  Laba Periode Berjalan
+
+4-0000  PENDAPATAN (normal_balance: CREDIT)
+├── 4-1001  Pendapatan Usaha
+├── 4-1002  Pendapatan Jasa
+├── 4-1003  Diskon Penjualan (normal: DEBIT, contra-revenue)
+├── 4-1004  Retur Penjualan (normal: DEBIT, contra-revenue)
+├── 4-2001  Pendapatan Bunga
+├── 4-2002  Pendapatan Lain-lain
+
+5-0000  BEBAN (normal_balance: DEBIT)
+├── 5-1000  Beban Operasional
+│   ├── 5-1001  Beban Gaji & Tunjangan
+│   ├── 5-1002  Beban Sewa
+│   ├── 5-1003  Beban Listrik & Air
+│   ├── 5-1004  Beban Telepon & Internet
+│   ├── 5-1005  Beban Transportasi
+│   ├── 5-1006  Beban Makan & Minum
+│   ├── 5-1007  Beban Perlengkapan
+│   ├── 5-1008  Beban Penyusutan
+│   ├── 5-1009  Beban Asuransi (BPJS, asuransi aset)
+│   ├── 5-1010  Beban Administrasi & Umum
+│   ├── 5-1011  Beban Biaya Bank (transfer fee, admin)
+│   └── 5-1012  Beban Pemasaran & Iklan
+├── 5-2000  Beban Non-Operasional
+│   ├── 5-2001  Beban Bunga Pinjaman
+│   ├── 5-2002  Beban Pajak
+│   ├── 5-2003  Beban Denda & Penalti
+│   └── 5-2004  Kerugian Lain-lain
+├── 5-3000  Harga Pokok
+│   ├── 5-3001  Harga Pokok Penjualan (HPP)
+│   └── 5-3002  Retur Pembelian (normal: CREDIT, contra-expense)
+└── 5-9001  Beban Lain-lain
+```
+
+### Rule Engine: Category → Account Mapping (Deterministic)
+
+```
+CASH_IN rules (Debit: Kas/Bank, Credit: varies):
+  pendapatan_usaha   → D:1-1001  C:4-1001
+  pendapatan_jasa    → D:1-1001  C:4-1002
+  pendapatan_bunga   → D:1-1002  C:4-2001
+  piutang_dibayar    → D:1-1001  C:1-1003
+  hutang_diterima    → D:1-1001  C:2-1001
+  modal_disetor      → D:1-1001  C:3-1001
+  uang_muka_diterima → D:1-1001  C:2-1006
+  pendapatan_lain    → D:1-1001  C:4-2002
+
+CASH_OUT rules (Debit: varies, Credit: Kas):
+  beban_gaji         → D:5-1001  C:1-1001
+  beban_sewa         → D:5-1002  C:1-1001
+  beban_listrik      → D:5-1003  C:1-1001
+  beban_telepon      → D:5-1004  C:1-1001
+  beban_transport    → D:5-1005  C:1-1001
+  beban_makan        → D:5-1006  C:1-1001
+  beban_perlengkapan → D:5-1007  C:1-1001
+  beban_asuransi     → D:5-1009  C:1-1001
+  beban_admin        → D:5-1010  C:1-1001
+  beban_bank         → D:5-1011  C:1-1002
+  beban_pemasaran    → D:5-1012  C:1-1001
+  beban_bunga        → D:5-2001  C:1-1001
+  beban_pajak        → D:5-2002  C:1-1001
+  pembelian_barang   → D:1-1004  C:1-1001
+  bayar_hutang       → D:2-1001  C:1-1001
+  bayar_pajak        → D:2-1003  C:1-1001
+  uang_muka_beli     → D:1-1007  C:1-1001
+  prive              → D:3-1002  C:1-1001
+  beban_lain         → D:5-9001  C:1-1001
+
+SALES rules (multi-line items, payment_method determines debit):
+  penjualan_barang_tunai    → D:1-1001  C:4-1001  (+ D:5-3001 C:1-1004 for HPP)
+  penjualan_barang_kredit   → D:1-1003  C:4-1001  (+ D:5-3001 C:1-1004 for HPP)
+  penjualan_jasa_tunai      → D:1-1001  C:4-1002
+  penjualan_jasa_kredit     → D:1-1003  C:4-1002
+  penjualan_dengan_ppn      → adds D:1-1001 C:2-1005 (PPN Keluaran 11%)
+
+PURCHASE rules (multi-line items, payment_method determines credit):
+  pembelian_barang_tunai    → D:1-1004  C:1-1001
+  pembelian_barang_kredit   → D:1-1004  C:2-1001
+  pembelian_jasa_tunai      → D:5-xxxx  C:1-1001 (account from item.account_id)
+  pembelian_jasa_kredit     → D:5-xxxx  C:2-1001
+  pembelian_dengan_ppn      → adds D:1-1008 C:1-1001 (PPN Masukan 11%)
+
+SPECIAL rules:
+  diskon_penjualan   → D:4-1003  C:1-1003/1-1001 (reduce receivable/cash)
+  retur_penjualan    → D:4-1004  C:1-1003/1-1001 (+ D:1-1004 C:5-3001 restock)
+  retur_pembelian    → D:2-1001/1-1001  C:5-3002 (reduce payable/get cash back)
+```
+
+### Void Transaction Flow (Jurnal Pembalik)
+
+```
+Original Transaction (POSTED):
+  ID: tx-001
+  Debit:  1-1001 Kas        100,000
+  Credit: 4-1001 Pendapatan 100,000
+
+Void Request:
+  1. Create NEW transaction (type: REVERSAL, references: tx-001)
+  2. Reverse all journal entries (swap debit↔credit):
+     Debit:  4-1001 Pendapatan 100,000
+     Credit: 1-1001 Kas        100,000
+  3. Mark original tx-001 status → VOID
+  4. New reversal transaction → DRAFT → POSTED (via ledger worker)
+  5. Net effect on all accounts = 0
+  6. Both transactions remain in audit trail forever
+```
+
+### Database Schema (Migration 014)
+
+```sql
+-- Tables: accounts, items, transaction_line_items,
+--         transactions, journal_entries, ledger_entries, account_balances
+
+-- accounts: Chart of Accounts per workspace (SAK EMKM template)
+-- items: Products/services per workspace with multi-type support
+-- transactions: Header with status lifecycle (DRAFT→POSTED→VOID)
+-- transaction_line_items: Multi-item support per transaction
+-- journal_entries: Double-entry lines (debit XOR credit per line)
+-- ledger_entries: Posted entries with running_balance (async)
+-- account_balances: Period summary per account (YYYY-MM, upserted by worker)
+```
+
+### API Endpoints
+
+```
+# Chart of Accounts (workspace-scoped)
+GET    /api/v1/accounts                    — List COA [transaction:read]
+POST   /api/v1/accounts                    — Create custom account [transaction:create]
+GET    /api/v1/accounts/{id}               — Get account detail
+PATCH  /api/v1/accounts/{id}               — Update account [transaction:create]
+
+# Items (workspace-scoped)
+GET    /api/v1/items                       — List items [transaction:read]
+POST   /api/v1/items                       — Create item [transaction:create]
+GET    /api/v1/items/{id}                  — Get item detail
+PATCH  /api/v1/items/{id}                  — Update item [transaction:create]
+DELETE /api/v1/items/{id}                  — Soft-delete item [transaction:create]
+
+# Transactions (workspace-scoped)
+POST   /api/v1/transactions                — Create transaction [transaction:create]
+GET    /api/v1/transactions                — List transactions [transaction:read]
+GET    /api/v1/transactions/{id}           — Get transaction + journal entries
+PATCH  /api/v1/transactions/{id}           — Update DRAFT transaction [transaction:create]
+POST   /api/v1/transactions/{id}/void      — Void (jurnal pembalik) [transaction:void]
+
+# AI Categorization (workspace-scoped, internal helper)
+POST   /api/v1/transactions/categorize     — AI suggest category [transaction:create]
+
+# Reports (workspace-scoped)
+GET    /api/v1/reports/trial-balance       — Trial Balance [report:read]
+GET    /api/v1/reports/balance-sheet       — Neraca [report:read]
+GET    /api/v1/reports/income-statement    — Laba Rugi [report:read]
+GET    /api/v1/reports/cash-flow           — Arus Kas [report:read]
+GET    /api/v1/reports/ledger/{account_id} — Buku Besar per akun [report:read]
+```
+
+### Permission Keys (New)
+
+```
+transaction:create   — Create/edit transactions
+transaction:read     — View transactions & accounts
+transaction:void     — Void posted transactions (jurnal pembalik)
+report:read          — View financial reports
+report:export        — Export reports (future)
+```
+
+### File Structure
+
+```
+migrations/014_accounting.sql           — All accounting tables
+queries/accounting.sql                  — SQLC queries (accounts, items, transactions, journal, ledger)
+internal/accounting/
+├── service.go                          — Transaction service (create, list, get, void)
+├── coa_service.go                      — Chart of Accounts CRUD
+├── coa_template.go                     — SAK EMKM default template + seed logic
+├── item_service.go                     — Item CRUD
+├── rules.go                            — Rule engine (category → account mapping)
+├── categorizer.go                      — AI categorization (OpenAI, sandboxed, strict)
+├── ledger_worker.go                    — NATS consumer (posting + balance update)
+├── report_service.go                   — Report generation (neraca, laba rugi, etc.)
+├── dto.go                              — All request/response DTOs
+├── constants.go                        — Category enums, account types, status constants
+└── errors.go                           — Sentinel errors
+internal/api/handler/accounting.handler.go  — HTTP handlers
+internal/api/router.go                      — Route registration (updated)
+internal/events/types.go                    — Event types (already defined)
+cmd/consumer/main.go                        — Register ledger worker (updated)
+```
+
+### Implementation Order
+
+| Step | Task | Depends On |
+|------|------|------------|
+| 1 | Migration `014_accounting.sql` | — |
+| 2 | SQLC queries `queries/accounting.sql` | Step 1 |
+| 3 | Run `make sqlc` | Step 2 |
+| 4 | `internal/accounting/constants.go` (enums, categories) | — |
+| 5 | `internal/accounting/errors.go` (sentinel errors) | — |
+| 6 | `internal/accounting/coa_template.go` (SAK EMKM seed data) | Step 4 |
+| 7 | `internal/accounting/coa_service.go` (CRUD + seed) | Step 3, 6 |
+| 8 | `internal/accounting/rules.go` (category → account mapping) | Step 4 |
+| 9 | `internal/accounting/categorizer.go` (AI + security) | Step 4 |
+| 10 | `internal/accounting/item_service.go` (CRUD) | Step 3 |
+| 11 | `internal/accounting/dto.go` (all DTOs) | Step 4 |
+| 12 | `internal/accounting/service.go` (transaction create/list/get/void) | Step 7, 8, 9, 10 |
+| 13 | `internal/accounting/ledger_worker.go` (NATS consumer) | Step 3, 12 |
+| 14 | `internal/accounting/report_service.go` (reports) | Step 3, 13 |
+| 15 | `internal/api/handler/accounting.handler.go` | Step 12, 14 |
+| 16 | Update `internal/api/router.go` (register routes) | Step 15 |
+| 17 | Update `cmd/consumer/main.go` (register ledger worker) | Step 13 |
+| 18 | Hook COA seed into workspace.created consumer | Step 7 |
+| 19 | Swagger docs | All |
+| 20 | Tests (unit + integration) | All |
+
 ### 7A. Chart of Accounts
 
-- [ ] Migration: chart_of_accounts (per entity/tenant)
-- [ ] Default COA template (seeded per new workspace)
-- [ ] Account types: Asset, Liability, Equity, Revenue, Expense
-- [ ] Account hierarchy (parent-child)
-- [ ] Account codes (numbering system)
-- [ ] SQLC queries + service + handler
+- [ ] Migration: `accounts` table (per workspace, parent-child hierarchy)
+- [ ] COA template: SAK EMKM standard (seeded via workspace.created event)
+- [ ] Account types: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
+- [ ] Normal balance: DEBIT or CREDIT per account type
+- [ ] Account hierarchy (parent_id, level)
+- [ ] Account codes (format: "X-XXXX", unique per workspace)
+- [ ] System accounts (is_system=true, cannot be deleted)
+- [ ] SQLC queries + coa_service + handler
+- [ ] Hook: auto-seed on workspace.created event (NATS consumer)
 
 ### 7B. Items & Products
 
-- [ ] Migration: items table (per tenant, privacy boundary)
-- [ ] Item types: BARANG_FISIK, JASA, PROYEK, AHSP_RAKITAN
-- [ ] Item CRUD with tenant isolation
-- [ ] Price management (harga_satuan)
-- [ ] Soft delete (status_aktif)
-- [ ] SQLC queries + service + handler
+- [ ] Migration: `items` table (per workspace, privacy boundary)
+- [ ] Item types: BARANG, JASA, PROYEK, AHSP_RAKITAN
+- [ ] Item CRUD with workspace isolation
+- [ ] Unit types: Pcs, Kg, Liter, Meter, M2, M3, Jam, Hari, Paket, Unit, Box, Lusin
+- [ ] Default account linking (account_id FK for auto-categorization)
+- [ ] Soft delete (is_active flag)
+- [ ] SQLC queries + item_service + handler
 
 ### 7C. Transactions
 
-- [ ] Migration: transactions, journal_entries, ledger_entries
-- [ ] Transaction types: cash_in, cash_out, journal
+- [ ] Migration: `transactions`, `transaction_line_items`, `journal_entries`
+- [ ] Transaction types: CASH_IN, CASH_OUT, SALES, PURCHASE, JOURNAL, REVERSAL
+- [ ] Input modes: SIMPLE, ADVANCED, OCR
+- [ ] Multi-line items: `transaction_line_items` table (qty, unit_price, item_id, etc.)
 - [ ] Dual-mode input:
-  - [ ] Simple mode: "I received 100k" -> auto journal
-  - [ ] Advanced mode: manual journal entry
-- [ ] Double-entry enforcement (debit = credit)
-- [ ] Transaction status: draft, posted, void
-- [ ] Counterparty linking (id_entitas_lawan)
-- [ ] Shadow entity auto-creation for unknown counterparties
+  - [ ] Simple mode: user picks direction + category → auto journal via rule engine
+  - [ ] Advanced mode: user manually specifies debit/credit accounts
+- [ ] AI categorization: strict whitelist, sandboxed prompt, double-check validation
+- [ ] Double-entry enforcement: sum(debit) MUST = sum(credit) per transaction
+- [ ] Transaction status lifecycle: DRAFT → POSTED (async) → VOID (jurnal pembalik)
+- [ ] Counterparty linking (counterparty_entity_id FK)
+- [ ] Shadow entity auto-creation for unknown counterparties (reuse Phase 3)
+- [ ] Void = Jurnal Pembalik: create REVERSAL transaction, swap debit↔credit
 - [ ] SQLC queries + service + handler
 
 ### 7D. Ledger Worker (Async)
 
-- [ ] NATS consumer: ledger.posting_requested
-- [ ] Validate posting rules
-- [ ] Generate ledger entries from journal
-- [ ] Update account balances
-- [ ] Emit ledger.posted event
-- [ ] Accounting equation validation (A = L + E)
+- [ ] NATS consumer: accounting.transaction.created
+- [ ] Validate posting rules (sum debit = sum credit)
+- [ ] Generate ledger_entries from journal_entries
+- [ ] Calculate running_balance per account (ordered by posted_at)
+- [ ] Upsert account_balances (period: YYYY-MM)
+- [ ] Validate accounting equation: total ASSET = total LIABILITY + total EQUITY
+- [ ] Mark transaction status: POSTED + set posted_at
+- [ ] Emit: accounting.ledger.posted event
+- [ ] Error handling: if validation fails → mark FAILED + emit error event
 
 ### 7E. Reporting (Basic)
 
-- [ ] Balance Sheet (Neraca)
-- [ ] Income Statement (Laba Rugi)
-- [ ] Cash Flow
-- [ ] Trial Balance
-- [ ] Entity-wise transaction history
-- [ ] Async report generation (Asynq)
+- [ ] Trial Balance (Neraca Saldo): sum debit/credit per account for period
+- [ ] Balance Sheet (Neraca): Assets, Liabilities, Equity at point-in-time
+- [ ] Income Statement (Laba Rugi): Revenue - Expenses for period
+- [ ] Cash Flow (Arus Kas): Cash account movements for period
+- [ ] General Ledger (Buku Besar): all entries for one account with running balance
+- [ ] All reports use account_balances table (fast, pre-aggregated)
+- [ ] Synchronous for now (data from account_balances is already aggregated)
+- [ ] Future: async generation via Asynq for large datasets + PDF export
+
+### 7F. AI Categorization Service
+
+- [ ] Sandboxed OpenAI integration (reuse internal/ai client)
+- [ ] Hardcoded system prompt (not user-configurable)
+- [ ] Input sanitization: strip control chars, limit length, wrap in delimiters
+- [ ] Prompt injection defense: delimiter-wrapped user input, instruction hierarchy
+- [ ] Output validation: MUST match category enum whitelist exactly
+- [ ] Double-check: backend validates AI response against constants.go enums
+- [ ] Fallback: invalid/low-confidence → "beban_lain" or "pendapatan_lain"
+- [ ] Token efficiency: ~200 input tokens, ~50 output tokens per request
+- [ ] NO sensitive data sent: only description + amount + direction
+- [ ] Confidence score: 0.0-1.0, frontend can show "suggested" vs "confident"
 
 ---
 

@@ -10,7 +10,9 @@ import (
 	"github.com/go-chi/cors"
 	httpSwagger "github.com/swaggo/http-swagger"
 
+	"codeberg.org/azzet/azzetbe/internal/accounting"
 	"codeberg.org/azzet/azzetbe/internal/admin"
+	"codeberg.org/azzet/azzetbe/internal/ai"
 	"codeberg.org/azzet/azzetbe/internal/api/handler"
 	"codeberg.org/azzet/azzetbe/internal/api/middleware"
 	"codeberg.org/azzet/azzetbe/internal/auth"
@@ -52,6 +54,7 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	// --- Entity & Workspace ---
 	entityService := entity.NewService(queries)
 	workspaceService := workspace.NewService(queries, entityService)
+	workspaceService.Pool = database.Pool
 
 	// --- User Auth ---
 	userAccessExpiry := time.Duration(cfg.AccessTokenExpiryMinutes) * time.Minute
@@ -123,6 +126,15 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 
 	// --- Workspace Middleware ---
 	workspaceMiddleware := middleware.NewWorkspaceMiddleware(workspaceService.VerifyWorkspaceAccess)
+
+	// --- Accounting ---
+	aiClient := ai.NewFromEnv(cfg.OpenAIApiKey, cfg.OpenAIModel)
+	coaService := accounting.NewCOAService(queries, database.Pool)
+	itemService := accounting.NewItemService(queries)
+	categorizer := accounting.NewCategorizer(aiClient)
+	accountingService := accounting.NewService(queries, database.Pool, coaService, itemService, categorizer)
+	reportService := accounting.NewReportService(queries)
+	accountingHandler := handler.NewAccountingHandler(accountingService, coaService, itemService, reportService)
 
 	// ═══════════════════════════════════════════════════════════════
 	// USER API ROUTES (/api/v1)
@@ -242,6 +254,47 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 
 		// Xendit webhook (public, verified by x-callback-token)
 		r.Post("/webhooks/xendit", billingHandler.XenditWebhook)
+
+		// Accounting routes (workspace-scoped)
+		r.Route("/accounts", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Use(workspaceMiddleware.RequireWorkspace)
+			r.With(workspaceMiddleware.RequirePermission("transaction:read")).Get("/", accountingHandler.ListAccounts)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Post("/", accountingHandler.CreateAccount)
+			r.With(workspaceMiddleware.RequirePermission("transaction:read")).Get("/{id}", accountingHandler.GetAccount)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Patch("/{id}", accountingHandler.UpdateAccount)
+		})
+
+		r.Route("/items", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Use(workspaceMiddleware.RequireWorkspace)
+			r.With(workspaceMiddleware.RequirePermission("transaction:read")).Get("/", accountingHandler.ListItems)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Post("/", accountingHandler.CreateItem)
+			r.With(workspaceMiddleware.RequirePermission("transaction:read")).Get("/{id}", accountingHandler.GetItem)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Patch("/{id}", accountingHandler.UpdateItem)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Delete("/{id}", accountingHandler.DeleteItem)
+		})
+
+		r.Route("/transactions", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Use(workspaceMiddleware.RequireWorkspace)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Post("/", accountingHandler.CreateTransaction)
+			r.With(workspaceMiddleware.RequirePermission("transaction:read")).Get("/", accountingHandler.ListTransactions)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Post("/categorize", accountingHandler.CategorizeTransaction)
+			r.With(workspaceMiddleware.RequirePermission("transaction:read")).Get("/{id}", accountingHandler.GetTransaction)
+			r.With(workspaceMiddleware.RequirePermission("transaction:void")).Post("/{id}/void", accountingHandler.VoidTransaction)
+		})
+
+		r.Route("/reports", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Use(workspaceMiddleware.RequireWorkspace)
+			r.Use(workspaceMiddleware.RequirePermission("report:read"))
+			r.Get("/trial-balance", accountingHandler.GetTrialBalance)
+			r.Get("/balance-sheet", accountingHandler.GetBalanceSheet)
+			r.Get("/income-statement", accountingHandler.GetIncomeStatement)
+			r.Get("/cash-flow", accountingHandler.GetCashFlow)
+			r.Get("/ledger/{account_id}", accountingHandler.GetGeneralLedger)
+		})
 	})
 
 	// ═══════════════════════════════════════════════════════════════

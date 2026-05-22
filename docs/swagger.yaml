@@ -1,6 +1,437 @@
 basePath: /api/v1
 definitions:
-  codeberg_org_azzet_azzetbe_internal_admin.AdminResponse:
+  accounting.AccountResponse:
+    properties:
+      account_type:
+        example: ASSET
+        type: string
+      code:
+        example: 1-1001
+        type: string
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      id:
+        example: 550e8400-...
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      is_system:
+        example: true
+        type: boolean
+      level:
+        example: 3
+        type: integer
+      name:
+        example: Kas
+        type: string
+      normal_balance:
+        example: DEBIT
+        type: string
+      parent_id:
+        example: 550e8400-...
+        type: string
+      updated_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      workspace_id:
+        example: 550e8400-...
+        type: string
+    type: object
+  accounting.BalanceSheetEntry:
+    properties:
+      account_id:
+        type: string
+      account_type:
+        example: ASSET
+        type: string
+      balance:
+        example: "300000.00"
+        type: string
+      code:
+        example: 1-1001
+        type: string
+      name:
+        example: Kas
+        type: string
+      normal_balance:
+        example: DEBIT
+        type: string
+    type: object
+  accounting.BalanceSheetReport:
+    properties:
+      assets:
+        items:
+          $ref: '#/definitions/accounting.BalanceSheetEntry'
+        type: array
+      equity:
+        items:
+          $ref: '#/definitions/accounting.BalanceSheetEntry'
+        type: array
+      is_balanced:
+        example: true
+        type: boolean
+      liabilities:
+        items:
+          $ref: '#/definitions/accounting.BalanceSheetEntry'
+        type: array
+      total_assets:
+        example: "1000000.00"
+        type: string
+      total_equity:
+        example: "700000.00"
+        type: string
+      total_liabilities:
+        example: "300000.00"
+        type: string
+    type: object
+  accounting.CashFlowEntry:
+    properties:
+      date:
+        example: "2026-05-20"
+        type: string
+      net_flow:
+        example: "50000.00"
+        type: string
+      total_credit:
+        example: "50000.00"
+        type: string
+      total_debit:
+        example: "100000.00"
+        type: string
+    type: object
+  accounting.CategorizationRequest:
+    properties:
+      amount:
+        example: 500000
+        type: number
+      description:
+        example: Bayar listrik bulan Mei
+        type: string
+      transaction_type:
+        enum:
+        - CASH_IN
+        - CASH_OUT
+        - SALES
+        - PURCHASE
+        example: CASH_OUT
+        type: string
+    type: object
+  accounting.CategorizationResult:
+    properties:
+      category:
+        type: string
+      confidence:
+        type: number
+      used_fallback:
+        type: boolean
+    type: object
+  accounting.CreateAccountRequest:
+    properties:
+      account_type:
+        enum:
+        - ASSET
+        - LIABILITY
+        - EQUITY
+        - REVENUE
+        - EXPENSE
+        example: ASSET
+        type: string
+      code:
+        example: 1-3001
+        type: string
+      name:
+        example: Deposito
+        type: string
+      parent_id:
+        example: 550e8400-...
+        type: string
+    type: object
+  accounting.CreateItemRequest:
+    type: object
+  accounting.CreateTransactionRequest:
+    type: object
+  accounting.IncomeStatementEntry:
+    properties:
+      account_id:
+        type: string
+      account_type:
+        example: REVENUE
+        type: string
+      balance:
+        example: "500000.00"
+        type: string
+      code:
+        example: 4-1001
+        type: string
+      name:
+        example: Pendapatan Usaha
+        type: string
+      normal_balance:
+        example: CREDIT
+        type: string
+      total_credit:
+        example: "500000.00"
+        type: string
+      total_debit:
+        example: "0.00"
+        type: string
+    type: object
+  accounting.IncomeStatementReport:
+    properties:
+      expenses:
+        items:
+          $ref: '#/definitions/accounting.IncomeStatementEntry'
+        type: array
+      net_income:
+        example: "300000.00"
+        type: string
+      revenue:
+        items:
+          $ref: '#/definitions/accounting.IncomeStatementEntry'
+        type: array
+      total_expenses:
+        example: "200000.00"
+        type: string
+      total_revenue:
+        example: "500000.00"
+        type: string
+    type: object
+  accounting.ItemResponse:
+    properties:
+      account_id:
+        example: 550e8400-...
+        type: string
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      description:
+        example: Nasi goreng spesial
+        type: string
+      id:
+        example: 550e8400-...
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      item_type:
+        example: BARANG
+        type: string
+      name:
+        example: Nasi Goreng
+        type: string
+      unit:
+        example: Pcs
+        type: string
+      unit_price:
+        example: "15000.00"
+        type: string
+      updated_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      workspace_id:
+        example: 550e8400-...
+        type: string
+    type: object
+  accounting.JournalEntryResponse:
+    properties:
+      account_code:
+        example: 1-1001
+        type: string
+      account_id:
+        example: 550e8400-...
+        type: string
+      account_name:
+        example: Kas
+        type: string
+      credit:
+        example: "0.00"
+        type: string
+      debit:
+        example: "100000.00"
+        type: string
+      description:
+        type: string
+      id:
+        example: 550e8400-...
+        type: string
+      sort_order:
+        example: 0
+        type: integer
+    type: object
+  accounting.LedgerEntryResponse:
+    properties:
+      credit:
+        example: "0.00"
+        type: string
+      debit:
+        example: "100000.00"
+        type: string
+      id:
+        type: string
+      posted_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      running_balance:
+        example: "100000.00"
+        type: string
+      transaction_date:
+        example: "2026-05-20"
+        type: string
+      transaction_number:
+        example: TXN-000001
+        type: string
+      tx_description:
+        type: string
+    type: object
+  accounting.LineItemResponse:
+    properties:
+      description:
+        example: Nasi Goreng
+        type: string
+      discount_amount:
+        example: "0.00"
+        type: string
+      id:
+        example: 550e8400-...
+        type: string
+      item_id:
+        type: string
+      line_total:
+        example: "75000.00"
+        type: string
+      quantity:
+        example: "5.0000"
+        type: string
+      sort_order:
+        example: 0
+        type: integer
+      tax_amount:
+        example: "0.00"
+        type: string
+      unit:
+        example: Pcs
+        type: string
+      unit_price:
+        example: "15000.00"
+        type: string
+    type: object
+  accounting.TransactionResponse:
+    properties:
+      ai_confidence:
+        example: 0.92
+        type: number
+      amount:
+        example: "100000.00"
+        type: string
+      category:
+        example: pendapatan_usaha
+        type: string
+      counterparty_entity_id:
+        type: string
+      counterparty_name:
+        type: string
+      created_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      created_by:
+        example: 550e8400-...
+        type: string
+      currency:
+        example: IDR
+        type: string
+      description:
+        type: string
+      id:
+        example: 550e8400-...
+        type: string
+      includes_tax:
+        example: false
+        type: boolean
+      input_mode:
+        example: SIMPLE
+        type: string
+      journal_entries:
+        items:
+          $ref: '#/definitions/accounting.JournalEntryResponse'
+        type: array
+      line_items:
+        items:
+          $ref: '#/definitions/accounting.LineItemResponse'
+        type: array
+      payment_method:
+        example: TUNAI
+        type: string
+      posted_at:
+        type: string
+      reversed_transaction_id:
+        type: string
+      status:
+        example: DRAFT
+        type: string
+      tax_amount:
+        example: "0.00"
+        type: string
+      transaction_date:
+        example: "2026-05-20"
+        type: string
+      transaction_number:
+        example: TXN-000001
+        type: string
+      transaction_type:
+        example: CASH_IN
+        type: string
+      updated_at:
+        example: "2026-05-20T10:00:00Z"
+        type: string
+      voided_at:
+        type: string
+      workspace_id:
+        example: 550e8400-...
+        type: string
+    type: object
+  accounting.TrialBalanceEntry:
+    properties:
+      account_id:
+        type: string
+      account_type:
+        example: ASSET
+        type: string
+      balance:
+        example: "300000.00"
+        type: string
+      code:
+        example: 1-1001
+        type: string
+      name:
+        example: Kas
+        type: string
+      normal_balance:
+        example: DEBIT
+        type: string
+      total_credit:
+        example: "200000.00"
+        type: string
+      total_debit:
+        example: "500000.00"
+        type: string
+    type: object
+  accounting.UpdateAccountRequest:
+    properties:
+      is_active:
+        example: true
+        type: boolean
+      name:
+        example: Deposito Berjangka
+        type: string
+      parent_id:
+        example: 550e8400-...
+        type: string
+    type: object
+  accounting.UpdateItemRequest:
+    type: object
+  admin.AdminResponse:
     description: Platform admin profile information
     properties:
       created_at:
@@ -37,19 +468,19 @@ definitions:
         example: ACTIVE
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_admin.AuthResponse:
+  admin.AuthResponse:
     description: Full auth response after MFA verification
     properties:
       access_token:
         example: eyJhbGciOiJIUzI1NiIs...
         type: string
       admin:
-        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse'
+        $ref: '#/definitions/admin.AdminResponse'
       expires_in:
         example: 600
         type: integer
     type: object
-  codeberg_org_azzet_azzetbe_internal_admin.InviteAdminRequest:
+  admin.InviteAdminRequest:
     description: Invite a new platform admin (SUPER_ADMIN only)
     properties:
       email:
@@ -70,7 +501,7 @@ definitions:
         example: SUPPORT
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_admin.LoginRequest:
+  admin.LoginRequest:
     description: Admin login with email and password
     properties:
       email:
@@ -80,7 +511,7 @@ definitions:
         example: SuperSecure123!
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_admin.LoginResponse:
+  admin.LoginResponse:
     description: Response after password verification. If MFA enabled, requires second
       step.
     properties:
@@ -88,7 +519,7 @@ definitions:
         description: Only set if MFA is not enabled (first login, needs setup)
         type: string
       admin:
-        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse'
+        $ref: '#/definitions/admin.AdminResponse'
       expires_in:
         example: 600
         type: integer
@@ -99,7 +530,7 @@ definitions:
         example: true
         type: boolean
     type: object
-  codeberg_org_azzet_azzetbe_internal_admin.MFASetupConfirmRequest:
+  admin.MFASetupConfirmRequest:
     description: Confirm MFA setup by providing the first TOTP code from authenticator
       app
     properties:
@@ -107,7 +538,7 @@ definitions:
         example: "123456"
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_admin.MFASetupResponse:
+  admin.MFASetupResponse:
     description: MFA setup response with QR code URL and secret
     properties:
       qr_code:
@@ -117,7 +548,7 @@ definitions:
         example: JBSWY3DPEHPK3PXP
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_admin.MFAVerifyRequest:
+  admin.MFAVerifyRequest:
     description: Verify TOTP code after password authentication
     properties:
       code:
@@ -127,14 +558,14 @@ definitions:
         example: temp-mfa-token-uuid
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_admin.MessageResponse:
+  admin.MessageResponse:
     description: Simple message response
     properties:
       message:
         example: Operation successful
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_admin.UpdateAdminRequest:
+  admin.UpdateAdminRequest:
     description: Update admin role or status
     properties:
       name:
@@ -155,7 +586,7 @@ definitions:
         example: SUSPENDED
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.AuthResponse:
+  auth.AuthResponse:
     description: Authentication response with access token and user info. Refresh
       token is set as HttpOnly cookie.
     properties:
@@ -166,9 +597,9 @@ definitions:
         example: 900
         type: integer
       user:
-        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.UserResponse'
+        $ref: '#/definitions/auth.UserResponse'
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.ChangePasswordRequest:
+  auth.ChangePasswordRequest:
     description: Change password (requires authentication)
     properties:
       new_password:
@@ -178,7 +609,7 @@ definitions:
         example: OldPass123
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.LoginEmailRequest:
+  auth.LoginEmailRequest:
     description: Login with email and password
     properties:
       email:
@@ -188,7 +619,7 @@ definitions:
         example: SecurePass123
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.LoginOTPRequest:
+  auth.LoginOTPRequest:
     description: Login with WhatsApp number and OTP code
     properties:
       otp:
@@ -198,14 +629,14 @@ definitions:
         example: "+628123456789"
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.MessageResponse:
+  auth.MessageResponse:
     description: Simple message response
     properties:
       message:
         example: Operation successful
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.RegisterRequest:
+  auth.RegisterRequest:
     description: Registration request body. Either email or whatsapp is required.
       Password is always required.
     properties:
@@ -222,16 +653,16 @@ definitions:
         example: "+628123456789"
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.RegisterResponse:
+  auth.RegisterResponse:
     description: Registration response with user info and verification message
     properties:
       message:
         example: Registration successful. Please verify your account.
         type: string
       user:
-        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.UserResponse'
+        $ref: '#/definitions/auth.UserResponse'
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.RequestOTPRequest:
+  auth.RequestOTPRequest:
     description: Request an OTP code to be sent via WhatsApp
     properties:
       purpose:
@@ -245,7 +676,7 @@ definitions:
         example: "+628123456789"
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.ResetPasswordRequest:
+  auth.ResetPasswordRequest:
     description: Reset password using OTP verification
     properties:
       identifier:
@@ -258,7 +689,7 @@ definitions:
         example: "123456"
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.SessionResponse:
+  auth.SessionResponse:
     description: Active session information
     properties:
       created_at:
@@ -277,7 +708,7 @@ definitions:
         example: "2026-05-19T10:00:00Z"
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.UserResponse:
+  auth.UserResponse:
     description: User profile information
     properties:
       created_at:
@@ -310,7 +741,7 @@ definitions:
         example: false
         type: boolean
     type: object
-  codeberg_org_azzet_azzetbe_internal_auth.VerifyOTPRequest:
+  auth.VerifyOTPRequest:
     description: Verify OTP to activate account
     properties:
       identifier:
@@ -326,14 +757,14 @@ definitions:
         example: verify_whatsapp
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_billing.CreatePaymentRequest:
+  billing.CreatePaymentRequest:
     description: Initiate payment for a subscription invoice
     properties:
       invoice_id:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse:
+  billing.InvoiceResponse:
     description: Invoice information
     properties:
       amount:
@@ -376,14 +807,14 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_billing.MessageResponse:
+  billing.MessageResponse:
     description: Simple message response
     properties:
       message:
         example: Operation successful
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_billing.PaymentResponse:
+  billing.PaymentResponse:
     description: Payment attempt information
     properties:
       amount:
@@ -423,7 +854,7 @@ definitions:
         example: pending
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_entity.CreateEntityRequest:
+  entity.CreateEntityRequest:
     description: Create a new entity (personal or business)
     properties:
       alamat_lengkap:
@@ -445,7 +876,7 @@ definitions:
         example: "+628123456789"
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_entity.EntityMetaResponse:
+  entity.EntityMetaResponse:
     description: Entity meta/administrative information
     properties:
       bidang_usaha:
@@ -464,7 +895,7 @@ definitions:
         example: https://majujaya.co.id
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_entity.EntityResponse:
+  entity.EntityResponse:
     description: Entity information
     properties:
       alamat_lengkap:
@@ -483,7 +914,7 @@ definitions:
         example: false
         type: boolean
       meta:
-        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityMetaResponse'
+        $ref: '#/definitions/entity.EntityMetaResponse'
       nama_utama:
         example: PT Maju Jaya
         type: string
@@ -503,14 +934,14 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_entity.MessageResponse:
+  entity.MessageResponse:
     description: Simple message response
     properties:
       message:
         example: Operation successful
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityMetaRequest:
+  entity.UpdateEntityMetaRequest:
     description: Update entity administrative data
     properties:
       bidang_usaha:
@@ -529,7 +960,7 @@ definitions:
         example: https://majujaya.co.id
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityRequest:
+  entity.UpdateEntityRequest:
     description: Update an existing entity
     properties:
       alamat_lengkap:
@@ -545,7 +976,7 @@ definitions:
         example: "+628123456789"
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_plan.CreatePlanRequest:
+  plan.CreatePlanRequest:
     description: Create a new plan (SUPER_ADMIN/ENGINEER only)
     properties:
       description:
@@ -579,7 +1010,7 @@ definitions:
         example: paid
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse:
+  plan.FeatureResponse:
     description: Feature permission/quota for a plan
     properties:
       feature_key:
@@ -598,14 +1029,14 @@ definitions:
         example: advanced
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_plan.MessageResponse:
+  plan.MessageResponse:
     description: Simple message response
     properties:
       message:
         example: Operation successful
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse:
+  plan.PlanListResponse:
     description: Plan summary for listing
     properties:
       created_at:
@@ -645,7 +1076,7 @@ definitions:
         example: paid
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_plan.PlanResponse:
+  plan.PlanResponse:
     description: Plan information with feature list
     properties:
       created_at:
@@ -656,7 +1087,7 @@ definitions:
         type: string
       features:
         items:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse'
+          $ref: '#/definitions/plan.FeatureResponse'
         type: array
       id:
         example: 550e8400-e29b-41d4-a716-446655440000
@@ -692,7 +1123,7 @@ definitions:
         example: "2026-05-19T10:00:00Z"
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_plan.SetFeatureRequest:
+  plan.SetFeatureRequest:
     description: Set a feature permission on a plan. Use value_bool for boolean features,
       value_int for quotas (-1 = unlimited).
     properties:
@@ -716,7 +1147,7 @@ definitions:
         example: advanced
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_plan.UpdatePlanRequest:
+  plan.UpdatePlanRequest:
     description: Update an existing plan
     properties:
       description:
@@ -753,13 +1184,13 @@ definitions:
         example: paid
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_shared.APIError:
+  shared.APIError:
     properties:
       code:
         type: string
       details:
         items:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.FieldError'
+          $ref: '#/definitions/shared.FieldError'
         type: array
       domain:
         type: string
@@ -770,35 +1201,35 @@ definitions:
       timestamp:
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_shared.APIResponse:
+  shared.APIResponse:
     properties:
       data: {}
       meta: {}
       success:
         type: boolean
     type: object
-  codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse:
+  shared.ErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIError'
+        $ref: '#/definitions/shared.APIError'
       success:
         type: boolean
     type: object
-  codeberg_org_azzet_azzetbe_internal_shared.FieldError:
+  shared.FieldError:
     properties:
       field:
         type: string
       message:
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_subscription.MessageResponse:
+  subscription.MessageResponse:
     description: Simple message response
     properties:
       message:
         example: Operation successful
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest:
+  subscription.SubscribeRequest:
     description: Subscribe a workspace to a plan
     properties:
       billing_cycle:
@@ -811,7 +1242,7 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse:
+  subscription.SubscriptionResponse:
     description: Workspace subscription information
     properties:
       billing_cycle:
@@ -859,7 +1290,7 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_subscription.UsageResponse:
+  subscription.UsageResponse:
     description: Feature usage tracking
     properties:
       feature_key:
@@ -878,14 +1309,14 @@ definitions:
         example: 42
         type: integer
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.AcceptInviteRequest:
+  workspace.AcceptInviteRequest:
     description: Accept a workspace invite using the token
     properties:
       token:
         example: a1b2c3d4e5f6...
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.AddCounterpartyRequest:
+  workspace.AddCounterpartyRequest:
     description: Add a counterparty (customer/vendor) to workspace. Creates shadow
       entity if needed.
     properties:
@@ -918,7 +1349,7 @@ definitions:
         example: PELANGGAN
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest:
+  workspace.AssignRoleRequest:
     description: Assign a role to a workspace member
     properties:
       member_entity_id:
@@ -928,7 +1359,7 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse:
+  workspace.CounterpartyResponse:
     description: Counterparty (customer/vendor) information
     properties:
       created_at:
@@ -959,7 +1390,7 @@ definitions:
         example: ACTIVE
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.CreateInviteRequest:
+  workspace.CreateInviteRequest:
     description: Invite a user to the workspace via email
     properties:
       email:
@@ -969,7 +1400,7 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.CreateRoleRequest:
+  workspace.CreateRoleRequest:
     description: Create a custom role for the workspace
     properties:
       description:
@@ -986,14 +1417,14 @@ definitions:
           type: string
         type: array
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.CreateWorkspaceRequest:
+  workspace.CreateWorkspaceRequest:
     description: Create a workspace from an existing entity
     properties:
       entity_id:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse:
+  workspace.InviteResponse:
     description: Workspace invite information
     properties:
       accepted_at:
@@ -1024,7 +1455,7 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.MemberResponse:
+  workspace.MemberResponse:
     description: Workspace member information
     properties:
       created_at:
@@ -1055,14 +1486,14 @@ definitions:
         example: ACTIVE
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse:
+  workspace.MessageResponse:
     description: Simple message response
     properties:
       message:
         example: Operation successful
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.RoleAssignmentResponse:
+  workspace.RoleAssignmentResponse:
     description: Role assignment information
     properties:
       assigned_by:
@@ -1087,7 +1518,7 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse:
+  workspace.RoleResponse:
     description: Available role
     properties:
       description:
@@ -1107,7 +1538,7 @@ definitions:
           type: string
         type: array
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.UpdateMemberRequest:
+  workspace.UpdateMemberRequest:
     description: Update member alias or status
     properties:
       custom_alias:
@@ -1120,7 +1551,7 @@ definitions:
         example: INACTIVE
         type: string
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.UpdateRoleRequest:
+  workspace.UpdateRoleRequest:
     description: Update a custom role
     properties:
       description:
@@ -1137,7 +1568,7 @@ definitions:
           type: string
         type: array
     type: object
-  codeberg_org_azzet_azzetbe_internal_workspace.WorkspaceResponse:
+  workspace.WorkspaceResponse:
     description: Workspace information
     properties:
       created_at:
@@ -1182,21 +1613,21 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse'
+                    $ref: '#/definitions/admin.AdminResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List all admins
@@ -1212,7 +1643,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.InviteAdminRequest'
+          $ref: '#/definitions/admin.InviteAdminRequest'
       produces:
       - application/json
       responses:
@@ -1220,23 +1651,23 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse'
+                  $ref: '#/definitions/admin.AdminResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Invite new admin
@@ -1258,23 +1689,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse'
+                  $ref: '#/definitions/admin.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Deactivate admin
@@ -1295,7 +1726,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.UpdateAdminRequest'
+          $ref: '#/definitions/admin.UpdateAdminRequest'
       produces:
       - application/json
       responses:
@@ -1303,23 +1734,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse'
+                  $ref: '#/definitions/admin.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update admin
@@ -1337,7 +1768,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.LoginRequest'
+          $ref: '#/definitions/admin.LoginRequest'
       produces:
       - application/json
       responses:
@@ -1345,15 +1776,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.LoginResponse'
+                  $ref: '#/definitions/admin.LoginResponse'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Admin login (step 1)
       tags:
       - Admin Auth
@@ -1367,15 +1798,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MessageResponse'
+                  $ref: '#/definitions/admin.MessageResponse'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Admin logout
@@ -1391,15 +1822,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AdminResponse'
+                  $ref: '#/definitions/admin.AdminResponse'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get current admin profile
@@ -1417,7 +1848,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFASetupConfirmRequest'
+          $ref: '#/definitions/admin.MFASetupConfirmRequest'
       produces:
       - application/json
       responses:
@@ -1430,19 +1861,19 @@ paths:
               type: string
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse'
+                  $ref: '#/definitions/admin.AuthResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Confirm MFA setup
@@ -1459,19 +1890,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFASetupResponse'
+                  $ref: '#/definitions/admin.MFASetupResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Setup MFA (first time)
@@ -1489,7 +1920,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.MFAVerifyRequest'
+          $ref: '#/definitions/admin.MFAVerifyRequest'
       produces:
       - application/json
       responses:
@@ -1502,15 +1933,15 @@ paths:
               type: string
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse'
+                  $ref: '#/definitions/admin.AuthResponse'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Verify MFA code (step 2)
       tags:
       - Admin Auth
@@ -1529,15 +1960,15 @@ paths:
               type: string
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_admin.AuthResponse'
+                  $ref: '#/definitions/admin.AuthResponse'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Refresh admin access token
       tags:
       - Admin Auth
@@ -1561,21 +1992,21 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse'
+                    $ref: '#/definitions/billing.InvoiceResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List all invoices (admin)
@@ -1592,21 +2023,21 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse'
+                    $ref: '#/definitions/plan.PlanResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List all plans (admin)
@@ -1622,7 +2053,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.CreatePlanRequest'
+          $ref: '#/definitions/plan.CreatePlanRequest'
       produces:
       - application/json
       responses:
@@ -1630,15 +2061,15 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse'
+                  $ref: '#/definitions/plan.PlanResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create plan
@@ -1661,15 +2092,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse'
+                  $ref: '#/definitions/plan.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete plan
@@ -1691,15 +2122,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse'
+                  $ref: '#/definitions/plan.PlanResponse'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get plan by ID (admin)
@@ -1720,7 +2151,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.UpdatePlanRequest'
+          $ref: '#/definitions/plan.UpdatePlanRequest'
       produces:
       - application/json
       responses:
@@ -1728,19 +2159,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse'
+                  $ref: '#/definitions/plan.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update plan
@@ -1762,7 +2193,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.SetFeatureRequest'
+          $ref: '#/definitions/plan.SetFeatureRequest'
       produces:
       - application/json
       responses:
@@ -1770,19 +2201,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.FeatureResponse'
+                  $ref: '#/definitions/plan.FeatureResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Set plan feature
@@ -1809,15 +2240,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.MessageResponse'
+                  $ref: '#/definitions/plan.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Remove plan feature
@@ -1843,26 +2274,685 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse'
+                    $ref: '#/definitions/subscription.SubscriptionResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List all subscriptions (admin)
       tags:
       - Admin Subscriptions
+  /api/v1/accounts:
+    get:
+      description: Returns all active accounts for the workspace
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Filter by account type
+        enum:
+        - ASSET
+        - LIABILITY
+        - EQUITY
+        - REVENUE
+        - EXPENSE
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/accounting.AccountResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: List chart of accounts
+      tags:
+      - Accounting
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Account data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/accounting.CreateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/accounting.AccountResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: Create a custom account
+      tags:
+      - Accounting
+  /api/v1/accounts/{id}:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/accounting.AccountResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: Get account by ID
+      tags:
+      - Accounting
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/accounting.UpdateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: Update a custom account
+      tags:
+      - Accounting
+  /api/v1/items:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Filter by item type
+        enum:
+        - BARANG
+        - JASA
+        - PROYEK
+        - AHSP_RAKITAN
+        in: query
+        name: type
+        type: string
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/accounting.ItemResponse'
+                  type: array
+              type: object
+      summary: List items
+      tags:
+      - Accounting
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Item data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/accounting.CreateItemRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/accounting.ItemResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: Create an item
+      tags:
+      - Accounting
+  /api/v1/items/{id}:
+    delete:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: Soft-delete an item
+      tags:
+      - Accounting
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/accounting.ItemResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: Get item by ID
+      tags:
+      - Accounting
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/accounting.UpdateItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: Update an item
+      tags:
+      - Accounting
+  /api/v1/reports/balance-sheet:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Period up to (YYYY-MM)
+        example: '"2026-05"'
+        in: query
+        name: period
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/accounting.BalanceSheetReport'
+              type: object
+      summary: Get Balance Sheet (Neraca)
+      tags:
+      - Reports
+  /api/v1/reports/cash-flow:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Date from (YYYY-MM-DD)
+        in: query
+        name: date_from
+        required: true
+        type: string
+      - description: Date to (YYYY-MM-DD)
+        in: query
+        name: date_to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/accounting.CashFlowEntry'
+                  type: array
+              type: object
+      summary: Get Cash Flow (Arus Kas)
+      tags:
+      - Reports
+  /api/v1/reports/income-statement:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Period from (YYYY-MM)
+        in: query
+        name: period_from
+        required: true
+        type: string
+      - description: Period to (YYYY-MM)
+        in: query
+        name: period_to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/accounting.IncomeStatementReport'
+              type: object
+      summary: Get Income Statement (Laba Rugi)
+      tags:
+      - Reports
+  /api/v1/reports/ledger/{account_id}:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Account ID
+        in: path
+        name: account_id
+        required: true
+        type: string
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/accounting.LedgerEntryResponse'
+                  type: array
+              type: object
+      summary: Get General Ledger (Buku Besar) for an account
+      tags:
+      - Reports
+  /api/v1/reports/trial-balance:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Period from (YYYY-MM)
+        example: '"2026-01"'
+        in: query
+        name: period_from
+        required: true
+        type: string
+      - description: Period to (YYYY-MM)
+        example: '"2026-05"'
+        in: query
+        name: period_to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/accounting.TrialBalanceEntry'
+                  type: array
+              type: object
+      summary: Get Trial Balance (Neraca Saldo)
+      tags:
+      - Reports
+  /api/v1/transactions:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/accounting.TransactionResponse'
+                  type: array
+              type: object
+      summary: List transactions
+      tags:
+      - Accounting
+    post:
+      consumes:
+      - application/json
+      description: Creates a transaction with auto-generated journal entries (SIMPLE
+        mode) or manual entries (ADVANCED mode)
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Transaction data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/accounting.CreateTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/accounting.TransactionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: Create a transaction
+      tags:
+      - Accounting
+  /api/v1/transactions/{id}:
+    get:
+      description: Returns transaction with journal entries and line items
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/accounting.TransactionResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: Get transaction by ID
+      tags:
+      - Accounting
+  /api/v1/transactions/{id}/void:
+    post:
+      description: Creates a reversal transaction that swaps debit/credit. Original
+        is marked VOID.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/accounting.TransactionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: Void a posted transaction (Jurnal Pembalik)
+      tags:
+      - Accounting
+  /api/v1/transactions/categorize:
+    post:
+      consumes:
+      - application/json
+      description: Suggests a category for a transaction based on description. Strict
+        whitelist enforced.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Categorization input
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/accounting.CategorizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/shared.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/accounting.CategorizationResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/shared.APIResponse'
+      summary: AI-powered transaction categorization
+      tags:
+      - Accounting
   /auth/login/email:
     post:
       consumes:
@@ -1875,7 +2965,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.LoginEmailRequest'
+          $ref: '#/definitions/auth.LoginEmailRequest'
       produces:
       - application/json
       responses:
@@ -1888,19 +2978,19 @@ paths:
               type: string
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.AuthResponse'
+                  $ref: '#/definitions/auth.AuthResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Login with email and password
       tags:
       - Auth
@@ -1916,7 +3006,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.LoginOTPRequest'
+          $ref: '#/definitions/auth.LoginOTPRequest'
       produces:
       - application/json
       responses:
@@ -1929,19 +3019,19 @@ paths:
               type: string
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.AuthResponse'
+                  $ref: '#/definitions/auth.AuthResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Login with WhatsApp OTP
       tags:
       - Auth
@@ -1956,19 +3046,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+                  $ref: '#/definitions/auth.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Logout current session
@@ -1985,19 +3075,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+                  $ref: '#/definitions/auth.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Logout all sessions
@@ -2013,19 +3103,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.UserResponse'
+                  $ref: '#/definitions/auth.UserResponse'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get current user
@@ -2043,7 +3133,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.RequestOTPRequest'
+          $ref: '#/definitions/auth.RequestOTPRequest'
       produces:
       - application/json
       responses:
@@ -2051,15 +3141,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+                  $ref: '#/definitions/auth.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Request OTP code via WhatsApp
       tags:
       - Auth
@@ -2075,7 +3165,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.ChangePasswordRequest'
+          $ref: '#/definitions/auth.ChangePasswordRequest'
       produces:
       - application/json
       responses:
@@ -2083,19 +3173,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+                  $ref: '#/definitions/auth.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Change password
@@ -2113,7 +3203,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.ResetPasswordRequest'
+          $ref: '#/definitions/auth.ResetPasswordRequest'
       produces:
       - application/json
       responses:
@@ -2121,15 +3211,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+                  $ref: '#/definitions/auth.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Reset password with OTP
       tags:
       - Auth
@@ -2149,15 +3239,15 @@ paths:
               type: string
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.AuthResponse'
+                  $ref: '#/definitions/auth.AuthResponse'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Refresh access token
       tags:
       - Auth
@@ -2173,7 +3263,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.RegisterRequest'
+          $ref: '#/definitions/auth.RegisterRequest'
       produces:
       - application/json
       responses:
@@ -2181,15 +3271,15 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.RegisterResponse'
+                  $ref: '#/definitions/auth.RegisterResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Register a new user
       tags:
       - Auth
@@ -2203,21 +3293,21 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.SessionResponse'
+                    $ref: '#/definitions/auth.SessionResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List active sessions
@@ -2240,19 +3330,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+                  $ref: '#/definitions/auth.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Revoke a specific session
@@ -2270,7 +3360,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.VerifyOTPRequest'
+          $ref: '#/definitions/auth.VerifyOTPRequest'
       produces:
       - application/json
       responses:
@@ -2278,15 +3368,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_auth.MessageResponse'
+                  $ref: '#/definitions/auth.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Verify OTP code
       tags:
       - Auth
@@ -2314,17 +3404,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse'
+                    $ref: '#/definitions/billing.InvoiceResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List invoices
@@ -2351,15 +3441,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.InvoiceResponse'
+                  $ref: '#/definitions/billing.InvoiceResponse'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get invoice
@@ -2381,7 +3471,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.CreatePaymentRequest'
+          $ref: '#/definitions/billing.CreatePaymentRequest'
       produces:
       - application/json
       responses:
@@ -2389,15 +3479,15 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.PaymentResponse'
+                  $ref: '#/definitions/billing.PaymentResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Pay invoice
@@ -2427,17 +3517,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.PaymentResponse'
+                    $ref: '#/definitions/billing.PaymentResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List payments
@@ -2453,17 +3543,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse'
+                    $ref: '#/definitions/entity.EntityResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List my entities
@@ -2480,7 +3570,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.CreateEntityRequest'
+          $ref: '#/definitions/entity.CreateEntityRequest'
       produces:
       - application/json
       responses:
@@ -2488,19 +3578,19 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse'
+                  $ref: '#/definitions/entity.EntityResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create entity
@@ -2522,15 +3612,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse'
+                  $ref: '#/definitions/entity.EntityResponse'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get entity by ID
@@ -2551,7 +3641,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityRequest'
+          $ref: '#/definitions/entity.UpdateEntityRequest'
       produces:
       - application/json
       responses:
@@ -2559,19 +3649,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.MessageResponse'
+                  $ref: '#/definitions/entity.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update entity
@@ -2594,7 +3684,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.UpdateEntityMetaRequest'
+          $ref: '#/definitions/entity.UpdateEntityMetaRequest'
       produces:
       - application/json
       responses:
@@ -2602,19 +3692,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.MessageResponse'
+                  $ref: '#/definitions/entity.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update entity meta
@@ -2644,17 +3734,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_entity.EntityResponse'
+                    $ref: '#/definitions/entity.EntityResponse'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Search entities
@@ -2671,11 +3761,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanListResponse'
+                    $ref: '#/definitions/plan.PlanListResponse'
                   type: array
               type: object
       summary: List active plans
@@ -2698,15 +3788,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_plan.PlanResponse'
+                  $ref: '#/definitions/plan.PlanResponse'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Get plan by slug
       tags:
       - Plans
@@ -2726,19 +3816,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse'
+                  $ref: '#/definitions/subscription.SubscriptionResponse'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get active subscription
@@ -2760,7 +3850,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest'
+          $ref: '#/definitions/subscription.SubscribeRequest'
       produces:
       - application/json
       responses:
@@ -2768,23 +3858,23 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse'
+                  $ref: '#/definitions/subscription.SubscriptionResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Subscribe to a plan
@@ -2806,19 +3896,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.MessageResponse'
+                  $ref: '#/definitions/subscription.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Cancel subscription
@@ -2840,7 +3930,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscribeRequest'
+          $ref: '#/definitions/subscription.SubscribeRequest'
       produces:
       - application/json
       responses:
@@ -2848,19 +3938,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse'
+                  $ref: '#/definitions/subscription.SubscriptionResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Change plan (upgrade/downgrade)
@@ -2883,17 +3973,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.SubscriptionResponse'
+                    $ref: '#/definitions/subscription.SubscriptionResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List subscription history
@@ -2916,21 +4006,21 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_subscription.UsageResponse'
+                    $ref: '#/definitions/subscription.UsageResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get usage summary
@@ -2955,19 +4045,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_billing.MessageResponse'
+                  $ref: '#/definitions/billing.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       summary: Xendit payment webhook
       tags:
       - Webhooks
@@ -2981,17 +4071,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.WorkspaceResponse'
+                    $ref: '#/definitions/workspace.WorkspaceResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List my workspaces
@@ -3008,7 +4098,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateWorkspaceRequest'
+          $ref: '#/definitions/workspace.CreateWorkspaceRequest'
       produces:
       - application/json
       responses:
@@ -3016,19 +4106,19 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.WorkspaceResponse'
+                  $ref: '#/definitions/workspace.WorkspaceResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create workspace
@@ -3051,21 +4141,21 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse'
+                    $ref: '#/definitions/workspace.CounterpartyResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List counterparties
@@ -3087,7 +4177,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AddCounterpartyRequest'
+          $ref: '#/definitions/workspace.AddCounterpartyRequest'
       produces:
       - application/json
       responses:
@@ -3095,23 +4185,23 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CounterpartyResponse'
+                  $ref: '#/definitions/workspace.CounterpartyResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Add counterparty
@@ -3134,17 +4224,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse'
+                    $ref: '#/definitions/workspace.InviteResponse'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List pending invites
@@ -3165,7 +4255,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateInviteRequest'
+          $ref: '#/definitions/workspace.CreateInviteRequest'
       produces:
       - application/json
       responses:
@@ -3173,15 +4263,15 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.InviteResponse'
+                  $ref: '#/definitions/workspace.InviteResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Invite a user to workspace
@@ -3208,15 +4298,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+                  $ref: '#/definitions/workspace.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Revoke an invite
@@ -3234,7 +4324,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AcceptInviteRequest'
+          $ref: '#/definitions/workspace.AcceptInviteRequest'
       produces:
       - application/json
       responses:
@@ -3242,15 +4332,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+                  $ref: '#/definitions/workspace.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Accept a workspace invite
@@ -3272,21 +4362,21 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MemberResponse'
+                    $ref: '#/definitions/workspace.MemberResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List workspace members
@@ -3313,23 +4403,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+                  $ref: '#/definitions/workspace.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Remove workspace member
@@ -3355,7 +4445,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.UpdateMemberRequest'
+          $ref: '#/definitions/workspace.UpdateMemberRequest'
       produces:
       - application/json
       responses:
@@ -3363,23 +4453,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+                  $ref: '#/definitions/workspace.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update workspace member
@@ -3401,11 +4491,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse'
+                    $ref: '#/definitions/workspace.RoleResponse'
                   type: array
               type: object
       security:
@@ -3428,7 +4518,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.CreateRoleRequest'
+          $ref: '#/definitions/workspace.CreateRoleRequest'
       produces:
       - application/json
       responses:
@@ -3436,15 +4526,15 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleResponse'
+                  $ref: '#/definitions/workspace.RoleResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a custom workspace role
@@ -3471,15 +4561,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+                  $ref: '#/definitions/workspace.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a workspace role
@@ -3505,7 +4595,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.UpdateRoleRequest'
+          $ref: '#/definitions/workspace.UpdateRoleRequest'
       produces:
       - application/json
       responses:
@@ -3513,15 +4603,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+                  $ref: '#/definitions/workspace.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a workspace role
@@ -3543,7 +4633,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest'
+          $ref: '#/definitions/workspace.AssignRoleRequest'
       produces:
       - application/json
       responses:
@@ -3551,15 +4641,15 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.RoleAssignmentResponse'
+                  $ref: '#/definitions/workspace.RoleAssignmentResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Assign a role to a member
@@ -3581,7 +4671,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.AssignRoleRequest'
+          $ref: '#/definitions/workspace.AssignRoleRequest'
       produces:
       - application/json
       responses:
@@ -3589,15 +4679,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.APIResponse'
+            - $ref: '#/definitions/shared.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_workspace.MessageResponse'
+                  $ref: '#/definitions/workspace.MessageResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/codeberg_org_azzet_azzetbe_internal_shared.ErrorResponse'
+            $ref: '#/definitions/shared.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Remove a role from a member
