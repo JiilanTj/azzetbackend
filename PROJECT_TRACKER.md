@@ -638,78 +638,78 @@ cmd/consumer/main.go                        — Register ledger worker (updated)
 
 ### 7A. Chart of Accounts
 
-- [ ] Migration: `accounts` table (per workspace, parent-child hierarchy)
-- [ ] COA template: SAK EMKM standard (seeded via workspace.created event)
-- [ ] Account types: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
-- [ ] Normal balance: DEBIT or CREDIT per account type
-- [ ] Account hierarchy (parent_id, level)
-- [ ] Account codes (format: "X-XXXX", unique per workspace)
-- [ ] System accounts (is_system=true, cannot be deleted)
-- [ ] SQLC queries + coa_service + handler
-- [ ] Hook: auto-seed on workspace.created event (NATS consumer)
+- [x] Migration: `accounts` table (per workspace, parent-child hierarchy)
+- [x] COA template: SAK EMKM standard (seeded via workspace.created event)
+- [x] Account types: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
+- [x] Normal balance: DEBIT or CREDIT per account type
+- [x] Account hierarchy (parent_id, level)
+- [x] Account codes (format: "X-XXXX", unique per workspace)
+- [x] System accounts (is_system=true, cannot be deleted)
+- [x] SQLC queries + coa_service + handler
+- [x] Hook: auto-seed on workspace.created event (NATS consumer)
 
 ### 7B. Items & Products
 
-- [ ] Migration: `items` table (per workspace, privacy boundary)
-- [ ] Item types: BARANG, JASA, PROYEK, AHSP_RAKITAN
-- [ ] Item CRUD with workspace isolation
-- [ ] Unit types: Pcs, Kg, Liter, Meter, M2, M3, Jam, Hari, Paket, Unit, Box, Lusin
-- [ ] Default account linking (account_id FK for auto-categorization)
-- [ ] Soft delete (is_active flag)
-- [ ] SQLC queries + item_service + handler
+- [x] Migration: `items` table (per workspace, privacy boundary)
+- [x] Item types: BARANG, JASA, PROYEK, AHSP_RAKITAN
+- [x] Item CRUD with workspace isolation
+- [x] Unit types: Pcs, Kg, Liter, Meter, M2, M3, Jam, Hari, Paket, Unit, Box, Lusin
+- [x] Default account linking (account_id FK for auto-categorization)
+- [x] Soft delete (is_active flag)
+- [x] SQLC queries + item_service + handler
 
 ### 7C. Transactions
 
-- [ ] Migration: `transactions`, `transaction_line_items`, `journal_entries`
-- [ ] Transaction types: CASH_IN, CASH_OUT, SALES, PURCHASE, JOURNAL, REVERSAL
-- [ ] Input modes: SIMPLE, ADVANCED, OCR
-- [ ] Multi-line items: `transaction_line_items` table (qty, unit_price, item_id, etc.)
-- [ ] Dual-mode input:
-  - [ ] Simple mode: user picks direction + category → auto journal via rule engine
-  - [ ] Advanced mode: user manually specifies debit/credit accounts
-- [ ] AI categorization: strict whitelist, sandboxed prompt, double-check validation
-- [ ] Double-entry enforcement: sum(debit) MUST = sum(credit) per transaction
-- [ ] Transaction status lifecycle: DRAFT → POSTED (async) → VOID (jurnal pembalik)
-- [ ] Counterparty linking (counterparty_entity_id FK)
+- [x] Migration: `transactions`, `transaction_line_items`, `journal_entries`
+- [x] Transaction types: CASH_IN, CASH_OUT, SALES, PURCHASE, JOURNAL, REVERSAL
+- [x] Input modes: SIMPLE, ADVANCED, OCR
+- [x] Multi-line items: `transaction_line_items` table (qty, unit_price, item_id, etc.)
+- [x] Dual-mode input:
+  - [x] Simple mode: user picks direction + category → auto journal via rule engine
+  - [x] Advanced mode: user manually specifies debit/credit accounts
+- [x] AI categorization: strict whitelist, sandboxed prompt, double-check validation
+- [x] Double-entry enforcement: sum(debit) MUST = sum(credit) per transaction
+- [x] Transaction status lifecycle: DRAFT → POSTED (async) → VOID (jurnal pembalik)
+- [x] Counterparty linking (counterparty_entity_id FK)
 - [ ] Shadow entity auto-creation for unknown counterparties (reuse Phase 3)
-- [ ] Void = Jurnal Pembalik: create REVERSAL transaction, swap debit↔credit
-- [ ] SQLC queries + service + handler
+- [x] Void = Jurnal Pembalik: create REVERSAL transaction, swap debit↔credit
+- [x] SQLC queries + service + handler
 
 ### 7D. Ledger Worker (Async)
 
-- [ ] NATS consumer: accounting.transaction.created
-- [ ] Validate posting rules (sum debit = sum credit)
-- [ ] Generate ledger_entries from journal_entries
-- [ ] Calculate running_balance per account (ordered by posted_at)
-- [ ] Upsert account_balances (period: YYYY-MM)
-- [ ] Validate accounting equation: total ASSET = total LIABILITY + total EQUITY
-- [ ] Mark transaction status: POSTED + set posted_at
-- [ ] Emit: accounting.ledger.posted event
-- [ ] Error handling: if validation fails → mark FAILED + emit error event
+- [x] NATS consumer: accounting.transaction.created
+- [x] Validate posting rules (sum debit = sum credit)
+- [x] Generate ledger_entries from journal_entries
+- [x] Calculate running_balance per account (ordered by posted_at)
+- [x] Upsert account_balances (period: YYYY-MM)
+- [x] Validate accounting equation: total ASSET = total LIABILITY + total EQUITY
+- [x] Mark transaction status: POSTED + set posted_at
+- [x] Emit: accounting.ledger.posted event
+- [x] Error handling: if validation fails → mark FAILED + emit error event
 
 ### 7E. Reporting (Basic)
 
-- [ ] Trial Balance (Neraca Saldo): sum debit/credit per account for period
-- [ ] Balance Sheet (Neraca): Assets, Liabilities, Equity at point-in-time
-- [ ] Income Statement (Laba Rugi): Revenue - Expenses for period
-- [ ] Cash Flow (Arus Kas): Cash account movements for period
-- [ ] General Ledger (Buku Besar): all entries for one account with running balance
-- [ ] All reports use account_balances table (fast, pre-aggregated)
-- [ ] Synchronous for now (data from account_balances is already aggregated)
+- [x] Trial Balance (Neraca Saldo): sum debit/credit per account for period
+- [x] Balance Sheet (Neraca): Assets, Liabilities, Equity at point-in-time
+- [x] Income Statement (Laba Rugi): Revenue - Expenses for period
+- [x] Cash Flow (Arus Kas): Cash account movements for period
+- [x] General Ledger (Buku Besar): all entries for one account with running balance
+- [x] All reports use account_balances table (fast, pre-aggregated)
+- [x] Synchronous for now (data from account_balances is already aggregated)
 - [ ] Future: async generation via Asynq for large datasets + PDF export
 
 ### 7F. AI Categorization Service
 
-- [ ] Sandboxed OpenAI integration (reuse internal/ai client)
-- [ ] Hardcoded system prompt (not user-configurable)
-- [ ] Input sanitization: strip control chars, limit length, wrap in delimiters
-- [ ] Prompt injection defense: delimiter-wrapped user input, instruction hierarchy
-- [ ] Output validation: MUST match category enum whitelist exactly
-- [ ] Double-check: backend validates AI response against constants.go enums
-- [ ] Fallback: invalid/low-confidence → "beban_lain" or "pendapatan_lain"
-- [ ] Token efficiency: ~200 input tokens, ~50 output tokens per request
-- [ ] NO sensitive data sent: only description + amount + direction
-- [ ] Confidence score: 0.0-1.0, frontend can show "suggested" vs "confident"
+- [x] Sandboxed OpenAI integration (reuse internal/ai client)
+- [x] Hardcoded system prompt (not user-configurable)
+- [x] Input sanitization: strip control chars, limit length, wrap in delimiters
+- [x] Prompt injection defense: delimiter-wrapped user input, instruction hierarchy
+- [x] Output validation: MUST match category enum whitelist exactly
+- [x] Double-check: backend validates AI response against constants.go enums
+- [x] Fallback: invalid/low-confidence → "beban_lain" or "pendapatan_lain"
+- [x] Token efficiency: ~200 input tokens, ~50 output tokens per request
+- [x] NO sensitive data sent: only description + amount + direction
+- [x] Confidence score: 0.0-1.0, frontend can show "suggested" vs "confident"
 
 ---
 
@@ -981,8 +981,8 @@ Phase 3:  ████████████████████ 100%
 Phase 4:  ████████████████████ 100%
 Phase 5:  ████████████████████ 100%
 Phase 6:  ████████████████████ 100%
-Phase 7:  ░░░░░░░░░░░░░░░░░░░░   0% <-- NEXT
-Phase 8:  ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 7:  ████████████████████ 100%
+Phase 8:  ░░░░░░░░░░░░░░░░░░░░   0% <-- NEXT
 Phase 9:  ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 10: ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 11: ░░░░░░░░░░░░░░░░░░░░   0%
@@ -990,7 +990,7 @@ Phase 12: ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 
-**Next up:** Phase 7 - Accounting Core
+**Next up:** Phase 8 - Company Identity & Claim Workflow
 
 ---
 
@@ -1011,6 +1011,7 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 | 11 | 011_abac_permissions.sql | workspace_roles, workspace_role_assignments, drop master_roles + role_id |
 | 12 | 012_workspace_invites.sql | workspace_invites table |
 | 13 | 013_subscription_pending_payment.sql | Add pending_payment to check_sub_status constraint |
+| 14 | 014_accounting.sql | accounts, items, transactions, transaction_line_items, journal_entries, ledger_entries, account_balances |
 
 ---
 
@@ -1036,4 +1037,4 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 
 ---
 
-**Last Updated:** 2026-05-22
+**Last Updated:** 2026-05-26
