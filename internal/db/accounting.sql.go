@@ -1068,6 +1068,45 @@ func (q *Queries) ListAccountsByWorkspace(ctx context.Context, workspaceID uuid.
 	return items, nil
 }
 
+const listAllAccountsByWorkspace = `-- name: ListAllAccountsByWorkspace :many
+SELECT id, workspace_id, parent_id, code, name, account_type, normal_balance, level, is_system, is_active, created_at, updated_at FROM accounts
+WHERE workspace_id = $1
+ORDER BY code ASC
+`
+
+func (q *Queries) ListAllAccountsByWorkspace(ctx context.Context, workspaceID uuid.UUID) ([]Account, error) {
+	rows, err := q.db.Query(ctx, listAllAccountsByWorkspace, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Account{}
+	for rows.Next() {
+		var i Account
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ParentID,
+			&i.Code,
+			&i.Name,
+			&i.AccountType,
+			&i.NormalBalance,
+			&i.Level,
+			&i.IsSystem,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listItemsByType = `-- name: ListItemsByType :many
 SELECT id, workspace_id, name, item_type, unit, unit_price, account_id, description, is_active, created_at, updated_at FROM items
 WHERE workspace_id = $1 AND item_type = $2 AND is_active = true

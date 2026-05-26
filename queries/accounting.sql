@@ -18,6 +18,11 @@ SELECT * FROM accounts
 WHERE workspace_id = $1 AND is_active = true
 ORDER BY code ASC;
 
+-- name: ListAllAccountsByWorkspace :many
+SELECT * FROM accounts
+WHERE workspace_id = $1
+ORDER BY code ASC;
+
 -- name: ListAccountsByType :many
 SELECT * FROM accounts
 WHERE workspace_id = $1 AND account_type = $2 AND is_active = true

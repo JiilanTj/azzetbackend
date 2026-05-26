@@ -104,6 +104,20 @@ func (s *COAService) ListAccounts(ctx context.Context, workspaceID uuid.UUID) ([
 	return resp, nil
 }
 
+// ListAllAccounts returns all accounts (including inactive) for a workspace
+func (s *COAService) ListAllAccounts(ctx context.Context, workspaceID uuid.UUID) ([]AccountResponse, error) {
+	accounts, err := s.Queries.ListAllAccountsByWorkspace(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all accounts: %w", err)
+	}
+
+	resp := make([]AccountResponse, 0, len(accounts))
+	for _, a := range accounts {
+		resp = append(resp, AccountToResponse(a))
+	}
+	return resp, nil
+}
+
 // ListAccountsByType returns accounts filtered by type
 func (s *COAService) ListAccountsByType(ctx context.Context, workspaceID uuid.UUID, accountType string) ([]AccountResponse, error) {
 	// Validate account type

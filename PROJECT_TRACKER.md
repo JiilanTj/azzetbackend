@@ -826,6 +826,46 @@ cmd/consumer/main.go                        — Register ledger worker (updated)
 
 ---
 
+## Phase Pre-13 — Tweaks & Enhancements
+
+> Small improvements and missing features discovered during integration testing.
+> Should be done before hardening (Phase 13) to ensure all business logic is solid.
+
+### Accounting Enhancements
+
+- [ ] Custom category rules per workspace (user-defined category → account mapping for SIMPLE mode)
+  - Migration: `workspace_category_rules` table
+  - Rule engine: check workspace custom rules first → fallback to hardcoded rules
+  - API: CRUD endpoints for custom rules
+  - Allows user's custom accounts (e.g., "5-1013 Beban Parkir") to be used in SIMPLE mode
+- [ ] Dynamic units per workspace (like COA, seeded with defaults, user can add custom)
+  - Migration: `workspace_units` table (workspace_id, name, symbol, is_system)
+  - Seed default units on workspace.created (Pcs, Kg, Liter, Meter, M2, M3, Jam, Hari, Paket, Unit, Box, Lusin, Set, Rim)
+  - Validation: check against workspace's units table instead of hardcoded list
+  - Case-insensitive matching
+  - API: `GET /api/v1/units` (list), `POST /api/v1/units` (create custom)
+  - Items reference unit from this table
+- [ ] Shadow entity auto-creation for unknown counterparties (Phase 7C leftover)
+  - When `counterparty_name` is provided but `counterparty_entity_id` is empty
+  - Auto-create shadow entity + relation via existing Phase 3 counterparty logic
+- [ ] Async report generation via Asynq for large datasets + PDF export (Phase 7E leftover)
+- [ ] Manual COA seed endpoint: `POST /api/v1/accounts/seed` for workspaces created before Phase 7 deploy
+- [ ] Transaction pagination params: support `status`, `type`, `date_from`, `date_to` filters in list endpoint
+
+### API & Integration Fixes
+
+- [ ] `amount` field: support both JSON string and number in request body (or document that number is required)
+- [ ] Validate `journal_entries` array: reject empty objects `[{}, {}]`, only accept when `input_mode=ADVANCED`
+- [ ] Add `counterparty_name` search/filter to `GET /transactions`
+
+### Frontend Alignment
+
+- [ ] Document: `X-Workspace-ID` must use `entity_id` from workspace list, NOT relation `id`
+- [ ] Document: all numeric fields (`amount`, `unit_price`, `debit`, `credit`, `quantity`) must be JSON numbers, not strings
+- [ ] Document: report endpoints require period/date query params (400 without them)
+
+---
+
 ## Phase 13 — Hardening & Production Readiness
 
 > Security, performance, observability, and deployment.
@@ -899,6 +939,8 @@ Phase 10: Tax  <-- Hooks into transactions
 Phase 11: Notifications & Webhooks  <-- Triggered by all domain events
     |
 Phase 12: Admin Review  <-- Manages claims, users, system
+    |
+Phase Pre-13: Tweaks & Enhancements  <-- Polish before hardening
     |
 Phase 13: Hardening  <-- Production readiness
 ```
@@ -987,6 +1029,7 @@ Phase 9:  ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 10: ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 11: ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 12: ░░░░░░░░░░░░░░░░░░░░   0%
+Pre-13:   ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 

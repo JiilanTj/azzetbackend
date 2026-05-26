@@ -57,6 +57,8 @@ func (h *AccountingHandler) ListAccounts(w http.ResponseWriter, r *http.Request)
 	}
 
 	accountType := r.URL.Query().Get("type")
+	includeInactive := r.URL.Query().Get("include_inactive") == "true"
+
 	if accountType != "" {
 		accounts, err := h.COAService.ListAccountsByType(r.Context(), workspaceID, accountType)
 		if err != nil {
@@ -67,7 +69,12 @@ func (h *AccountingHandler) ListAccounts(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	accounts, err := h.COAService.ListAccounts(r.Context(), workspaceID)
+	var accounts []accounting.AccountResponse
+	if includeInactive {
+		accounts, err = h.COAService.ListAllAccounts(r.Context(), workspaceID)
+	} else {
+		accounts, err = h.COAService.ListAccounts(r.Context(), workspaceID)
+	}
 	if err != nil {
 		shared.InternalError(w, r, "accounting", err.Error())
 		return
