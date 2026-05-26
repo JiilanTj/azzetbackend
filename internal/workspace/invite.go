@@ -411,6 +411,10 @@ func buildInviteEmailHTML(workspaceName, inviterName, roleName, inviteURL string
                 </tr>
               </table>
 
+              <p style="margin:0 0 12px;font-size:13px;color:#9ca3af;line-height:1.6;word-break:break-all;">
+                Atau salin link berikut: <a href="%s" style="color:#2563eb;text-decoration:underline;">%s</a>
+              </p>
+
               <p style="margin:0 0 12px;font-size:14px;color:#9ca3af;line-height:1.6;">
                 Link ini berlaku selama <strong>24 jam</strong>. Setelah itu, undangan akan kedaluwarsa
                 dan Anda perlu meminta undangan baru.
@@ -433,7 +437,7 @@ func buildInviteEmailHTML(workspaceName, inviterName, roleName, inviteURL string
     </tr>
   </table>
 </body>
-</html>`, inviterName, workspaceName, roleName, inviteURL)
+</html>`, inviterName, workspaceName, roleName, inviteURL, inviteURL, inviteURL)
 }
 
 // --- Helpers ---

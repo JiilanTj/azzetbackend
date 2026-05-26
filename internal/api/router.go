@@ -273,6 +273,7 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			r.With(workspaceMiddleware.RequirePermission("transaction:read")).Get("/{id}", accountingHandler.GetItem)
 			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Patch("/{id}", accountingHandler.UpdateItem)
 			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Delete("/{id}", accountingHandler.DeleteItem)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Post("/{id}/reactivate", accountingHandler.ReactivateItem)
 		})
 
 		r.Route("/transactions", func(r chi.Router) {

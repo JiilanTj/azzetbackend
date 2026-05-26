@@ -214,6 +214,8 @@ func (h *AccountingHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 
 	itemType := r.URL.Query().Get("type")
+	includeInactive := r.URL.Query().Get("include_inactive") == "true"
+
 	if itemType != "" {
 		items, err := h.ItemService.ListItemsByType(r.Context(), workspaceID, itemType, limit, offset)
 		if err != nil {
@@ -224,7 +226,12 @@ func (h *AccountingHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, err := h.ItemService.ListItems(r.Context(), workspaceID, limit, offset)
+	var items []accounting.ItemResponse
+	if includeInactive {
+		items, err = h.ItemService.ListAllItems(r.Context(), workspaceID, limit, offset)
+	} else {
+		items, err = h.ItemService.ListItems(r.Context(), workspaceID, limit, offset)
+	}
 	if err != nil {
 		shared.InternalError(w, r, "accounting", err.Error())
 		return
@@ -367,6 +374,34 @@ func (h *AccountingHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	shared.OK(w, r, map[string]string{"message": "item deleted"})
+}
+
+// ReactivateItem godoc
+// @Summary Reactivate a soft-deleted item
+// @Tags Accounting
+// @Produce json
+// @Param X-Workspace-ID header string true "Workspace ID"
+// @Param id path string true "Item ID"
+// @Success 200 {object} shared.APIResponse
+// @Failure 404 {object} shared.APIResponse
+// @Router /api/v1/items/{id}/reactivate [post]
+func (h *AccountingHandler) ReactivateItem(w http.ResponseWriter, r *http.Request) {
+	workspaceID, err := parseWorkspaceID(r)
+	if err != nil {
+		shared.BadRequest(w, r, "accounting", "invalid workspace id")
+		return
+	}
+	itemID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		shared.BadRequest(w, r, "accounting", "invalid item id")
+		return
+	}
+
+	if err := h.ItemService.ReactivateItem(r.Context(), workspaceID, itemID); err != nil {
+		shared.NotFound(w, r, "accounting", err.Error())
+		return
+	}
+	shared.OK(w, r, map[string]string{"message": "item reactivated"})
 }
 
 // ============================================================

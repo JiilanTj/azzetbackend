@@ -1107,6 +1107,51 @@ func (q *Queries) ListAllAccountsByWorkspace(ctx context.Context, workspaceID uu
 	return items, nil
 }
 
+const listAllItemsByWorkspace = `-- name: ListAllItemsByWorkspace :many
+SELECT id, workspace_id, name, item_type, unit, unit_price, account_id, description, is_active, created_at, updated_at FROM items
+WHERE workspace_id = $1
+ORDER BY name ASC
+LIMIT $2 OFFSET $3
+`
+
+type ListAllItemsByWorkspaceParams struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	Limit       int32     `json:"limit"`
+	Offset      int32     `json:"offset"`
+}
+
+func (q *Queries) ListAllItemsByWorkspace(ctx context.Context, arg ListAllItemsByWorkspaceParams) ([]Item, error) {
+	rows, err := q.db.Query(ctx, listAllItemsByWorkspace, arg.WorkspaceID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Item{}
+	for rows.Next() {
+		var i Item
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.ItemType,
+			&i.Unit,
+			&i.UnitPrice,
+			&i.AccountID,
+			&i.Description,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listItemsByType = `-- name: ListItemsByType :many
 SELECT id, workspace_id, name, item_type, unit, unit_price, account_id, description, is_active, created_at, updated_at FROM items
 WHERE workspace_id = $1 AND item_type = $2 AND is_active = true
@@ -1794,6 +1839,21 @@ type MarkTransactionVoidParams struct {
 
 func (q *Queries) MarkTransactionVoid(ctx context.Context, arg MarkTransactionVoidParams) error {
 	_, err := q.db.Exec(ctx, markTransactionVoid, arg.ID, arg.WorkspaceID)
+	return err
+}
+
+const reactivateItem = `-- name: ReactivateItem :exec
+UPDATE items SET is_active = true, updated_at = NOW()
+WHERE id = $1 AND workspace_id = $2
+`
+
+type ReactivateItemParams struct {
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) ReactivateItem(ctx context.Context, arg ReactivateItemParams) error {
+	_, err := q.db.Exec(ctx, reactivateItem, arg.ID, arg.WorkspaceID)
 	return err
 }
 

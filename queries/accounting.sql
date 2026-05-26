@@ -67,6 +67,16 @@ WHERE id = $1 AND workspace_id = $2;
 UPDATE items SET is_active = false, updated_at = NOW()
 WHERE id = $1 AND workspace_id = $2;
 
+-- name: ReactivateItem :exec
+UPDATE items SET is_active = true, updated_at = NOW()
+WHERE id = $1 AND workspace_id = $2;
+
+-- name: ListAllItemsByWorkspace :many
+SELECT * FROM items
+WHERE workspace_id = $1
+ORDER BY name ASC
+LIMIT $2 OFFSET $3;
+
 -- name: CountItemsByWorkspace :one
 SELECT COUNT(*) FROM items WHERE workspace_id = $1 AND is_active = true;
 

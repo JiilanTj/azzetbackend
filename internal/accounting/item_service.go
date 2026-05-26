@@ -201,7 +201,6 @@ func (s *ItemService) UpdateItem(ctx context.Context, workspaceID, itemID uuid.U
 
 // SoftDeleteItem marks an item as inactive
 func (s *ItemService) SoftDeleteItem(ctx context.Context, workspaceID, itemID uuid.UUID) error {
-	// Check item exists
 	_, err := s.Queries.GetItemByID(ctx, db.GetItemByIDParams{
 		ID:          itemID,
 		WorkspaceID: workspaceID,
@@ -214,6 +213,40 @@ func (s *ItemService) SoftDeleteItem(ctx context.Context, workspaceID, itemID uu
 		ID:          itemID,
 		WorkspaceID: workspaceID,
 	})
+}
+
+// ReactivateItem marks an inactive item as active again
+func (s *ItemService) ReactivateItem(ctx context.Context, workspaceID, itemID uuid.UUID) error {
+	_, err := s.Queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:          itemID,
+		WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return ErrItemNotFound
+	}
+
+	return s.Queries.ReactivateItem(ctx, db.ReactivateItemParams{
+		ID:          itemID,
+		WorkspaceID: workspaceID,
+	})
+}
+
+// ListAllItems returns all items (including inactive) for a workspace
+func (s *ItemService) ListAllItems(ctx context.Context, workspaceID uuid.UUID, limit, offset int32) ([]ItemResponse, error) {
+	items, err := s.Queries.ListAllItemsByWorkspace(ctx, db.ListAllItemsByWorkspaceParams{
+		WorkspaceID: workspaceID,
+		Limit:       limit,
+		Offset:      offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all items: %w", err)
+	}
+
+	resp := make([]ItemResponse, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, ItemToResponse(item))
+	}
+	return resp, nil
 }
 
 // --- Helpers ---
