@@ -50,18 +50,88 @@ type AuditLog struct {
 	CreatedAt    time.Time   `json:"created_at"`
 }
 
+type ClaimAuditLog struct {
+	ID        uuid.UUID   `json:"id"`
+	ClaimID   uuid.UUID   `json:"claim_id"`
+	ActorID   uuid.UUID   `json:"actor_id"`
+	ActorType string      `json:"actor_type"`
+	Action    string      `json:"action"`
+	OldStatus pgtype.Text `json:"old_status"`
+	NewStatus pgtype.Text `json:"new_status"`
+	Details   []byte      `json:"details"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
+type ClaimDocument struct {
+	ID           uuid.UUID  `json:"id"`
+	ClaimID      uuid.UUID  `json:"claim_id"`
+	DocumentType string     `json:"document_type"`
+	FileKey      string     `json:"file_key"`
+	FileName     string     `json:"file_name"`
+	FileSize     int64      `json:"file_size"`
+	MimeType     string     `json:"mime_type"`
+	UploadStatus string     `json:"upload_status"`
+	UploadedAt   *time.Time `json:"uploaded_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+}
+
+type CompanyClaim struct {
+	ID               uuid.UUID   `json:"id"`
+	EntityID         uuid.UUID   `json:"entity_id"`
+	ClaimantUserID   uuid.UUID   `json:"claimant_user_id"`
+	ClaimantEntityID uuid.UUID   `json:"claimant_entity_id"`
+	Status           string      `json:"status"`
+	ReviewerID       pgtype.UUID `json:"reviewer_id"`
+	ReviewedAt       *time.Time  `json:"reviewed_at"`
+	RejectionReason  pgtype.Text `json:"rejection_reason"`
+	DisputeReason    pgtype.Text `json:"dispute_reason"`
+	Notes            pgtype.Text `json:"notes"`
+	CreatedAt        time.Time   `json:"created_at"`
+	UpdatedAt        time.Time   `json:"updated_at"`
+}
+
+type CounterpartyAlias struct {
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	EntityID    uuid.UUID `json:"entity_id"`
+	CustomAlias string    `json:"custom_alias"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 type Entity struct {
-	ID            uuid.UUID   `json:"id"`
-	UserID        pgtype.UUID `json:"user_id"`
-	EntityType    string      `json:"entity_type"`
-	NamaUtama     string      `json:"nama_utama"`
-	NikNpwp       pgtype.Text `json:"nik_npwp"`
-	NomorWa       pgtype.Text `json:"nomor_wa"`
-	AlamatLengkap pgtype.Text `json:"alamat_lengkap"`
-	IsShadow      bool        `json:"is_shadow"`
-	Status        string      `json:"status"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
+	ID             uuid.UUID   `json:"id"`
+	UserID         pgtype.UUID `json:"user_id"`
+	EntityType     string      `json:"entity_type"`
+	NamaUtama      string      `json:"nama_utama"`
+	NikNpwp        pgtype.Text `json:"nik_npwp"`
+	NomorWa        pgtype.Text `json:"nomor_wa"`
+	AlamatLengkap  pgtype.Text `json:"alamat_lengkap"`
+	IsShadow       bool        `json:"is_shadow"`
+	Status         string      `json:"status"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	NamaNormalized pgtype.Text `json:"nama_normalized"`
+}
+
+type EntityAlias struct {
+	ID              uuid.UUID `json:"id"`
+	EntityID        uuid.UUID `json:"entity_id"`
+	Alias           string    `json:"alias"`
+	AliasNormalized string    `json:"alias_normalized"`
+	Source          string    `json:"source"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+type EntityLegalID struct {
+	ID         uuid.UUID  `json:"id"`
+	EntityID   uuid.UUID  `json:"entity_id"`
+	IDType     string     `json:"id_type"`
+	IDValue    string     `json:"id_value"`
+	IsVerified bool       `json:"is_verified"`
+	VerifiedAt *time.Time `json:"verified_at"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 type EntityMetum struct {
@@ -85,6 +155,18 @@ type EntityRelation struct {
 	Status       string      `json:"status"`
 	CreatedAt    time.Time   `json:"created_at"`
 	UpdatedAt    time.Time   `json:"updated_at"`
+}
+
+type EntityVerification struct {
+	ID              uuid.UUID   `json:"id"`
+	EntityID        uuid.UUID   `json:"entity_id"`
+	Status          string      `json:"status"`
+	VerifiedBy      pgtype.UUID `json:"verified_by"`
+	VerifiedAt      *time.Time  `json:"verified_at"`
+	RejectionReason pgtype.Text `json:"rejection_reason"`
+	Notes           pgtype.Text `json:"notes"`
+	CreatedAt       time.Time   `json:"created_at"`
+	UpdatedAt       time.Time   `json:"updated_at"`
 }
 
 type InboxConsumedEvent struct {

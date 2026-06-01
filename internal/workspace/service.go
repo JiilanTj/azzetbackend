@@ -704,6 +704,161 @@ func (s *Service) VerifyWorkspaceAccess(ctx context.Context, workspaceID, userID
 	return RelationKaryawan, permJSON, nil
 }
 
+// --- Counterparty Aliases (Phase 8C) ---
+
+type CounterpartyAliasResponse struct {
+	ID          string `json:"id"`
+	WorkspaceID string `json:"workspace_id"`
+	EntityID    string `json:"entity_id"`
+	EntityName  string `json:"entity_name"`
+	CustomAlias string `json:"custom_alias"`
+	CreatedAt   string `json:"created_at"`
+}
+
+type SetCounterpartyAliasRequest struct {
+	EntityID    string `json:"entity_id"`
+	CustomAlias string `json:"custom_alias"`
+}
+
+func (s *Service) SetCounterpartyAlias(ctx context.Context, workspaceID string, req *SetCounterpartyAliasRequest) (*CounterpartyAliasResponse, error) {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return nil, ErrWorkspaceNotFound
+	}
+	eid, err := uuid.Parse(req.EntityID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid entity_id")
+	}
+	if req.CustomAlias == "" {
+		return nil, fmt.Errorf("custom_alias is required")
+	}
+
+	now := time.Now()
+
+	existing, err := s.Queries.GetCounterpartyAlias(ctx, db.GetCounterpartyAliasParams{
+		WorkspaceID: wsID,
+		EntityID:    eid,
+	})
+	if err == nil {
+		if err := s.Queries.UpdateCounterpartyAlias(ctx, db.UpdateCounterpartyAliasParams{
+			WorkspaceID: wsID,
+			EntityID:    eid,
+			CustomAlias: req.CustomAlias,
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update alias: %w", err)
+		}
+		return &CounterpartyAliasResponse{
+			ID:          existing.ID.String(),
+			WorkspaceID: workspaceID,
+			EntityID:    req.EntityID,
+			CustomAlias: req.CustomAlias,
+			CreatedAt:   existing.CreatedAt.Format(time.RFC3339),
+		}, nil
+	}
+
+	ca, err := s.Queries.CreateCounterpartyAlias(ctx, db.CreateCounterpartyAliasParams{
+		ID:          uuid.New(),
+		WorkspaceID: wsID,
+		EntityID:    eid,
+		CustomAlias: req.CustomAlias,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create alias: %w", err)
+	}
+
+	entityName := ""
+	if e, err := s.Queries.GetEntityByID(ctx, eid); err == nil {
+		entityName = e.NamaUtama
+	}
+
+	return &CounterpartyAliasResponse{
+		ID:          ca.ID.String(),
+		WorkspaceID: workspaceID,
+		EntityID:    req.EntityID,
+		EntityName:  entityName,
+		CustomAlias: ca.CustomAlias,
+		CreatedAt:   ca.CreatedAt.Format(time.RFC3339),
+	}, nil
+}
+
+func (s *Service) ListCounterpartyAliases(ctx context.Context, workspaceID string) ([]CounterpartyAliasResponse, error) {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return nil, ErrWorkspaceNotFound
+	}
+
+	aliases, err := s.Queries.ListCounterpartyAliases(ctx, wsID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]CounterpartyAliasResponse, 0, len(aliases))
+	for _, a := range aliases {
+		resp = append(resp, CounterpartyAliasResponse{
+			ID:          a.ID.String(),
+			WorkspaceID: workspaceID,
+			EntityID:    a.EntityID.String(),
+			EntityName:  a.EntityName,
+			CustomAlias: a.CustomAlias,
+			CreatedAt:   a.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	return resp, nil
+}
+
+func (s *Service) DeleteCounterpartyAlias(ctx context.Context, workspaceID, entityID string) error {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return ErrWorkspaceNotFound
+	}
+	eid, err := uuid.Parse(entityID)
+	if err != nil {
+		return fmt.Errorf("invalid entity_id")
+	}
+
+	return s.Queries.DeleteCounterpartyAlias(ctx, db.DeleteCounterpartyAliasParams{
+		WorkspaceID: wsID,
+		EntityID:    eid,
+	})
+}
+
+// SearchCounterparties does a privacy-safe fuzzy search for entities (returns only name, type, is_shadow)
+func (s *Service) SearchCounterparties(ctx context.Context, query string, limit int) ([]map[string]interface{}, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50
+	}
+
+	normalized := query
+	if len(query) < 2 {
+		return []map[string]interface{}{}, nil
+	}
+
+	results, err := s.Queries.SearchCounterpartiesFuzzy(ctx, db.SearchCounterpartiesFuzzyParams{
+		Similarity: normalized,
+		Limit:      int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]map[string]interface{}, 0, len(results))
+	for _, r := range results {
+		resp = append(resp, map[string]interface{}{
+			"id":          r.ID.String(),
+			"nama_utama":  r.NamaUtama,
+			"entity_type": r.EntityType,
+			"is_shadow":   r.IsShadow,
+			"match_score": r.MatchScore,
+		})
+	}
+	return resp, nil
+}
+
 // --- Helpers ---
 
 // bootstrapOwnerRole creates the system "Owner" role with wildcard permissions for a new workspace

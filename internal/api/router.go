@@ -17,14 +17,17 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/api/middleware"
 	"codeberg.org/azzet/azzetbe/internal/auth"
 	"codeberg.org/azzet/azzetbe/internal/billing"
+	"codeberg.org/azzet/azzetbe/internal/claim"
 	"codeberg.org/azzet/azzetbe/internal/config"
 	"codeberg.org/azzet/azzetbe/internal/database"
 	"codeberg.org/azzet/azzetbe/internal/db"
 	"codeberg.org/azzet/azzetbe/internal/entity"
+	"codeberg.org/azzet/azzetbe/internal/identity"
 	"codeberg.org/azzet/azzetbe/internal/plan"
 	rdb "codeberg.org/azzet/azzetbe/internal/redis"
 	"codeberg.org/azzet/azzetbe/internal/shared"
 	smtpclient "codeberg.org/azzet/azzetbe/internal/smtp"
+	"codeberg.org/azzet/azzetbe/internal/storage"
 	"codeberg.org/azzet/azzetbe/internal/subscription"
 	"codeberg.org/azzet/azzetbe/internal/workspace"
 )
@@ -136,6 +139,15 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	reportService := accounting.NewReportService(queries)
 	accountingHandler := handler.NewAccountingHandler(accountingService, coaService, itemService, reportService)
 
+	// --- Identity & Claim (Phase 8) ---
+	identityService := identity.NewService(queries, database.Pool)
+	var r2Client *storage.R2Client
+	r2Client, _ = storage.NewR2Client(cfg)
+	claimService := claim.NewService(queries, database.Pool, r2Client, identityService)
+	identityHandler := handler.NewIdentityHandler(identityService)
+	claimHandler := handler.NewClaimHandler(claimService)
+	claimAdminHandler := handler.NewClaimAdminHandler(claimService)
+
 	// ═══════════════════════════════════════════════════════════════
 	// USER API ROUTES (/api/v1)
 	// ═══════════════════════════════════════════════════════════════
@@ -184,9 +196,32 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			r.Post("/", entityHandler.CreateEntity)
 			r.Get("/", entityHandler.ListMyEntities)
 			r.Get("/search", entityHandler.SearchEntities)
+			r.Get("/match", identityHandler.SearchFuzzy)
 			r.Get("/{id}", entityHandler.GetEntity)
 			r.Patch("/{id}", entityHandler.UpdateEntity)
 			r.Patch("/{id}/meta", entityHandler.UpdateEntityMeta)
+			r.Get("/{id}/verification", identityHandler.GetVerificationStatus)
+			r.Post("/{id}/legal-ids", identityHandler.AddLegalID)
+			r.Get("/{id}/legal-ids", identityHandler.GetLegalIDs)
+			r.Patch("/{id}/legal-ids/{type}", identityHandler.UpdateLegalID)
+			r.Delete("/{id}/legal-ids/{type}", identityHandler.DeleteLegalID)
+			r.Post("/{id}/aliases", identityHandler.AddAlias)
+			r.Get("/{id}/aliases", identityHandler.GetAliases)
+			r.Delete("/{id}/aliases/{alias_id}", identityHandler.DeleteAlias)
+			r.Get("/{id}/duplicates", identityHandler.FindDuplicates)
+		})
+
+		// Claims (authenticated)
+		r.Route("/claims", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Post("/", claimHandler.CreateClaim)
+			r.Get("/", claimHandler.GetMyClaims)
+			r.Get("/{id}", claimHandler.GetClaim)
+			r.Post("/{id}/submit", claimHandler.SubmitClaim)
+			r.Post("/{id}/documents", claimHandler.RequestUpload)
+			r.Post("/{id}/documents/{doc_id}/confirm", claimHandler.ConfirmUpload)
+			r.Get("/{id}/documents", claimHandler.GetClaimDocuments)
+			r.Post("/{id}/dispute", claimHandler.DisputeClaim)
 		})
 
 		// Workspace routes (authenticated)
@@ -226,6 +261,10 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 				r.Route("/counterparties", func(r chi.Router) {
 					r.Post("/", workspaceHandler.AddCounterparty)
 					r.Get("/", workspaceHandler.ListCounterparties)
+					r.Get("/search", workspaceHandler.SearchCounterparties)
+					r.Post("/aliases", workspaceHandler.SetCounterpartyAlias)
+					r.Get("/aliases", workspaceHandler.ListCounterpartyAliases)
+					r.Delete("/aliases/{entity_id}", workspaceHandler.DeleteCounterpartyAlias)
 				})
 			})
 		})
@@ -363,8 +402,21 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			r.Get("/invoices", billingHandler.AdminListInvoices)
 		})
 
+		// Company claims review (REVIEWER+)
+		r.Route("/claims", func(r chi.Router) {
+			r.Use(adminMiddleware.Authenticate)
+			r.Use(adminMiddleware.RequireRole(admin.RoleSuperAdmin, admin.RoleEngineer, admin.RoleReviewer))
+			r.Get("/", claimAdminHandler.ListClaims)
+			r.Get("/stats", claimAdminHandler.CountPendingClaims)
+			r.Get("/{id}", claimAdminHandler.GetClaim)
+			r.Post("/{id}/assign", claimAdminHandler.AssignClaim)
+			r.Post("/{id}/approve", claimAdminHandler.ApproveClaim)
+			r.Post("/{id}/reject", claimAdminHandler.RejectClaim)
+			r.Get("/{id}/audit", claimAdminHandler.GetClaimAuditLog)
+			r.Get("/{id}/documents/{doc_id}/view", claimAdminHandler.GetDocumentViewURL)
+		})
+
 		// TODO: User management (SUPPORT+)
-		// TODO: Company claims (REVIEWER+)
 		// TODO: System monitoring (ENGINEER+)
 	})
 

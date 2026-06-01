@@ -12,10 +12,12 @@ import (
 	"github.com/google/uuid"
 
 	"codeberg.org/azzet/azzetbe/internal/accounting"
+	"codeberg.org/azzet/azzetbe/internal/claim"
 	"codeberg.org/azzet/azzetbe/internal/config"
 	"codeberg.org/azzet/azzetbe/internal/database"
 	dbpkg "codeberg.org/azzet/azzetbe/internal/db"
 	"codeberg.org/azzet/azzetbe/internal/events"
+	"codeberg.org/azzet/azzetbe/internal/identity"
 	"codeberg.org/azzet/azzetbe/internal/shared"
 )
 
@@ -69,6 +71,8 @@ func main() {
 	queries := dbpkg.New(db.Pool)
 	ledgerWorker := accounting.NewLedgerWorker(queries, db.Pool)
 	coaService := accounting.NewCOAService(queries, db.Pool)
+	identityService := identity.NewService(queries, db.Pool)
+	claimWorker := claim.NewClaimWorker(queries, db.Pool, identityService)
 
 	// --- Register Event Handlers ---
 
@@ -158,8 +162,16 @@ func main() {
 	_, err = natsClient.Subscribe(ctx, events.StreamCompany, "claim-worker",
 		consumer.HandleWithIdempotency("claim-worker", func(ctx context.Context, event *events.Event) error {
 			slog.Info("claim-worker: processing event", "type", event.Type, "id", event.ID)
-			// TODO: Implement claim verification logic in Phase 8
-			return nil
+			switch event.Type {
+			case events.CompanyClaimRequested:
+				return claimWorker.HandleClaimRequested(ctx, event)
+			case events.CompanyClaimApproved:
+				return claimWorker.HandleClaimApproved(ctx, event)
+			case events.CompanyClaimRejected:
+				return nil
+			default:
+				return nil
+			}
 		}),
 	)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 const createEntity = `-- name: CreateEntity :one
 INSERT INTO entities (id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at
+RETURNING id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at, nama_normalized
 `
 
 type CreateEntityParams struct {
@@ -60,6 +60,7 @@ func (q *Queries) CreateEntity(ctx context.Context, arg CreateEntityParams) (Ent
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.NamaNormalized,
 	)
 	return i, err
 }
@@ -110,7 +111,7 @@ func (q *Queries) CreateEntityMeta(ctx context.Context, arg CreateEntityMetaPara
 }
 
 const getEntityByID = `-- name: GetEntityByID :one
-SELECT id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at FROM entities WHERE id = $1
+SELECT id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at, nama_normalized FROM entities WHERE id = $1
 `
 
 func (q *Queries) GetEntityByID(ctx context.Context, id uuid.UUID) (Entity, error) {
@@ -128,12 +129,13 @@ func (q *Queries) GetEntityByID(ctx context.Context, id uuid.UUID) (Entity, erro
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.NamaNormalized,
 	)
 	return i, err
 }
 
 const getEntityByUserID = `-- name: GetEntityByUserID :one
-SELECT id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at FROM entities WHERE user_id = $1 AND entity_type = 'ORANG_PRIBADI' LIMIT 1
+SELECT id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at, nama_normalized FROM entities WHERE user_id = $1 AND entity_type = 'ORANG_PRIBADI' LIMIT 1
 `
 
 func (q *Queries) GetEntityByUserID(ctx context.Context, userID pgtype.UUID) (Entity, error) {
@@ -151,6 +153,7 @@ func (q *Queries) GetEntityByUserID(ctx context.Context, userID pgtype.UUID) (En
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.NamaNormalized,
 	)
 	return i, err
 }
@@ -177,7 +180,7 @@ func (q *Queries) GetEntityMetaByEntityID(ctx context.Context, entityID uuid.UUI
 }
 
 const listEntitiesByUserID = `-- name: ListEntitiesByUserID :many
-SELECT id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at FROM entities WHERE user_id = $1 ORDER BY created_at DESC
+SELECT id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at, nama_normalized FROM entities WHERE user_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListEntitiesByUserID(ctx context.Context, userID pgtype.UUID) ([]Entity, error) {
@@ -201,6 +204,7 @@ func (q *Queries) ListEntitiesByUserID(ctx context.Context, userID pgtype.UUID) 
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.NamaNormalized,
 		); err != nil {
 			return nil, err
 		}
@@ -213,7 +217,7 @@ func (q *Queries) ListEntitiesByUserID(ctx context.Context, userID pgtype.UUID) 
 }
 
 const searchEntitiesByName = `-- name: SearchEntitiesByName :many
-SELECT id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at FROM entities
+SELECT id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at, nama_normalized FROM entities
 WHERE nama_utama ILIKE '%' || $1 || '%' AND status = 'ACTIVE'
 ORDER BY nama_utama ASC
 LIMIT $2 OFFSET $3
@@ -246,6 +250,7 @@ func (q *Queries) SearchEntitiesByName(ctx context.Context, arg SearchEntitiesBy
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.NamaNormalized,
 		); err != nil {
 			return nil, err
 		}

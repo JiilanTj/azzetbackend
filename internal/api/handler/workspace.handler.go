@@ -377,3 +377,68 @@ func (h *WorkspaceHandler) UnassignRole(w http.ResponseWriter, r *http.Request) 
 
 	shared.OK(w, r, workspace.MessageResponse{Message: "Role unassigned"})
 }
+
+// --- Counterparty Alias & Search (Phase 8C) ---
+
+func (h *WorkspaceHandler) SetCounterpartyAlias(w http.ResponseWriter, r *http.Request) {
+	workspaceID := middleware.GetWorkspaceID(r.Context())
+
+	var req workspace.SetCounterpartyAliasRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		shared.BadRequest(w, r, "workspace", "invalid request body")
+		return
+	}
+
+	if req.EntityID == "" || req.CustomAlias == "" {
+		shared.BadRequest(w, r, "workspace", "entity_id and custom_alias are required")
+		return
+	}
+
+	resp, err := h.Service.SetCounterpartyAlias(r.Context(), workspaceID, &req)
+	if err != nil {
+		shared.BadRequest(w, r, "workspace", err.Error())
+		return
+	}
+
+	shared.OK(w, r, resp)
+}
+
+func (h *WorkspaceHandler) ListCounterpartyAliases(w http.ResponseWriter, r *http.Request) {
+	workspaceID := middleware.GetWorkspaceID(r.Context())
+
+	resp, err := h.Service.ListCounterpartyAliases(r.Context(), workspaceID)
+	if err != nil {
+		shared.InternalError(w, r, "workspace", "failed to list counterparty aliases")
+		return
+	}
+
+	shared.OK(w, r, resp)
+}
+
+func (h *WorkspaceHandler) DeleteCounterpartyAlias(w http.ResponseWriter, r *http.Request) {
+	workspaceID := middleware.GetWorkspaceID(r.Context())
+	entityID := chi.URLParam(r, "entity_id")
+
+	if err := h.Service.DeleteCounterpartyAlias(r.Context(), workspaceID, entityID); err != nil {
+		shared.BadRequest(w, r, "workspace", err.Error())
+		return
+	}
+
+	shared.OK(w, r, workspace.MessageResponse{Message: "Counterparty alias deleted"})
+}
+
+func (h *WorkspaceHandler) SearchCounterparties(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		shared.BadRequest(w, r, "workspace", "q parameter is required")
+		return
+	}
+
+	resp, err := h.Service.SearchCounterparties(r.Context(), query, 10)
+	if err != nil {
+		shared.InternalError(w, r, "workspace", "search failed")
+		return
+	}
+
+	shared.OK(w, r, resp)
+}

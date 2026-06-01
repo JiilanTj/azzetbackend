@@ -723,30 +723,30 @@ cmd/consumer/main.go                        — Register ledger worker (updated)
 
 ### 8A. Company Identity
 
-- [ ] Verification status on entities (unverified, pending, verified, rejected)
-- [ ] Legal identifiers (NPWP, NIB, SIUP)
-- [ ] Normalized company names (for matching)
-- [ ] Company aliases
-- [ ] Duplicate detection (fuzzy matching)
+- [x] Verification status on entities (unverified, pending, verified, rejected)
+- [x] Legal identifiers (NPWP, NIB, SIUP)
+- [x] Normalized company names (for matching)
+- [x] Company aliases
+- [x] Duplicate detection (fuzzy matching)
 
 ### 8B. Company Claim Workflow
 
-- [ ] Migration: company_claims, claim_documents
-- [ ] Claim request (user claims a shadow entity)
-- [ ] Document submission (upload legal docs to R2)
-- [ ] Admin review queue (REVIEWER role)
-- [ ] Approve/reject/dispute flow
-- [ ] Link shadow entity to verified entity on approval
-- [ ] Audit trail for all claim actions
-- [ ] NATS event: company.claim_requested, company.claim_approved
-- [ ] Claim verification worker (NATS consumer)
+- [x] Migration: company_claims, claim_documents
+- [x] Claim request (user claims a shadow entity)
+- [x] Document submission (upload legal docs to R2)
+- [x] Admin review queue (REVIEWER role)
+- [x] Approve/reject/dispute flow
+- [x] Link shadow entity to verified entity on approval
+- [x] Audit trail for all claim actions
+- [x] NATS event: company.claim_requested, company.claim_approved
+- [x] Claim verification worker (NATS consumer)
 
 ### 8C. Counterparty Management
 
-- [ ] Privacy-safe counterparty lookup
-- [ ] Counterparty matching (suggest existing entities)
-- [ ] Alias mapping (nama_alias_kustom)
-- [ ] Cross-tenant reference (without data leakage)
+- [x] Privacy-safe counterparty lookup
+- [x] Counterparty matching (suggest existing entities)
+- [x] Alias mapping (nama_alias_kustom)
+- [x] Cross-tenant reference (without data leakage)
 
 ---
 
@@ -1024,8 +1024,8 @@ Phase 4:  ████████████████████ 100%
 Phase 5:  ████████████████████ 100%
 Phase 6:  ████████████████████ 100%
 Phase 7:  ████████████████████ 100%
-Phase 8:  ░░░░░░░░░░░░░░░░░░░░   0% <-- NEXT
-Phase 9:  ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 8:  ████████████████████ 100%
+Phase 9:  ░░░░░░░░░░░░░░░░░░░░   0% <-- NEXT
 Phase 10: ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 11: ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 12: ░░░░░░░░░░░░░░░░░░░░   0%
@@ -1033,7 +1033,7 @@ Pre-13:   ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 
-**Next up:** Phase 8 - Company Identity & Claim Workflow
+**Next up:** Phase 9 - Document & OCR
 
 ---
 
@@ -1055,6 +1055,7 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 | 12 | 012_workspace_invites.sql | workspace_invites table |
 | 13 | 013_subscription_pending_payment.sql | Add pending_payment to check_sub_status constraint |
 | 14 | 014_accounting.sql | accounts, items, transactions, transaction_line_items, journal_entries, ledger_entries, account_balances |
+| 15 | 015_company_identity.sql | entity_verification, entity_legal_ids, entity_aliases, company_claims, claim_documents, claim_audit_log, counterparty_aliases |
 
 ---
 
@@ -1080,4 +1081,4 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 
 ---
 
-**Last Updated:** 2026-05-26
+**Last Updated:** 2026-05-27

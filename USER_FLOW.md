@@ -20,6 +20,10 @@
 - [Flow 10: Workspace Management](#flow-10-workspace-management)
 - [Flow 11: Session Management](#flow-11-session-management)
 - [Flow 12: Password Management](#flow-12-password-management)
+- [Flow 13: Accounting](#flow-13-accounting-phase-7)
+- [Flow 14: Entity Identity & Verification](#flow-14-entity-identity--verification)
+- [Flow 15: Company Claim Workflow](#flow-15-company-claim-workflow)
+- [Flow 16: Counterparty Alias Management](#flow-16-counterparty-alias-management)
 - [State Diagram](#state-diagram)
 - [Headers Reference](#headers-reference)
 - [Error Handling](#error-handling)
@@ -995,8 +999,12 @@ Content-Type: application/json
 │       │                       ├── Create Business Workspace     │
 │       │                       ├── Invite Members                │
 │       │                       ├── Add Counterparties            │
+│       │                       ├── Manage Counterparty Aliases   │
 │       │                       ├── Record Transactions (Phase 7) │
-│       │                       └── Generate Reports (Phase 7)    │
+│       │                       ├── Generate Reports (Phase 7)    │
+│       │                       ├── Manage Entity Identity        │
+│       │                       ├── Claim Shadow Entities         │
+│       │                       └── Fuzzy Search Entities         │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -1313,6 +1321,8 @@ POST /api/v1/webhooks/xendit
 /api/v1/workspaces/roles/*
 /api/v1/workspaces/invites (POST, GET, DELETE — not /accept)
 /api/v1/workspaces/counterparties/*
+/api/v1/workspaces/counterparties/aliases
+/api/v1/workspaces/counterparties/search
 /api/v1/subscription/*
 /api/v1/billing/*
 ```
@@ -1325,6 +1335,24 @@ POST /api/v1/workspaces
 POST /api/v1/workspaces/invites/accept
 GET  /api/v1/entities
 POST /api/v1/entities
+GET  /api/v1/entities/search?q=...
+GET  /api/v1/entities/{id}/verification
+POST /api/v1/entities/{id}/legal-ids
+GET  /api/v1/entities/{id}/legal-ids
+PATCH /api/v1/entities/{id}/legal-ids/{type}
+DELETE /api/v1/entities/{id}/legal-ids/{type}
+POST /api/v1/entities/{id}/aliases
+GET  /api/v1/entities/{id}/aliases
+DELETE /api/v1/entities/{id}/aliases/{alias_id}
+GET  /api/v1/entities/{id}/duplicates
+POST /api/v1/claims
+GET  /api/v1/claims
+GET  /api/v1/claims/{id}
+POST /api/v1/claims/{id}/submit
+POST /api/v1/claims/{id}/documents
+POST /api/v1/claims/{id}/documents/{doc_id}/confirm
+GET  /api/v1/claims/{id}/documents
+POST /api/v1/claims/{id}/dispute
 GET  /api/v1/auth/me
 POST /api/v1/auth/logout
 GET  /api/v1/auth/sessions
@@ -2264,4 +2292,858 @@ User creates  ──►  DRAFT  ──► (Ledger Worker) ──►  POSTED
 
 ---
 
-**Last Updated:** 2026-05-22
+---
+
+## Flow 14: Entity Identity & Verification
+
+> **Prerequisite:** User sudah punya entity (personal atau business).
+> Fitur ini memungkinkan user mengelola identitas legal entity: verifikasi status, legal IDs, aliases, dan pencarian duplikat.
+
+### Overview
+
+```
+Entity punya:
+  ├── Verification status (UNVERIFIED → PENDING → VERIFIED/REJECTED)
+  ├── Legal IDs (NPWP, NIB, SIUP, KTP, AKTA)
+  ├── Aliases (nama alternatif, dari berbagai source)
+  └── Normalized name (auto-generated, untuk fuzzy search)
+```
+
+---
+
+### 14A. Lihat Status Verifikasi
+
+**Page:** `/entities/{id}/verification`
+
+```http
+GET /api/v1/entities/{entity-id}/verification
+Authorization: Bearer <access_token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "entity_id": "entity-uuid",
+    "status": "UNVERIFIED"
+  }
+}
+```
+
+**Status values:**
+| Status | Arti |
+|--------|------|
+| `UNVERIFIED` | Belum diverifikasi (default) |
+| `PENDING` | Sedang menunggu review admin |
+| `VERIFIED` | Sudah terverifikasi |
+| `REJECTED` | Ditolak (ada rejection_reason) |
+
+**Response jika sudah verified:**
+```json
+{
+  "success": true,
+  "data": {
+    "entity_id": "entity-uuid",
+    "status": "VERIFIED",
+    "verified_by": "admin-uuid",
+    "verified_at": "2026-05-27T10:00:00Z"
+  }
+}
+```
+
+**Response jika rejected:**
+```json
+{
+  "success": true,
+  "data": {
+    "entity_id": "entity-uuid",
+    "status": "REJECTED",
+    "rejection_reason": "Dokumen NPWP tidak valid",
+    "notes": "Silakan upload ulang dengan foto yang lebih jelas"
+  }
+}
+```
+
+---
+
+### 14B. Manage Legal IDs
+
+Legal ID adalah identitas resmi entity (NPWP, NIB, dll). Bisa punya lebih dari satu tipe.
+
+**Page:** `/entities/{id}/identity`
+
+#### Tambah Legal ID
+
+```http
+POST /api/v1/entities/{entity-id}/legal-ids
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "id_type": "NPWP",
+  "id_value": "01.234.567.8-901.000"
+}
+```
+
+**Valid tipe:** `NPWP`, `NIB`, `SIUP`, `KTP`, `AKTA`
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "legal-id-uuid",
+    "entity_id": "entity-uuid",
+    "id_type": "NPWP",
+    "id_value": "01.234.567.8-901.000",
+    "is_verified": false,
+    "created_at": "2026-05-27T10:00:00Z"
+  }
+}
+```
+
+#### List Legal IDs
+
+```http
+GET /api/v1/entities/{entity-id}/legal-ids
+Authorization: Bearer <access_token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "legal-id-uuid",
+      "entity_id": "entity-uuid",
+      "id_type": "NPWP",
+      "id_value": "01.234.567.8-901.000",
+      "is_verified": false,
+      "created_at": "2026-05-27T10:00:00Z"
+    }
+  ]
+}
+```
+
+#### Update Legal ID
+
+```http
+PATCH /api/v1/entities/{entity-id}/legal-ids/NPWP
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "id_value": "02.345.678.9-012.000"
+}
+```
+
+#### Hapus Legal ID
+
+```http
+DELETE /api/v1/entities/{entity-id}/legal-ids/NPWP
+Authorization: Bearer <access_token>
+```
+
+---
+
+### 14C. Manage Aliases
+
+Aliases adalah nama alternatif untuk entity. Berguna ketika entity dikenal dengan nama berbeda di konteks berbeda.
+
+**Source values:** `MANUAL` (user input), `CLAIM` (dari claim workflow), `COUNTERPARTY` (dari counterparty mapping), `SYSTEM` (auto-generated)
+
+#### Tambah Alias
+
+```http
+POST /api/v1/entities/{entity-id}/aliases
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "alias": "PT Maju Jaya Sejahtera",
+  "source": "MANUAL"
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "alias-uuid",
+    "entity_id": "entity-uuid",
+    "alias": "PT Maju Jaya Sejahtera",
+    "source": "MANUAL",
+    "created_at": "2026-05-27T10:00:00Z"
+  }
+}
+```
+
+#### List Aliases
+
+```http
+GET /api/v1/entities/{entity-id}/aliases
+Authorization: Bearer <access_token>
+```
+
+#### Hapus Alias
+
+```http
+DELETE /api/v1/entities/{entity-id}/aliases/{alias-id}
+Authorization: Bearer <access_token>
+```
+
+---
+
+### 14D. Fuzzy Search Entities
+
+Pencarian entity berdasarkan kesamaan nama (trigram similarity). Berguna untuk menemukan duplikat atau mencari entity yang mirip.
+
+**Page:** `/entities/search` atau komponen search di mana saja
+
+```http
+GET /api/v1/entities/search?q=PT%20Maju&limit=20&offset=0
+Authorization: Bearer <access_token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "entity-uuid-1",
+      "nama_utama": "PT Maju Jaya",
+      "entity_type": "BADAN_USAHA",
+      "is_shadow": false,
+      "match_score": 0.85
+    },
+    {
+      "id": "entity-uuid-2",
+      "nama_utama": "PT Maju Makmur",
+      "entity_type": "BADAN_USAHA",
+      "is_shadow": true,
+      "match_score": 0.72
+    }
+  ]
+}
+```
+
+**Match score:** 0.0 – 1.0 (semakin tinggi semakin mirip)
+
+**Frontend notes:**
+- Gunakan debounce 300ms sebelum panggil API
+- Tampilkan `match_score` sebagai badge (e.g., "85% match")
+- Shadow entities (`is_shadow: true`) ditandai berbeda di UI
+
+---
+
+### 14E. Cari Duplikat Entity
+
+Khusus untuk satu entity — cari entity lain yang mirip namanya.
+
+```http
+GET /api/v1/entities/{entity-id}/duplicates?limit=10
+Authorization: Bearer <access_token>
+```
+
+**Response:** Sama seperti fuzzy search, tapi exclude entity itu sendiri.
+
+**Use case:** Sebelum merge entity, user bisa cek apakah ada duplikat.
+
+---
+
+## Flow 15: Company Claim Workflow
+
+> **Prerequisite:** User sudah login. Entity yang di-claim harus shadow entity (is_shadow=true).
+> Claim workflow memungkinkan user meng-claim shadow entity sebagai miliknya, dengan upload dokumen bukti dan review admin.
+
+### Claim State Machine
+
+```
+                ┌─────────────────────────────────────────────────┐
+                │                                                 │
+User creates ──►  DRAFT  ──► (user submits) ──►  SUBMITTED        │
+                │                                                 │
+                │                                    │            │
+                │                     ┌──────────────┼───────┐    │
+                │                     ▼              ▼       │    │
+                │            UNDER_REVIEW        DISPUTED    │    │
+                │                     │                       │    │
+                │              ┌──────┴──────┐               │    │
+                │              ▼             ▼               │    │
+                │          APPROVED      REJECTED            │    │
+                │              │                             │    │
+                │              ▼                             │    │
+                │    Shadow entity linked                    │    │
+                │    (user_id set, is_shadow=false)          │    │
+                └─────────────────────────────────────────────────┘
+```
+
+| Status | Arti |
+|--------|------|
+| `DRAFT` | Baru dibuat, belum submit. User bisa edit/submit |
+| `SUBMITTED` | Sudah di-submit, menunggu review admin |
+| `UNDER_REVIEW` | Admin sedang review (otomatis jika duplikat terdeteksi) |
+| `APPROVED` | Disetujui, shadow entity linked ke user |
+| `REJECTED` | Ditolak oleh admin |
+| `DISPUTED` | User menolak keputusan reject, minta review ulang |
+
+---
+
+### 15A. Buat Claim
+
+**Page:** `/entities/{id}/claim` (hanya muncul di shadow entities)
+
+**Step 1:** User melihat shadow entity dan ingin meng-claimnya
+
+```http
+POST /api/v1/claims
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "entity_id": "shadow-entity-uuid",
+  "claim_type": "OWNER",
+  "notes": "Ini adalah perusahaan saya"
+}
+```
+
+**claim_type values:**
+- `OWNER` — User adalah pemilik entity
+- `AUTHORIZED_REP` — User adalah perwakilan resmi
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "claim-uuid",
+    "entity_id": "shadow-entity-uuid",
+    "claim_type": "OWNER",
+    "status": "DRAFT",
+    "notes": "Ini adalah perusahaan saya",
+    "created_at": "2026-05-27T10:00:00Z"
+  }
+}
+```
+
+---
+
+### 15B. Upload Dokumen Bukti
+
+User upload dokumen pendukung (NPWP, NIB, AKTA, dll) via presigned URL ke Cloudflare R2.
+
+**Step 1:** Request presigned upload URL
+
+```http
+POST /api/v1/claims/{claim-id}/documents
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "doc_type": "NPWP",
+  "filename": "npwp-scan.pdf",
+  "mime_type": "application/pdf"
+}
+```
+
+**doc_type values:** `NPWP`, `NIB`, `SIUP`, `AKTA`, `KTP`, `OTHER`
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "document_id": "doc-uuid",
+    "upload_url": "https://azzet-storage.r2.cloudflarestorage.com/claims/claim-uuid/doc-uuid/npwp-scan.pdf?X-Amz-...",
+    "expires_at": "2026-05-27T10:15:00Z"
+  }
+}
+```
+
+**Step 2:** Frontend upload file langsung ke R2 via presigned URL
+
+```typescript
+// Frontend upload ke R2
+await fetch(uploadUrl, {
+  method: 'PUT',
+  body: file,
+  headers: { 'Content-Type': 'application/pdf' }
+})
+```
+
+**Step 3:** Konfirmasi upload berhasil
+
+```http
+POST /api/v1/claims/{claim-id}/documents/{doc-id}/confirm
+Authorization: Bearer <access_token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "document_id": "doc-uuid",
+    "status": "UPLOADED"
+  }
+}
+```
+
+---
+
+### 15C. Submit Claim
+
+Setelah semua dokumen di-upload, user submit claim untuk review admin.
+
+```http
+POST /api/v1/claims/{claim-id}/submit
+Authorization: Bearer <access_token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "claim-uuid",
+    "status": "SUBMITTED",
+    "updated_at": "2026-05-27T10:05:00Z"
+  }
+}
+```
+
+**What happens behind the scenes:**
+1. Status berubah DRAFT → SUBMITTED
+2. Event `CompanyClaimRequested` dikirim ke NATS
+3. Claim Worker otomatis menjalankan duplicate detection
+4. Jika ada entity mirip (match_score >= 0.8), status berubah SUBMITTED → UNDER_REVIEW (perlu perhatian admin ekstra)
+
+---
+
+### 15D. Lihat Status Claim
+
+**Page:** `/claims` (list semua claim user) atau `/claims/{id}` (detail)
+
+#### List My Claims
+
+```http
+GET /api/v1/claims
+Authorization: Bearer <access_token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "claim-uuid",
+      "entity_id": "shadow-entity-uuid",
+      "entity_name": "PT Maju Jaya",
+      "claim_type": "OWNER",
+      "status": "SUBMITTED",
+      "created_at": "2026-05-27T10:00:00Z"
+    }
+  ]
+}
+```
+
+#### Get Claim Detail
+
+```http
+GET /api/v1/claims/{claim-id}
+Authorization: Bearer <access_token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "claim-uuid",
+    "entity_id": "shadow-entity-uuid",
+    "entity_name": "PT Maju Jaya",
+    "claim_type": "OWNER",
+    "status": "UNDER_REVIEW",
+    "notes": "Ini adalah perusahaan saya",
+    "reviewed_by": "admin-uuid",
+    "rejection_reason": null,
+    "created_at": "2026-05-27T10:00:00Z",
+    "updated_at": "2026-05-27T10:10:00Z"
+  }
+}
+```
+
+#### List Claim Documents
+
+```http
+GET /api/v1/claims/{claim-id}/documents
+Authorization: Bearer <access_token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "doc-uuid",
+      "doc_type": "NPWP",
+      "filename": "npwp-scan.pdf",
+      "mime_type": "application/pdf",
+      "status": "UPLOADED",
+      "uploaded_at": "2026-05-27T10:02:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### 15E. Dispute Claim (User Tolak Keputusan)
+
+Jika claim di-reject, user bisa dispute untuk minta review ulang.
+
+```http
+POST /api/v1/claims/{claim-id}/dispute
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "reason": "Dokumen sudah benar, mohon review ulang"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "claim-uuid",
+    "status": "DISPUTED"
+  }
+}
+```
+
+---
+
+### 15F. Admin Review Claims
+
+> **Endpoint admin:** `/admin/claims/*`
+> **Permission:** REVIEWER role atau higher
+
+#### List Claims untuk Review
+
+```http
+GET /admin/claims?status=SUBMITTED&limit=20&offset=0
+Authorization: Bearer <admin-access-token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "claim-uuid",
+      "entity_id": "shadow-entity-uuid",
+      "entity_name": "PT Maju Jaya",
+      "claim_type": "OWNER",
+      "status": "SUBMITTED",
+      "user_name": "Jiilan Nashrulloh",
+      "created_at": "2026-05-27T10:00:00Z"
+    }
+  ]
+}
+```
+
+#### Get Claim Detail (Admin)
+
+```http
+GET /admin/claims/{claim-id}
+Authorization: Bearer <admin-access-token>
+```
+
+#### Assign Claim ke Admin
+
+```http
+POST /admin/claims/{claim-id}/assign
+Authorization: Bearer <admin-access-token>
+```
+
+#### Lihat Dokumen (Presigned GET URL)
+
+```http
+GET /admin/claims/{claim-id}/documents/{doc-id}/view
+Authorization: Bearer <admin-access-token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "url": "https://azzet-storage.r2.cloudflarestorage.com/claims/...?X-Amz-...",
+    "expires_at": "2026-05-27T10:30:00Z"
+  }
+}
+```
+
+#### Approve Claim
+
+```http
+POST /admin/claims/{claim-id}/approve
+Authorization: Bearer <admin-access-token>
+Content-Type: application/json
+
+{
+  "notes": "Dokumen lengkap dan valid"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "claim-uuid",
+    "status": "APPROVED"
+  }
+}
+```
+
+**What happens:**
+1. Status → APPROVED
+2. Shadow entity linked ke user: `user_id` di-set, `is_shadow` = false, `status` = `CLAIMED`
+3. Event `CompanyClaimApproved` dikirim ke NATS
+4. Claim Worker menjalankan `NormalizeName` pada entity
+
+#### Reject Claim
+
+```http
+POST /admin/claims/{claim-id}/reject
+Authorization: Bearer <admin-access-token>
+Content-Type: application/json
+
+{
+  "reason": "Dokumen NPWP tidak sesuai dengan nama entity"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "claim-uuid",
+    "status": "REJECTED"
+  }
+}
+```
+
+#### Lihat Audit Log
+
+```http
+GET /admin/claims/{claim-id}/audit
+Authorization: Bearer <admin-access-token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "audit-uuid",
+      "action": "CLAIM_CREATED",
+      "performed_by": "user-uuid",
+      "performed_by_name": "Jiilan Nashrulloh",
+      "notes": "",
+      "created_at": "2026-05-27T10:00:00Z"
+    },
+    {
+      "id": "audit-uuid-2",
+      "action": "CLAIM_SUBMITTED",
+      "performed_by": "user-uuid",
+      "performed_by_name": "Jiilan Nashrulloh",
+      "notes": "",
+      "created_at": "2026-05-27T10:05:00Z"
+    },
+    {
+      "id": "audit-uuid-3",
+      "action": "CLAIM_APPROVED",
+      "performed_by": "admin-uuid",
+      "performed_by_name": "Admin Azzet",
+      "notes": "Dokumen lengkap dan valid",
+      "created_at": "2026-05-27T10:15:00Z"
+    }
+  ]
+}
+```
+
+#### Count Pending Claims
+
+```http
+GET /admin/claims/stats
+Authorization: Bearer <admin-access-token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "pending_count": 5
+  }
+}
+```
+
+---
+
+## Flow 16: Counterparty Alias Management
+
+> **Prerequisite:** User sudah punya workspace aktif.
+> Counterparty aliases memungkinkan workspace memberikan nama custom ke counterparty (entity lain) tanpa mengubah nama asli entity.
+
+### Kenapa Butuh Alias?
+
+```
+Entity: "PT Maju Jaya Sejahtera" (nama resmi)
+  ├── Workspace A punya alias: "Maju Jaya" (karena klien biasa sebut begitu)
+  ├── Workspace B punya alias: "Supplier Utama" (internal reference)
+  └── Nama asli entity TIDAK berubah
+```
+
+**Privacy:** Workspace hanya bisa search counterparty berdasarkan alias yang mereka punya hubungan bisnis, bukan semua entity di sistem.
+
+---
+
+### 16A. Set Counterparty Alias
+
+**Page:** `/workspace/counterparties/{id}` → edit alias
+
+```http
+POST /api/v1/workspaces/counterparties/aliases
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+Content-Type: application/json
+
+{
+  "counterparty_entity_id": "counterparty-entity-uuid",
+  "alias": "Maju Jaya"
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "alias-uuid",
+    "counterparty_entity_id": "counterparty-entity-uuid",
+    "alias": "Maju Jaya",
+    "created_at": "2026-05-27T10:00:00Z"
+  }
+}
+```
+
+---
+
+### 16B. List Counterparty Aliases
+
+```http
+GET /api/v1/workspaces/counterparties/aliases
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "alias-uuid",
+      "counterparty_entity_id": "counterparty-entity-uuid",
+      "alias": "Maju Jaya",
+      "created_at": "2026-05-27T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### 16C. Hapus Counterparty Alias
+
+```http
+DELETE /api/v1/workspaces/counterparties/aliases/{counterparty-entity-id}
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+---
+
+### 16D. Search Counterparties
+
+Pencarian counterparties berdasarkan nama asli ATAU alias yang dimiliki workspace ini.
+
+```http
+GET /api/v1/workspaces/counterparties/search?q=Maju&limit=20
+Authorization: Bearer <access_token>
+X-Workspace-ID: <workspace-entity-id>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "entity_id": "counterparty-entity-uuid",
+      "nama_utama": "PT Maju Jaya Sejahtera",
+      "alias": "Maju Jaya",
+      "relation_type": "PELANGGAN",
+      "match_score": 0.92
+    }
+  ]
+}
+```
+
+**Privacy:** Hanya counterparty yang punya hubungan bisnis dengan workspace ini yang muncul di hasil search.
+
+---
+
+### 16E. Alur Lengkap: Shadow Entity → Claim → Verified
+
+```
+1. User A buat transaksi dengan "PT Maju Jaya"
+   → Shadow entity auto-created (is_shadow=true, user_id=null)
+
+2. User B (pemilik PT Maju Jaya) daftar di Azzet
+   → Personal entity + workspace created
+
+3. User B lihat shadow entity "PT Maju Jaya" di search
+   → Muncul dengan badge "Shadow Entity"
+
+4. User B buat claim (Flow 15A-15C)
+   → Upload NPWP + NIB, submit claim
+
+5. Admin review (Flow 15F)
+   → Approve claim
+
+6. Shadow entity linked ke User B
+   → user_id = User B, is_shadow = false, status = CLAIMED
+   → User B sekarang punya workspace untuk PT Maju Jaya
+
+7. Semua workspace yang punya "PT Maju Jaya" sebagai counterparty
+   → Otomatis ter-update (entity bukan shadow lagi)
+```
+
+---
+
+**Last Updated:** 2026-05-27
