@@ -358,6 +358,65 @@ type Session struct {
 	CreatedAt    time.Time   `json:"created_at"`
 }
 
+type TaxCalculation struct {
+	ID                   uuid.UUID      `json:"id"`
+	WorkspaceID          uuid.UUID      `json:"workspace_id"`
+	TransactionID        uuid.UUID      `json:"transaction_id"`
+	TaxType              string         `json:"tax_type"`
+	Direction            string         `json:"direction"`
+	BaseAmount           pgtype.Numeric `json:"base_amount"`
+	TaxRate              pgtype.Numeric `json:"tax_rate"`
+	TaxAmount            pgtype.Numeric `json:"tax_amount"`
+	Period               string         `json:"period"`
+	Status               string         `json:"status"`
+	CounterpartyEntityID pgtype.UUID    `json:"counterparty_entity_id"`
+	FakturNumber         pgtype.Text    `json:"faktur_number"`
+	Metadata             []byte         `json:"metadata"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
+}
+
+type TaxDocumentRef struct {
+	ID               uuid.UUID `json:"id"`
+	TaxCalculationID uuid.UUID `json:"tax_calculation_id"`
+	DocumentID       uuid.UUID `json:"document_id"`
+	RefType          string    `json:"ref_type"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+type TaxProfile struct {
+	ID               uuid.UUID      `json:"id"`
+	WorkspaceID      uuid.UUID      `json:"workspace_id"`
+	EntityID         uuid.UUID      `json:"entity_id"`
+	Npwp             pgtype.Text    `json:"npwp"`
+	TaxStatus        string         `json:"tax_status"`
+	IsPpnLiable      bool           `json:"is_ppn_liable"`
+	DefaultPpnRate   pgtype.Numeric `json:"default_ppn_rate"`
+	Pph23Enabled     bool           `json:"pph23_enabled"`
+	DefaultPph23Rate pgtype.Numeric `json:"default_pph23_rate"`
+	PkpNumber        pgtype.Text    `json:"pkp_number"`
+	TaxOfficeCode    pgtype.Text    `json:"tax_office_code"`
+	EfakturReady     bool           `json:"efaktur_ready"`
+	EbupotReady      bool           `json:"ebupot_ready"`
+	Notes            pgtype.Text    `json:"notes"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+}
+
+type TaxReportJob struct {
+	ID           uuid.UUID   `json:"id"`
+	WorkspaceID  uuid.UUID   `json:"workspace_id"`
+	ReportType   string      `json:"report_type"`
+	PeriodFrom   string      `json:"period_from"`
+	PeriodTo     string      `json:"period_to"`
+	Status       string      `json:"status"`
+	Result       []byte      `json:"result"`
+	ErrorMessage pgtype.Text `json:"error_message"`
+	RequestedBy  uuid.UUID   `json:"requested_by"`
+	CreatedAt    time.Time   `json:"created_at"`
+	CompletedAt  *time.Time  `json:"completed_at"`
+}
+
 type TenantSubscription struct {
 	ID           uuid.UUID   `json:"id"`
 	WorkspaceID  uuid.UUID   `json:"workspace_id"`

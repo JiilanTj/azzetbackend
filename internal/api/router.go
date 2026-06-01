@@ -31,6 +31,7 @@ import (
 	smtpclient "codeberg.org/azzet/azzetbe/internal/smtp"
 	"codeberg.org/azzet/azzetbe/internal/storage"
 	"codeberg.org/azzet/azzetbe/internal/subscription"
+	"codeberg.org/azzet/azzetbe/internal/tax"
 	"codeberg.org/azzet/azzetbe/internal/workspace"
 )
 
@@ -156,6 +157,10 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	// --- Document & OCR (Phase 9) ---
 	documentService := document.NewService(queries, database.Pool, r2Client, subscriptionService)
 	documentHandler := handler.NewDocumentHandler(documentService)
+
+	// --- Tax (Phase 10) ---
+	taxService := tax.NewService(queries, database.Pool)
+	taxHandler := handler.NewTaxHandler(taxService)
 
 	// ═══════════════════════════════════════════════════════════════
 	// USER API ROUTES (/api/v1)
@@ -352,6 +357,22 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			r.Get("/income-statement", accountingHandler.GetIncomeStatement)
 			r.Get("/cash-flow", accountingHandler.GetCashFlow)
 			r.Get("/ledger/{account_id}", accountingHandler.GetGeneralLedger)
+		})
+
+		r.Route("/tax", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Use(workspaceMiddleware.RequireWorkspace)
+			r.With(workspaceMiddleware.RequirePermission("report:read")).Get("/profile", taxHandler.GetProfile)
+			r.With(workspaceMiddleware.RequirePermission("workspace:settings")).Put("/profile", taxHandler.UpdateProfile)
+			r.With(workspaceMiddleware.RequirePermission("report:read")).Get("/calculations", taxHandler.ListCalculations)
+			r.With(workspaceMiddleware.RequirePermission("report:read")).Get("/calculations/{id}", taxHandler.GetCalculation)
+			r.With(workspaceMiddleware.RequirePermission("report:read")).Get("/calculations/{id}/documents", taxHandler.ListDocumentRefs)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Post("/calculations/{id}/documents", taxHandler.LinkDocument)
+			r.With(workspaceMiddleware.RequirePermission("report:read")).Get("/summary/ppn", taxHandler.GetPPNSummary)
+			r.With(workspaceMiddleware.RequirePermission("report:read")).Get("/summary/pph", taxHandler.GetPPhSummary)
+			r.With(workspaceMiddleware.RequirePermission("report:read")).Get("/reports", taxHandler.ListReportJobs)
+			r.With(workspaceMiddleware.RequirePermission("report:export")).Post("/reports", taxHandler.RequestReport)
+			r.With(workspaceMiddleware.RequirePermission("report:read")).Get("/reports/{id}", taxHandler.GetReportJob)
 		})
 	})
 

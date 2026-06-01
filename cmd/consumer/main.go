@@ -23,6 +23,7 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/identity"
 	"codeberg.org/azzet/azzetbe/internal/shared"
 	"codeberg.org/azzet/azzetbe/internal/storage"
+	"codeberg.org/azzet/azzetbe/internal/tax"
 	"codeberg.org/azzet/azzetbe/internal/workspace"
 )
 
@@ -95,6 +96,9 @@ func main() {
 		accountingService, identityService, workspaceService, documentService,
 	)
 
+	taxService := tax.NewService(queries, db.Pool)
+	taxWorker := tax.NewWorker(queries, taxService)
+
 	// --- Register Event Handlers ---
 
 	// User stream: handle user.registered + workspace.created
@@ -165,13 +169,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Accounting stream: ledger posting
+	// Accounting stream: ledger posting + tax calculation
 	_, err = natsClient.Subscribe(ctx, events.StreamAccounting, "ledger-worker",
 		consumer.HandleWithIdempotency("ledger-worker", func(ctx context.Context, event *events.Event) error {
-			if event.Type != events.TransactionCreated {
-				return nil
+			if event.Type == events.TransactionCreated {
+				return ledgerWorker.HandleTransactionCreated(ctx, event)
 			}
-			return ledgerWorker.HandleTransactionCreated(ctx, event)
+			if event.Type == events.LedgerPosted {
+				return taxWorker.HandleLedgerPosted(ctx, event)
+			}
+			return nil
 		}),
 	)
 	if err != nil {
@@ -229,11 +236,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Report stream: report generation
+	// Report stream: tax report generation
 	_, err = natsClient.Subscribe(ctx, events.StreamReport, "report-worker",
 		consumer.HandleWithIdempotency("report-worker", func(ctx context.Context, event *events.Event) error {
-			slog.Info("report-worker: processing event", "type", event.Type, "id", event.ID)
-			// TODO: Implement report generation in Phase 7E
+			if event.Type == events.ReportGenerationReq {
+				return taxWorker.HandleReportGeneration(ctx, event)
+			}
 			return nil
 		}),
 	)

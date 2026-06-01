@@ -750,39 +750,81 @@ cmd/consumer/main.go                        — Register ledger worker (updated)
 
 ---
 
-## Phase 9 — Document & OCR
+## Phase 9 — Document & OCR ✅
 
 > Document upload, storage, and AI-powered extraction.
 >
 > **Stakeholder Vision:** User scans receipt -> system extracts vendor,
 > amount, date, NPWP -> auto-creates transaction.
 
-- [ ] Migration: documents table
-- [ ] Document upload flow (presigned URL -> R2)
-- [ ] Document metadata (type, status, entity link)
-- [ ] Document worker (NATS consumer)
-- [ ] OpenAI OCR integration (extract structured data)
-- [ ] Entity extraction from documents (vendor name, NPWP)
-- [ ] Auto-create transaction from extracted data
-- [ ] Document verification status
-- [ ] Access control (per tenant)
-- [ ] Handler + Swagger docs
+### 9A. Document Storage & API (Backend)
+
+- [x] Migration: `017_documents.sql` (documents table)
+- [x] Document upload flow (presigned URL → R2 → confirm)
+- [x] Document metadata (type, upload/extraction/verification status, transaction link)
+- [x] Workspace-scoped handlers: `POST/GET /documents`, confirm, get by ID
+- [x] Access control: workspace middleware + `transaction:create/read` permissions
+- [x] Plan gate: `ocr_enabled` feature check on upload
+- [x] R2 key helper: `storage.WorkspaceDocumentKey()`
+- [x] Handler Swagger annotations (`document_handler.go`)
+
+### 9B. OCR Worker & Transaction Automation
+
+- [x] NATS consumer: `document-worker` on `document.uploaded`
+- [x] OpenAI Vision OCR (`ChatVisionJSON`) — structured JSON extraction
+- [x] Entity extraction from documents (vendor name, NPWP, amount, date, category)
+- [x] Counterparty resolution (fuzzy match + shadow entity via `AddCounterparty`)
+- [x] Auto-create transaction from extracted data (`input_mode=OCR`)
+- [x] Link document → transaction_id on success
+- [x] Extraction status tracking (PENDING → PROCESSING → COMPLETED/FAILED)
+- [x] Emit `document.uploaded` event on confirm (outbox → NATS)
+
+### 9C. User Panel Frontend (`azzetuserpanel`)
+
+- [x] `/accounting/documents` — upload, list, status badges
+- [x] Presigned upload flow (request → PUT R2 → confirm)
+- [x] Auto-polling while extraction in progress
+- [x] Link to auto-created transaction draft
+- [x] Sidebar: Akuntansi → Dokumen & OCR
+- [x] `document.service.ts`, `use-documents.ts`, types
+
+### 9D. Deferred / Future
+
+- [ ] PDF document support (images only: JPEG/PNG/WebP)
+- [ ] `image_detail: high` on vision requests (better small-text OCR)
+- [ ] Split `OPENAI_OCR_MODEL` vs categorizer model env
+- [ ] Admin document verification UI (→ Phase 12)
+- [ ] Document detail page (per-doc extraction breakdown)
+- [ ] Regenerate Swagger bundle (`make swag`) if not yet run post-handler
 
 ---
 
-## Phase 10 — Tax
+## Phase 10 — Tax ✅
 
 > Tax calculation, profiles, and reporting.
 > Indonesian tax system: PPN (VAT), PPh (Income Tax).
 
-- [ ] Migration: tax_profiles, tax_calculations
-- [ ] Tax profile per entity (NPWP, tax status)
-- [ ] PPN calculation hooks (on transactions)
-- [ ] PPh calculation hooks (on income)
-- [ ] Tax document references
-- [ ] Tax report generation (async)
-- [ ] Future: e-Faktur / e-Bupot integration ready
-- [ ] Handler + Swagger docs
+- [x] Migration: tax_profiles, tax_calculations
+- [x] Tax profile per entity (NPWP, tax status)
+- [x] PPN calculation hooks (on transactions)
+- [x] PPh calculation hooks (on income)
+- [x] Tax document references
+- [x] Tax report generation (async)
+- [x] Future: e-Faktur / e-Bupot integration ready
+- [x] Handler + Swagger docs
+
+### 10A. Backend (`azzetbe`)
+
+- [x] Migration `018_tax.sql` — tax_profiles, tax_calculations, tax_document_refs, tax_report_jobs
+- [x] `internal/tax/` — service, calculator, worker (ledger.posted hook + report worker)
+- [x] API: `GET/PUT /tax/profile`, calculations, PPN/PPh summary, document refs, async reports
+- [x] Consumer: tax calc on `accounting.ledger.posted`, report on `report.generation_requested`
+
+### 10B. User Panel (`azzetuserpanel`)
+
+- [x] `/accounting/tax` — profil PKP/NPWP, ringkasan PPN, daftar perhitungan, laporan async
+- [x] Sidebar: Akuntansi → Pajak
+- [x] `tax.service.ts`, `use-tax.ts`
 
 ---
 
@@ -818,11 +860,18 @@ cmd/consumer/main.go                        — Register ledger worker (updated)
 > Admin tools for managing users, claims, and system health.
 
 - [ ] User management (SUPPORT+): list, suspend, activate
-- [ ] Company claim review (REVIEWER+): approve, reject
+- [x] Company claim review (REVIEWER+): approve, reject
 - [ ] Document verification (REVIEWER+)
 - [ ] System health dashboard (ENGINEER+)
 - [ ] Audit log viewer (all admins)
 - [ ] Metrics endpoint (Prometheus-compatible)
+
+### 12A. Company Claim Review — Admin Panel (`azzetadminpanel`)
+
+- [x] `/claims` — list with status filters + pending count badge
+- [x] `/claims/$claimId` — detail, documents (presigned view), audit trail
+- [x] Assign → Under Review, Approve, Reject (with reason)
+- [x] Sidebar nav + `claimsService`, `use-claims` hooks
 
 ---
 
@@ -1025,15 +1074,15 @@ Phase 5:  ████████████████████ 100%
 Phase 6:  ████████████████████ 100%
 Phase 7:  ████████████████████ 100%
 Phase 8:  ████████████████████ 100%
-Phase 9:  ░░░░░░░░░░░░░░░░░░░░   0% <-- NEXT
-Phase 10: ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 9:  ████████████████████ 100%
+Phase 10: ████████████████████ 100%
 Phase 11: ░░░░░░░░░░░░░░░░░░░░   0%
-Phase 12: ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 12: ███░░░░░░░░░░░░░░░░░  17%
 Pre-13:   ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 
-**Next up:** Phase 9 - Document & OCR
+**Next up:** Phase 11 — Notification & Webhooks
 
 ---
 
@@ -1057,6 +1106,8 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 | 14 | 014_accounting.sql | accounts, items, transactions, transaction_line_items, journal_entries, ledger_entries, account_balances |
 | 15 | 015_company_identity.sql | entity_verification, entity_legal_ids, entity_aliases, company_claims, claim_documents, claim_audit_log, counterparty_aliases |
 | 16 | 016_backfill_nama_normalized.sql | Backfill nama_normalized for existing entities |
+| 17 | 017_documents.sql | Workspace documents for OCR (upload, extraction, transaction link) |
+| 18 | 018_tax.sql | Tax profiles, calculations, document refs, report jobs |
 
 ---
 
@@ -1082,4 +1133,4 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 
 ---
 
-**Last Updated:** 2026-05-27
+**Last Updated:** 2026-06-02
