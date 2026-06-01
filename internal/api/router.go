@@ -22,6 +22,7 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/config"
 	"codeberg.org/azzet/azzetbe/internal/database"
 	"codeberg.org/azzet/azzetbe/internal/db"
+	"codeberg.org/azzet/azzetbe/internal/document"
 	"codeberg.org/azzet/azzetbe/internal/entity"
 	"codeberg.org/azzet/azzetbe/internal/identity"
 	"codeberg.org/azzet/azzetbe/internal/plan"
@@ -151,6 +152,10 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	identityHandler := handler.NewIdentityHandler(identityService)
 	claimHandler := handler.NewClaimHandler(claimService)
 	claimAdminHandler := handler.NewClaimAdminHandler(claimService)
+
+	// --- Document & OCR (Phase 9) ---
+	documentService := document.NewService(queries, database.Pool, r2Client, subscriptionService)
+	documentHandler := handler.NewDocumentHandler(documentService)
 
 	// ═══════════════════════════════════════════════════════════════
 	// USER API ROUTES (/api/v1)
@@ -327,6 +332,15 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Post("/categorize", accountingHandler.CategorizeTransaction)
 			r.With(workspaceMiddleware.RequirePermission("transaction:read")).Get("/{id}", accountingHandler.GetTransaction)
 			r.With(workspaceMiddleware.RequirePermission("transaction:void")).Post("/{id}/void", accountingHandler.VoidTransaction)
+		})
+
+		r.Route("/documents", func(r chi.Router) {
+			r.Use(authMiddleware.Authenticate)
+			r.Use(workspaceMiddleware.RequireWorkspace)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Post("/", documentHandler.RequestUpload)
+			r.With(workspaceMiddleware.RequirePermission("transaction:read")).Get("/", documentHandler.ListDocuments)
+			r.With(workspaceMiddleware.RequirePermission("transaction:read")).Get("/{id}", documentHandler.GetDocument)
+			r.With(workspaceMiddleware.RequirePermission("transaction:create")).Post("/{id}/confirm", documentHandler.ConfirmUpload)
 		})
 
 		r.Route("/reports", func(r chi.Router) {

@@ -149,9 +149,49 @@ func (c *Client) ChatJSON(ctx context.Context, systemPrompt, userPrompt string, 
 		return fmt.Errorf("empty response from OpenAI")
 	}
 
-	content := resp.Choices[0].Message.Content
-	if err := json.Unmarshal([]byte(content), dest); err != nil {
-		slog.Error("failed to parse JSON from AI response", "content", content, "error", err)
+	contentStr, ok := resp.Choices[0].Message.Content.(string)
+	if !ok {
+		return fmt.Errorf("unexpected response content type")
+	}
+	if err := json.Unmarshal([]byte(contentStr), dest); err != nil {
+		slog.Error("failed to parse JSON from AI response", "content", contentStr, "error", err)
+		return fmt.Errorf("invalid JSON from AI: %w", err)
+	}
+
+	return nil
+}
+
+// ChatVisionJSON sends an image URL to the vision-capable model and parses JSON response.
+func (c *Client) ChatVisionJSON(ctx context.Context, systemPrompt, userPrompt, imageURL string, dest interface{}) error {
+	req := ChatRequest{
+		Messages: []Message{
+			{Role: "system", Content: systemPrompt + "\n\nRespond ONLY with valid JSON. No markdown, no code blocks, no extra text."},
+			{
+				Role: "user",
+				Content: []ContentPart{
+					{Type: "text", Text: userPrompt},
+					{Type: "image_url", ImageURL: &ImageURL{URL: imageURL}},
+				},
+			},
+		},
+		ResponseFormat: &ResponseFormat{Type: "json_object"},
+	}
+
+	resp, err := c.Chat(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	if len(resp.Choices) == 0 {
+		return fmt.Errorf("empty response from OpenAI")
+	}
+
+	contentStr, ok := resp.Choices[0].Message.Content.(string)
+	if !ok {
+		return fmt.Errorf("unexpected response content type")
+	}
+	if err := json.Unmarshal([]byte(contentStr), dest); err != nil {
+		slog.Error("failed to parse JSON from AI vision response", "content", contentStr, "error", err)
 		return fmt.Errorf("invalid JSON from AI: %w", err)
 	}
 

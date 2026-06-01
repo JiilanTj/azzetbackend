@@ -691,10 +691,15 @@ func numericToFloat(n pgtype.Numeric) float64 {
 	return 0
 }
 
-func floatToNumeric(f float64) pgtype.Numeric {
+// FloatToNumeric converts a float64 to pgtype.Numeric for transaction amounts.
+func FloatToNumeric(f float64) pgtype.Numeric {
 	var n pgtype.Numeric
-	n.Scan(fmt.Sprintf("%.2f", f))
+	_ = n.Scan(fmt.Sprintf("%.2f", f))
 	return n
+}
+
+func floatToNumeric(f float64) pgtype.Numeric {
+	return FloatToNumeric(f)
 }
 
 func floatToNumeric4(f float64) pgtype.Numeric {

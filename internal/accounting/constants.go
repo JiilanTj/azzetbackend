@@ -260,3 +260,23 @@ const (
 // --- PPN Rate ---
 
 const PPNRate = 0.11 // 11% PPN Indonesia (per 2022)
+
+// IsValidTxType checks if a transaction type is valid.
+func IsValidTxType(t string) bool {
+	for _, v := range ValidTransactionTypes {
+		if v == t {
+			return true
+		}
+	}
+	return false
+}
+
+// IsValidPaymentMethod checks if a payment method is valid.
+func IsValidPaymentMethod(m string) bool {
+	for _, v := range ValidPaymentMethods {
+		if v == m {
+			return true
+		}
+	}
+	return false
+}

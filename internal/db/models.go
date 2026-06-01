@@ -99,6 +99,28 @@ type CounterpartyAlias struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type Document struct {
+	ID                   uuid.UUID      `json:"id"`
+	WorkspaceID          uuid.UUID      `json:"workspace_id"`
+	DocumentType         string         `json:"document_type"`
+	FileKey              string         `json:"file_key"`
+	FileName             string         `json:"file_name"`
+	FileSize             int64          `json:"file_size"`
+	MimeType             string         `json:"mime_type"`
+	UploadStatus         string         `json:"upload_status"`
+	ExtractionStatus     string         `json:"extraction_status"`
+	VerificationStatus   string         `json:"verification_status"`
+	ExtractedData        []byte         `json:"extracted_data"`
+	ExtractionConfidence pgtype.Numeric `json:"extraction_confidence"`
+	ExtractionError      pgtype.Text    `json:"extraction_error"`
+	TransactionID        pgtype.UUID    `json:"transaction_id"`
+	CreatedBy            uuid.UUID      `json:"created_by"`
+	UploadedAt           *time.Time     `json:"uploaded_at"`
+	ProcessedAt          *time.Time     `json:"processed_at"`
+	CreatedAt            time.Time      `json:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at"`
+}
+
 type Entity struct {
 	ID             uuid.UUID   `json:"id"`
 	UserID         pgtype.UUID `json:"user_id"`

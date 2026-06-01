@@ -12,13 +12,18 @@ import (
 	"github.com/google/uuid"
 
 	"codeberg.org/azzet/azzetbe/internal/accounting"
+	"codeberg.org/azzet/azzetbe/internal/ai"
 	"codeberg.org/azzet/azzetbe/internal/claim"
 	"codeberg.org/azzet/azzetbe/internal/config"
 	"codeberg.org/azzet/azzetbe/internal/database"
 	dbpkg "codeberg.org/azzet/azzetbe/internal/db"
+	"codeberg.org/azzet/azzetbe/internal/document"
+	"codeberg.org/azzet/azzetbe/internal/entity"
 	"codeberg.org/azzet/azzetbe/internal/events"
 	"codeberg.org/azzet/azzetbe/internal/identity"
 	"codeberg.org/azzet/azzetbe/internal/shared"
+	"codeberg.org/azzet/azzetbe/internal/storage"
+	"codeberg.org/azzet/azzetbe/internal/workspace"
 )
 
 func main() {
@@ -71,8 +76,24 @@ func main() {
 	queries := dbpkg.New(db.Pool)
 	ledgerWorker := accounting.NewLedgerWorker(queries, db.Pool)
 	coaService := accounting.NewCOAService(queries, db.Pool)
+	itemService := accounting.NewItemService(queries)
+	aiClient := ai.NewFromEnv(cfg.OpenAIApiKey, cfg.OpenAIModel)
+	categorizer := accounting.NewCategorizer(aiClient)
+	accountingService := accounting.NewService(queries, db.Pool, coaService, itemService, categorizer)
+	entityService := entity.NewService(queries)
+	workspaceService := workspace.NewService(queries, entityService)
+	workspaceService.Pool = db.Pool
 	identityService := identity.NewService(queries, db.Pool)
 	claimWorker := claim.NewClaimWorker(queries, db.Pool, identityService)
+
+	var r2Client *storage.R2Client
+	r2Client, _ = storage.NewR2Client(cfg)
+	documentService := document.NewService(queries, db.Pool, r2Client, nil)
+	docExtractor := document.NewExtractor(aiClient)
+	documentWorker := document.NewDocumentWorker(
+		queries, db.Pool, r2Client, docExtractor,
+		accountingService, identityService, workspaceService, documentService,
+	)
 
 	// --- Register Event Handlers ---
 
@@ -182,9 +203,12 @@ func main() {
 	// Document stream: OCR processing
 	_, err = natsClient.Subscribe(ctx, events.StreamDocument, "document-worker",
 		consumer.HandleWithIdempotency("document-worker", func(ctx context.Context, event *events.Event) error {
-			slog.Info("document-worker: processing event", "type", event.Type, "id", event.ID)
-			// TODO: Implement OCR logic in Phase 9
-			return nil
+			switch event.Type {
+			case events.DocumentUploaded:
+				return documentWorker.HandleDocumentUploaded(ctx, event)
+			default:
+				return nil
+			}
 		}),
 	)
 	if err != nil {
