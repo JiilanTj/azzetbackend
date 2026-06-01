@@ -44,11 +44,12 @@ func NewAccountingHandler(
 // @Description Returns all active accounts for the workspace
 // @Tags Accounting
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param type query string false "Filter by account type" Enums(ASSET,LIABILITY,EQUITY,REVENUE,EXPENSE)
 // @Success 200 {object} shared.APIResponse{data=[]accounting.AccountResponse}
 // @Failure 400 {object} shared.APIResponse
-// @Router /api/v1/accounts [get]
+// @Router /accounts [get]
 func (h *AccountingHandler) ListAccounts(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := uuid.Parse(middleware.GetWorkspaceID(r.Context()))
 	if err != nil {
@@ -86,11 +87,12 @@ func (h *AccountingHandler) ListAccounts(w http.ResponseWriter, r *http.Request)
 // @Summary Get account by ID
 // @Tags Accounting
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param id path string true "Account ID"
 // @Success 200 {object} shared.APIResponse{data=accounting.AccountResponse}
 // @Failure 404 {object} shared.APIResponse
-// @Router /api/v1/accounts/{id} [get]
+// @Router /accounts/{id} [get]
 func (h *AccountingHandler) GetAccount(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := uuid.Parse(middleware.GetWorkspaceID(r.Context()))
 	if err != nil {
@@ -116,11 +118,12 @@ func (h *AccountingHandler) GetAccount(w http.ResponseWriter, r *http.Request) {
 // @Tags Accounting
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param body body accounting.CreateAccountRequest true "Account data"
 // @Success 201 {object} shared.APIResponse{data=accounting.AccountResponse}
 // @Failure 400 {object} shared.APIResponse
-// @Router /api/v1/accounts [post]
+// @Router /accounts [post]
 func (h *AccountingHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := uuid.Parse(middleware.GetWorkspaceID(r.Context()))
 	if err != nil {
@@ -160,12 +163,13 @@ func (h *AccountingHandler) CreateAccount(w http.ResponseWriter, r *http.Request
 // @Tags Accounting
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param id path string true "Account ID"
 // @Param body body accounting.UpdateAccountRequest true "Update data"
 // @Success 200 {object} shared.APIResponse
 // @Failure 400 {object} shared.APIResponse
-// @Router /api/v1/accounts/{id} [patch]
+// @Router /accounts/{id} [patch]
 func (h *AccountingHandler) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := uuid.Parse(middleware.GetWorkspaceID(r.Context()))
 	if err != nil {
@@ -199,12 +203,13 @@ func (h *AccountingHandler) UpdateAccount(w http.ResponseWriter, r *http.Request
 // @Summary List items
 // @Tags Accounting
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param type query string false "Filter by item type" Enums(BARANG,JASA,PROYEK,AHSP_RAKITAN)
 // @Param limit query int false "Limit" default(50)
 // @Param offset query int false "Offset" default(0)
 // @Success 200 {object} shared.APIResponse{data=[]accounting.ItemResponse}
-// @Router /api/v1/items [get]
+// @Router /items [get]
 func (h *AccountingHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -243,11 +248,12 @@ func (h *AccountingHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 // @Summary Get item by ID
 // @Tags Accounting
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param id path string true "Item ID"
 // @Success 200 {object} shared.APIResponse{data=accounting.ItemResponse}
 // @Failure 404 {object} shared.APIResponse
-// @Router /api/v1/items/{id} [get]
+// @Router /items/{id} [get]
 func (h *AccountingHandler) GetItem(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -273,11 +279,12 @@ func (h *AccountingHandler) GetItem(w http.ResponseWriter, r *http.Request) {
 // @Tags Accounting
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param body body accounting.CreateItemRequest true "Item data"
 // @Success 201 {object} shared.APIResponse{data=accounting.ItemResponse}
 // @Failure 400 {object} shared.APIResponse
-// @Router /api/v1/items [post]
+// @Router /items [post]
 func (h *AccountingHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -317,12 +324,13 @@ func (h *AccountingHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 // @Tags Accounting
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param id path string true "Item ID"
 // @Param body body accounting.UpdateItemRequest true "Update data"
 // @Success 200 {object} shared.APIResponse
 // @Failure 400 {object} shared.APIResponse
-// @Router /api/v1/items/{id} [patch]
+// @Router /items/{id} [patch]
 func (h *AccountingHandler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -352,11 +360,12 @@ func (h *AccountingHandler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 // @Summary Soft-delete an item
 // @Tags Accounting
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param id path string true "Item ID"
 // @Success 200 {object} shared.APIResponse
 // @Failure 404 {object} shared.APIResponse
-// @Router /api/v1/items/{id} [delete]
+// @Router /items/{id} [delete]
 func (h *AccountingHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -380,11 +389,12 @@ func (h *AccountingHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 // @Summary Reactivate a soft-deleted item
 // @Tags Accounting
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param id path string true "Item ID"
 // @Success 200 {object} shared.APIResponse
 // @Failure 404 {object} shared.APIResponse
-// @Router /api/v1/items/{id}/reactivate [post]
+// @Router /items/{id}/reactivate [post]
 func (h *AccountingHandler) ReactivateItem(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -414,11 +424,12 @@ func (h *AccountingHandler) ReactivateItem(w http.ResponseWriter, r *http.Reques
 // @Tags Accounting
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param body body accounting.CreateTransactionRequest true "Transaction data"
 // @Success 201 {object} shared.APIResponse{data=accounting.TransactionResponse}
 // @Failure 400 {object} shared.APIResponse
-// @Router /api/v1/transactions [post]
+// @Router /transactions [post]
 func (h *AccountingHandler) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -459,11 +470,12 @@ func (h *AccountingHandler) CreateTransaction(w http.ResponseWriter, r *http.Req
 // @Description Returns transaction with journal entries and line items
 // @Tags Accounting
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param id path string true "Transaction ID"
 // @Success 200 {object} shared.APIResponse{data=accounting.TransactionResponse}
 // @Failure 404 {object} shared.APIResponse
-// @Router /api/v1/transactions/{id} [get]
+// @Router /transactions/{id} [get]
 func (h *AccountingHandler) GetTransaction(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -488,11 +500,12 @@ func (h *AccountingHandler) GetTransaction(w http.ResponseWriter, r *http.Reques
 // @Summary List transactions
 // @Tags Accounting
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param limit query int false "Limit" default(50)
 // @Param offset query int false "Offset" default(0)
 // @Success 200 {object} shared.APIResponse{data=[]accounting.TransactionResponse}
-// @Router /api/v1/transactions [get]
+// @Router /transactions [get]
 func (h *AccountingHandler) ListTransactions(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -514,11 +527,12 @@ func (h *AccountingHandler) ListTransactions(w http.ResponseWriter, r *http.Requ
 // @Description Creates a reversal transaction that swaps debit/credit. Original is marked VOID.
 // @Tags Accounting
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param id path string true "Transaction ID"
 // @Success 201 {object} shared.APIResponse{data=accounting.TransactionResponse}
 // @Failure 400 {object} shared.APIResponse
-// @Router /api/v1/transactions/{id}/void [post]
+// @Router /transactions/{id}/void [post]
 func (h *AccountingHandler) VoidTransaction(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -550,11 +564,12 @@ func (h *AccountingHandler) VoidTransaction(w http.ResponseWriter, r *http.Reque
 // @Tags Accounting
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param body body accounting.CategorizationRequest true "Categorization input"
 // @Success 200 {object} shared.APIResponse{data=accounting.CategorizationResult}
 // @Failure 400 {object} shared.APIResponse
-// @Router /api/v1/transactions/categorize [post]
+// @Router /transactions/categorize [post]
 func (h *AccountingHandler) CategorizeTransaction(w http.ResponseWriter, r *http.Request) {
 	var req accounting.CategorizationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -587,11 +602,12 @@ func (h *AccountingHandler) CategorizeTransaction(w http.ResponseWriter, r *http
 // @Summary Get Trial Balance (Neraca Saldo)
 // @Tags Reports
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param period_from query string true "Period from (YYYY-MM)" example("2026-01")
 // @Param period_to query string true "Period to (YYYY-MM)" example("2026-05")
 // @Success 200 {object} shared.APIResponse{data=[]accounting.TrialBalanceEntry}
-// @Router /api/v1/reports/trial-balance [get]
+// @Router /reports/trial-balance [get]
 func (h *AccountingHandler) GetTrialBalance(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -618,10 +634,11 @@ func (h *AccountingHandler) GetTrialBalance(w http.ResponseWriter, r *http.Reque
 // @Summary Get Balance Sheet (Neraca)
 // @Tags Reports
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param period query string true "Period up to (YYYY-MM)" example("2026-05")
 // @Success 200 {object} shared.APIResponse{data=accounting.BalanceSheetReport}
-// @Router /api/v1/reports/balance-sheet [get]
+// @Router /reports/balance-sheet [get]
 func (h *AccountingHandler) GetBalanceSheet(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -647,11 +664,12 @@ func (h *AccountingHandler) GetBalanceSheet(w http.ResponseWriter, r *http.Reque
 // @Summary Get Income Statement (Laba Rugi)
 // @Tags Reports
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param period_from query string true "Period from (YYYY-MM)"
 // @Param period_to query string true "Period to (YYYY-MM)"
 // @Success 200 {object} shared.APIResponse{data=accounting.IncomeStatementReport}
-// @Router /api/v1/reports/income-statement [get]
+// @Router /reports/income-statement [get]
 func (h *AccountingHandler) GetIncomeStatement(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -678,11 +696,12 @@ func (h *AccountingHandler) GetIncomeStatement(w http.ResponseWriter, r *http.Re
 // @Summary Get Cash Flow (Arus Kas)
 // @Tags Reports
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param date_from query string true "Date from (YYYY-MM-DD)"
 // @Param date_to query string true "Date to (YYYY-MM-DD)"
 // @Success 200 {object} shared.APIResponse{data=[]accounting.CashFlowEntry}
-// @Router /api/v1/reports/cash-flow [get]
+// @Router /reports/cash-flow [get]
 func (h *AccountingHandler) GetCashFlow(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {
@@ -709,12 +728,13 @@ func (h *AccountingHandler) GetCashFlow(w http.ResponseWriter, r *http.Request) 
 // @Summary Get General Ledger (Buku Besar) for an account
 // @Tags Reports
 // @Produce json
+// @Security BearerAuth
 // @Param X-Workspace-ID header string true "Workspace ID"
 // @Param account_id path string true "Account ID"
 // @Param limit query int false "Limit" default(50)
 // @Param offset query int false "Offset" default(0)
 // @Success 200 {object} shared.APIResponse{data=[]accounting.LedgerEntryResponse}
-// @Router /api/v1/reports/ledger/{account_id} [get]
+// @Router /reports/ledger/{account_id} [get]
 func (h *AccountingHandler) GetGeneralLedger(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := parseWorkspaceID(r)
 	if err != nil {

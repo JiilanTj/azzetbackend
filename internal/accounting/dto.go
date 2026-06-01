@@ -69,7 +69,7 @@ type CreateItemRequest struct {
 	Name        string             `json:"name" example:"Nasi Goreng"`
 	ItemType    string             `json:"item_type" example:"BARANG" enums:"BARANG,JASA,PROYEK,AHSP_RAKITAN"`
 	Unit        string             `json:"unit" example:"Pcs" enums:"Pcs,Kg,Liter,Meter,M2,M3,Jam,Hari,Paket,Unit,Box,Lusin,Set,Rim"`
-	UnitPrice   pgtype.Numeric     `json:"unit_price" example:"15000"`
+	UnitPrice   pgtype.Numeric     `json:"unit_price"`
 	AccountID   string             `json:"account_id,omitempty" example:"550e8400-..."`
 	Description string             `json:"description,omitempty" example:"Nasi goreng spesial"`
 }
@@ -78,7 +78,7 @@ type UpdateItemRequest struct {
 	Name        string          `json:"name,omitempty" example:"Nasi Goreng Spesial"`
 	ItemType    string          `json:"item_type,omitempty" example:"BARANG"`
 	Unit        string          `json:"unit,omitempty" example:"Pcs"`
-	UnitPrice   *pgtype.Numeric `json:"unit_price,omitempty" example:"18000"`
+	UnitPrice   *pgtype.Numeric `json:"unit_price,omitempty"`
 	AccountID   *string         `json:"account_id,omitempty" example:"550e8400-..."`
 	Description *string         `json:"description,omitempty" example:"Updated description"`
 }
@@ -128,7 +128,7 @@ type CreateTransactionRequest struct {
 	InputMode       string              `json:"input_mode,omitempty" example:"SIMPLE" enums:"SIMPLE,ADVANCED,OCR"`
 	Description     string              `json:"description,omitempty" example:"Terima pembayaran dari Pak Budi"`
 	TransactionDate string              `json:"transaction_date" example:"2026-05-20"`
-	Amount          pgtype.Numeric      `json:"amount" example:"100000"`
+	Amount          pgtype.Numeric      `json:"amount"`
 	Category        string              `json:"category,omitempty" example:"pendapatan_usaha"`
 	PaymentMethod   string              `json:"payment_method,omitempty" example:"TUNAI" enums:"TUNAI,KREDIT,TRANSFER"`
 	IncludesTax     bool                `json:"includes_tax,omitempty" example:"false"`
@@ -149,21 +149,21 @@ type CreateLineItemRequest struct {
 	Description    string         `json:"description" example:"Nasi Goreng"`
 	Quantity       float64        `json:"quantity" example:"5"`
 	Unit           string         `json:"unit,omitempty" example:"Pcs"`
-	UnitPrice      pgtype.Numeric `json:"unit_price" example:"15000"`
-	DiscountAmount pgtype.Numeric `json:"discount_amount,omitempty" example:"0"`
+	UnitPrice      pgtype.Numeric `json:"unit_price"`
+	DiscountAmount pgtype.Numeric `json:"discount_amount,omitempty"`
 }
 
 type CreateJournalEntryRequest struct {
 	AccountCode string         `json:"account_code" example:"1-1001"`
 	Description string         `json:"description,omitempty" example:"Kas masuk"`
-	Debit       pgtype.Numeric `json:"debit" example:"100000"`
-	Credit      pgtype.Numeric `json:"credit" example:"0"`
+	Debit       pgtype.Numeric `json:"debit"`
+	Credit      pgtype.Numeric `json:"credit"`
 }
 
 type UpdateTransactionRequest struct {
 	Description          string         `json:"description,omitempty" example:"Updated description"`
 	TransactionDate      string         `json:"transaction_date,omitempty" example:"2026-05-21"`
-	Amount               *pgtype.Numeric `json:"amount,omitempty" example:"150000"`
+	Amount               *pgtype.Numeric `json:"amount,omitempty"`
 	Category             string         `json:"category,omitempty" example:"pendapatan_jasa"`
 	CounterpartyEntityID string         `json:"counterparty_entity_id,omitempty"`
 	CounterpartyName     string         `json:"counterparty_name,omitempty"`

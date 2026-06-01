@@ -151,6 +151,7 @@ func (h *BillingHandler) ListPayments(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        x-callback-token  header  string  true  "Xendit webhook verification token"
+// @Param        body              body    billing.XenditWebhookPayload  true  "Xendit callback payload"
 // @Success      200               {object}  shared.APIResponse{data=billing.MessageResponse}
 // @Failure      400               {object}  shared.ErrorResponse
 // @Failure      401               {object}  shared.ErrorResponse

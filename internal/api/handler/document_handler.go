@@ -26,6 +26,7 @@ func NewDocumentHandler(service *document.Service) *DocumentHandler {
 // @Tags         Document
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        body body document.UploadRequest true "Upload request"
 // @Success      201 {object} shared.APIResponse{data=document.PresignedUploadResponse}
@@ -70,6 +71,7 @@ func (h *DocumentHandler) RequestUpload(w http.ResponseWriter, r *http.Request) 
 // @Description  Confirm that the file was uploaded to R2 and trigger OCR processing
 // @Tags         Document
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        id path string true "Document ID"
 // @Success      200 {object} shared.APIResponse{data=document.DocumentResponse}
@@ -103,6 +105,7 @@ func (h *DocumentHandler) ConfirmUpload(w http.ResponseWriter, r *http.Request) 
 // @Summary      Get document detail
 // @Tags         Document
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        id path string true "Document ID"
 // @Success      200 {object} shared.APIResponse{data=document.DocumentResponse}
@@ -127,6 +130,7 @@ func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 // @Summary      List workspace documents
 // @Tags         Document
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        limit query int false "Limit"
 // @Param        offset query int false "Offset"

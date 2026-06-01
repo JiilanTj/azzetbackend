@@ -25,6 +25,7 @@ func NewTaxHandler(service *tax.Service) *TaxHandler {
 // @Summary      Get workspace tax profile
 // @Tags         Tax
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Success      200 {object} shared.APIResponse{data=tax.ProfileResponse}
 // @Router       /tax/profile [get]
@@ -48,6 +49,7 @@ func (h *TaxHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 // @Tags         Tax
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        body body tax.UpsertProfileRequest true "Tax profile"
 // @Success      200 {object} shared.APIResponse{data=tax.ProfileResponse}
@@ -81,13 +83,14 @@ func (h *TaxHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 // @Summary      List tax calculations
 // @Tags         Tax
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        period query string false "Period YYYY-MM"
 // @Param        tax_type query string false "Tax type filter"
 // @Param        status query string false "Status filter"
 // @Param        limit query int false "Limit"
 // @Param        offset query int false "Offset"
-// @Success      200 {object} shared.APIResponse{data=[]tax.CalculationResponse}
+// @Success      200 {object} shared.APIResponse{data=[]tax.CalculationResponse,meta=shared.PaginationMeta}
 // @Router       /tax/calculations [get]
 func (h *TaxHandler) ListCalculations(w http.ResponseWriter, r *http.Request) {
 	workspaceID, err := uuid.Parse(middleware.GetWorkspaceID(r.Context()))
@@ -126,6 +129,7 @@ func (h *TaxHandler) ListCalculations(w http.ResponseWriter, r *http.Request) {
 // @Summary      Get tax calculation detail
 // @Tags         Tax
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        id path string true "Calculation ID"
 // @Success      200 {object} shared.APIResponse{data=tax.CalculationResponse}
@@ -158,6 +162,7 @@ func (h *TaxHandler) GetCalculation(w http.ResponseWriter, r *http.Request) {
 // @Summary      Get PPN summary for a period
 // @Tags         Tax
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        period query string true "Period YYYY-MM"
 // @Success      200 {object} shared.APIResponse{data=tax.PPNSummaryResponse}
@@ -186,6 +191,7 @@ func (h *TaxHandler) GetPPNSummary(w http.ResponseWriter, r *http.Request) {
 // @Summary      Get PPh summary for a period range
 // @Tags         Tax
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        period_from query string true "Period from YYYY-MM"
 // @Param        period_to query string true "Period to YYYY-MM"
@@ -217,6 +223,7 @@ func (h *TaxHandler) GetPPhSummary(w http.ResponseWriter, r *http.Request) {
 // @Tags         Tax
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        id path string true "Calculation ID"
 // @Param        body body tax.LinkDocumentRequest true "Document link"
@@ -264,6 +271,7 @@ func (h *TaxHandler) LinkDocument(w http.ResponseWriter, r *http.Request) {
 // @Summary      List documents linked to a tax calculation
 // @Tags         Tax
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        id path string true "Calculation ID"
 // @Success      200 {object} shared.APIResponse{data=[]tax.DocumentRefResponse}
@@ -302,6 +310,7 @@ func (h *TaxHandler) ListDocumentRefs(w http.ResponseWriter, r *http.Request) {
 // @Tags         Tax
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        body body tax.RequestReportRequest true "Report request"
 // @Success      202 {object} shared.APIResponse{data=tax.ReportJobResponse}
@@ -340,6 +349,7 @@ func (h *TaxHandler) RequestReport(w http.ResponseWriter, r *http.Request) {
 // @Summary      Get tax report job status
 // @Tags         Tax
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Param        id path string true "Report job ID"
 // @Success      200 {object} shared.APIResponse{data=tax.ReportJobResponse}
@@ -372,6 +382,7 @@ func (h *TaxHandler) GetReportJob(w http.ResponseWriter, r *http.Request) {
 // @Summary      List tax report jobs
 // @Tags         Tax
 // @Produce      json
+// @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace entity ID"
 // @Success      200 {object} shared.APIResponse{data=[]tax.ReportJobResponse}
 // @Router       /tax/reports [get]

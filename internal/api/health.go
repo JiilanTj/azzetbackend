@@ -8,6 +8,14 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/shared"
 )
 
+// HealthCheck godoc
+// @Summary      Health check
+// @Description  Returns API, database, and Redis health status
+// @Tags         System
+// @Produce      json
+// @Success      200 {object} shared.APIResponse
+// @Failure      503 {object} shared.APIResponse
+// @Router       /health [get]
 func HealthCheck(db *database.Database, redis *rdb.Redis) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := "ok"

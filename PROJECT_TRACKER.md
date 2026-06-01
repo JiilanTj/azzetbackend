@@ -795,7 +795,7 @@ cmd/consumer/main.go                        — Register ledger worker (updated)
 - [ ] Split `OPENAI_OCR_MODEL` vs categorizer model env
 - [ ] Admin document verification UI (→ Phase 12)
 - [ ] Document detail page (per-doc extraction breakdown)
-- [ ] Regenerate Swagger bundle (`make swag`) if not yet run post-handler
+- [x] Regenerate Swagger bundle (`make swag`) if not yet run post-handler
 
 ---
 

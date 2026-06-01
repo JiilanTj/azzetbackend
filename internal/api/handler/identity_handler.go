@@ -21,6 +21,14 @@ func NewIdentityHandler(service *identity.Service) *IdentityHandler {
 	return &IdentityHandler{Service: service}
 }
 
+// GetVerificationStatus godoc
+// @Summary      Get entity verification status
+// @Tags         Identity
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Entity ID"
+// @Success      200 {object} shared.APIResponse{data=identity.VerificationResponse}
+// @Router       /entities/{id}/verification [get]
 func (h *IdentityHandler) GetVerificationStatus(w http.ResponseWriter, r *http.Request) {
 	entityID := chi.URLParam(r, "id")
 	resp, err := h.Service.GetVerificationStatus(r.Context(), entityID)
@@ -31,6 +39,18 @@ func (h *IdentityHandler) GetVerificationStatus(w http.ResponseWriter, r *http.R
 	shared.Success(w, 200, resp)
 }
 
+// AddLegalID godoc
+// @Summary      Add legal identifier to entity
+// @Tags         Identity
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Entity ID"
+// @Param        body body identity.AddLegalIDRequest true "Legal ID"
+// @Success      201 {object} shared.APIResponse{data=identity.LegalIDResponse}
+// @Failure      400 {object} shared.ErrorResponse
+// @Failure      403 {object} shared.ErrorResponse
+// @Router       /entities/{id}/legal-ids [post]
 func (h *IdentityHandler) AddLegalID(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
@@ -65,6 +85,15 @@ func (h *IdentityHandler) AddLegalID(w http.ResponseWriter, r *http.Request) {
 	shared.Success(w, 201, resp)
 }
 
+// GetLegalIDs godoc
+// @Summary      List entity legal identifiers
+// @Tags         Identity
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Entity ID"
+// @Success      200 {object} shared.APIResponse{data=[]identity.LegalIDResponse}
+// @Failure      403 {object} shared.ErrorResponse
+// @Router       /entities/{id}/legal-ids [get]
 func (h *IdentityHandler) GetLegalIDs(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
@@ -81,6 +110,18 @@ func (h *IdentityHandler) GetLegalIDs(w http.ResponseWriter, r *http.Request) {
 	shared.Success(w, 200, resp)
 }
 
+// UpdateLegalID godoc
+// @Summary      Update legal identifier value
+// @Tags         Identity
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Entity ID"
+// @Param        type path string true "ID type (NPWP, NIB, SIUP, KTP, AKTA)"
+// @Param        body body object true "id_value"
+// @Success      200 {object} shared.APIResponse
+// @Failure      403 {object} shared.ErrorResponse
+// @Router       /entities/{id}/legal-ids/{type} [patch]
 func (h *IdentityHandler) UpdateLegalID(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
@@ -110,6 +151,16 @@ func (h *IdentityHandler) UpdateLegalID(w http.ResponseWriter, r *http.Request) 
 	shared.Success(w, 200, map[string]string{"status": "updated"})
 }
 
+// DeleteLegalID godoc
+// @Summary      Delete legal identifier
+// @Tags         Identity
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Entity ID"
+// @Param        type path string true "ID type"
+// @Success      200 {object} shared.APIResponse
+// @Failure      403 {object} shared.ErrorResponse
+// @Router       /entities/{id}/legal-ids/{type} [delete]
 func (h *IdentityHandler) DeleteLegalID(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
@@ -126,6 +177,17 @@ func (h *IdentityHandler) DeleteLegalID(w http.ResponseWriter, r *http.Request) 
 	shared.Success(w, 200, map[string]string{"status": "deleted"})
 }
 
+// AddAlias godoc
+// @Summary      Add entity alias
+// @Tags         Identity
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Entity ID"
+// @Param        body body identity.AddAliasRequest true "Alias"
+// @Success      201 {object} shared.APIResponse{data=identity.AliasResponse}
+// @Failure      403 {object} shared.ErrorResponse
+// @Router       /entities/{id}/aliases [post]
 func (h *IdentityHandler) AddAlias(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
@@ -153,6 +215,15 @@ func (h *IdentityHandler) AddAlias(w http.ResponseWriter, r *http.Request) {
 	shared.Success(w, 201, resp)
 }
 
+// GetAliases godoc
+// @Summary      List entity aliases
+// @Tags         Identity
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Entity ID"
+// @Success      200 {object} shared.APIResponse{data=[]identity.AliasResponse}
+// @Failure      403 {object} shared.ErrorResponse
+// @Router       /entities/{id}/aliases [get]
 func (h *IdentityHandler) GetAliases(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
@@ -169,6 +240,16 @@ func (h *IdentityHandler) GetAliases(w http.ResponseWriter, r *http.Request) {
 	shared.Success(w, 200, resp)
 }
 
+// DeleteAlias godoc
+// @Summary      Delete entity alias
+// @Tags         Identity
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Entity ID"
+// @Param        alias_id path string true "Alias ID"
+// @Success      200 {object} shared.APIResponse
+// @Failure      403 {object} shared.ErrorResponse
+// @Router       /entities/{id}/aliases/{alias_id} [delete]
 func (h *IdentityHandler) DeleteAlias(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
@@ -185,6 +266,17 @@ func (h *IdentityHandler) DeleteAlias(w http.ResponseWriter, r *http.Request) {
 	shared.Success(w, 200, map[string]string{"status": "deleted"})
 }
 
+// SearchFuzzy godoc
+// @Summary      Fuzzy search entities by name
+// @Tags         Identity
+// @Produce      json
+// @Security     BearerAuth
+// @Param        q query string true "Search query"
+// @Param        limit query int false "Limit"
+// @Param        offset query int false "Offset"
+// @Success      200 {object} shared.APIResponse{data=[]identity.FuzzyMatchResponse}
+// @Failure      400 {object} shared.ErrorResponse
+// @Router       /entities/match [get]
 func (h *IdentityHandler) SearchFuzzy(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
@@ -203,6 +295,16 @@ func (h *IdentityHandler) SearchFuzzy(w http.ResponseWriter, r *http.Request) {
 	shared.Success(w, 200, resp)
 }
 
+// FindDuplicates godoc
+// @Summary      Find potential duplicate entities
+// @Tags         Identity
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Entity ID"
+// @Param        limit query int false "Limit"
+// @Success      200 {object} shared.APIResponse{data=[]identity.FuzzyMatchResponse}
+// @Failure      403 {object} shared.ErrorResponse
+// @Router       /entities/{id}/duplicates [get]
 func (h *IdentityHandler) FindDuplicates(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")

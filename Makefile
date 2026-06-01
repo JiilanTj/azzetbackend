@@ -105,7 +105,7 @@ sqlc:
 	@echo "SQLC code generated in internal/db/"
 
 swag:
-	swag init -g cmd/api/main.go -o docs
+	swag init -g cmd/api/main.go -o docs --parseDependency --parseInternal
 	@echo "Swagger docs generated in docs/"
 
 generate: sqlc swag

@@ -380,6 +380,16 @@ func (h *WorkspaceHandler) UnassignRole(w http.ResponseWriter, r *http.Request) 
 
 // --- Counterparty Alias & Search (Phase 8C) ---
 
+// SetCounterpartyAlias godoc
+// @Summary      Set custom alias for counterparty
+// @Tags         Workspace
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        X-Workspace-ID header string true "Workspace entity ID"
+// @Param        body body workspace.SetCounterpartyAliasRequest true "Alias request"
+// @Success      200 {object} shared.APIResponse
+// @Router       /workspaces/counterparties/aliases [post]
 func (h *WorkspaceHandler) SetCounterpartyAlias(w http.ResponseWriter, r *http.Request) {
 	workspaceID := middleware.GetWorkspaceID(r.Context())
 
@@ -403,6 +413,14 @@ func (h *WorkspaceHandler) SetCounterpartyAlias(w http.ResponseWriter, r *http.R
 	shared.OK(w, r, resp)
 }
 
+// ListCounterpartyAliases godoc
+// @Summary      List counterparty aliases
+// @Tags         Workspace
+// @Produce      json
+// @Security     BearerAuth
+// @Param        X-Workspace-ID header string true "Workspace entity ID"
+// @Success      200 {object} shared.APIResponse
+// @Router       /workspaces/counterparties/aliases [get]
 func (h *WorkspaceHandler) ListCounterpartyAliases(w http.ResponseWriter, r *http.Request) {
 	workspaceID := middleware.GetWorkspaceID(r.Context())
 
@@ -415,6 +433,15 @@ func (h *WorkspaceHandler) ListCounterpartyAliases(w http.ResponseWriter, r *htt
 	shared.OK(w, r, resp)
 }
 
+// DeleteCounterpartyAlias godoc
+// @Summary      Delete counterparty alias
+// @Tags         Workspace
+// @Produce      json
+// @Security     BearerAuth
+// @Param        X-Workspace-ID header string true "Workspace entity ID"
+// @Param        entity_id path string true "Counterparty entity ID"
+// @Success      200 {object} shared.APIResponse
+// @Router       /workspaces/counterparties/aliases/{entity_id} [delete]
 func (h *WorkspaceHandler) DeleteCounterpartyAlias(w http.ResponseWriter, r *http.Request) {
 	workspaceID := middleware.GetWorkspaceID(r.Context())
 	entityID := chi.URLParam(r, "entity_id")
@@ -427,6 +454,15 @@ func (h *WorkspaceHandler) DeleteCounterpartyAlias(w http.ResponseWriter, r *htt
 	shared.OK(w, r, workspace.MessageResponse{Message: "Counterparty alias deleted"})
 }
 
+// SearchCounterparties godoc
+// @Summary      Search counterparties by name
+// @Tags         Workspace
+// @Produce      json
+// @Security     BearerAuth
+// @Param        X-Workspace-ID header string true "Workspace entity ID"
+// @Param        q query string true "Search query"
+// @Success      200 {object} shared.APIResponse
+// @Router       /workspaces/counterparties/search [get]
 func (h *WorkspaceHandler) SearchCounterparties(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {

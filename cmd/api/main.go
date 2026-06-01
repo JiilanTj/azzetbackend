@@ -22,7 +22,7 @@ import (
 
 // @title Azzet API
 // @version 1.0
-// @description Enterprise-grade accounting, tax, and finance platform
+// @description Enterprise-grade accounting, tax, and finance platform. User routes use Bearer JWT from /auth/login. Workspace-scoped routes require X-Workspace-ID header. Admin routes under /admin use admin JWT from /admin/auth/login.
 // @host localhost:8080
 // @BasePath /api/v1
 // @securityDefinitions.apikey BearerAuth
