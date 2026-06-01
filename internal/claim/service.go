@@ -20,14 +20,21 @@ import (
 )
 
 var (
-	ErrClaimNotFound    = errors.New("claim not found")
-	ErrClaimExists      = errors.New("active claim already exists for this entity")
-	ErrInvalidStatus    = errors.New("invalid claim status transition")
-	ErrNotOwner         = errors.New("not authorized for this claim")
-	ErrDocumentsMissing = errors.New("at least one document is required before submission")
-	ErrNotShadow        = errors.New("entity is not a shadow entity")
-	ErrDocNotFound      = errors.New("document not found")
+	ErrClaimNotFound       = errors.New("claim not found")
+	ErrClaimExists         = errors.New("a claim already exists for this entity")
+	ErrInvalidStatus       = errors.New("invalid claim status transition")
+	ErrNotOwner            = errors.New("not authorized for this claim")
+	ErrDocumentsMissing    = errors.New("at least one document is required before submission")
+	ErrNotShadow           = errors.New("entity is not a shadow entity")
+	ErrDocNotFound         = errors.New("document not found")
+	ErrUploadNotConfirmed  = errors.New("document not found in storage")
+	ErrEntityNotFound      = errors.New("entity not found")
 )
+
+// WorkspaceBootstrapper creates a workspace after a claim is approved.
+type WorkspaceBootstrapper interface {
+	EnsureWorkspaceForClaimedEntity(ctx context.Context, userID string, entityID uuid.UUID) error
+}
 
 var validDocTypes = map[string]bool{
 	"NPWP": true, "NIB": true, "SIUP": true,
@@ -40,14 +47,16 @@ type Service struct {
 	Pool            *pgxpool.Pool
 	Storage         *storage.R2Client
 	IdentityService *identity.Service
+	Workspace       WorkspaceBootstrapper
 }
 
-func NewService(queries *db.Queries, pool *pgxpool.Pool, storageClient *storage.R2Client, identityService *identity.Service) *Service {
+func NewService(queries *db.Queries, pool *pgxpool.Pool, storageClient *storage.R2Client, identityService *identity.Service, workspace WorkspaceBootstrapper) *Service {
 	return &Service{
 		Queries:         queries,
 		Pool:            pool,
 		Storage:         storageClient,
 		IdentityService: identityService,
+		Workspace:       workspace,
 	}
 }
 
@@ -66,15 +75,21 @@ func (s *Service) CreateClaim(ctx context.Context, userID string, req *CreateCla
 
 	e, err := s.Queries.GetEntityByID(ctx, eid)
 	if err != nil {
-		return nil, ErrClaimNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrEntityNotFound
+		}
+		return nil, err
 	}
 
 	if !e.IsShadow {
 		return nil, ErrNotShadow
 	}
 
-	existing, err := s.Queries.GetActiveClaimForEntity(ctx, eid)
-	if err == nil && existing.Status != StatusRejected {
+	hasClaim, err := s.Queries.HasClaimForEntity(ctx, eid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing claim: %w", err)
+	}
+	if hasClaim {
 		return nil, ErrClaimExists
 	}
 
@@ -156,8 +171,13 @@ func (s *Service) SubmitClaim(ctx context.Context, userID, claimID string) (*Cla
 		return nil, ErrNotOwner
 	}
 
+	oldStatus := claim.Status
+	action := ActionSubmitted
 	if claim.Status != StatusDraft && claim.Status != StatusRejected {
 		return nil, ErrInvalidStatus
+	}
+	if oldStatus == StatusRejected {
+		action = ActionResubmitted
 	}
 
 	count, err := s.Queries.CountClaimDocuments(ctx, cid)
@@ -177,12 +197,19 @@ func (s *Service) SubmitClaim(ctx context.Context, userID, claimID string) (*Cla
 
 	qtx := s.Queries.WithTx(tx)
 
-	oldStatus := claim.Status
-	if err := qtx.UpdateClaimStatus(ctx, db.UpdateClaimStatusParams{
+	if oldStatus == StatusRejected {
+		if err := qtx.ResubmitCompanyClaim(ctx, cid); err != nil {
+			return nil, fmt.Errorf("failed to resubmit claim: %w", err)
+		}
+	} else if err := qtx.UpdateClaimStatus(ctx, db.UpdateClaimStatusParams{
 		ID:     cid,
 		Status: StatusSubmitted,
 	}); err != nil {
 		return nil, fmt.Errorf("failed to update claim status: %w", err)
+	}
+
+	if err := s.ensureVerificationRecordTx(ctx, qtx, claim.EntityID); err != nil {
+		return nil, err
 	}
 
 	if err := qtx.UpdateEntityVerificationStatus(ctx, db.UpdateEntityVerificationStatusParams{
@@ -198,7 +225,7 @@ func (s *Service) SubmitClaim(ctx context.Context, userID, claimID string) (*Cla
 		ClaimID:   cid,
 		ActorID:   uid,
 		ActorType: ActorUser,
-		Action:    ActionSubmitted,
+		Action:    action,
 		OldStatus: pgtype.Text{String: oldStatus, Valid: true},
 		NewStatus: pgtype.Text{String: StatusSubmitted, Valid: true},
 		Details:   details,
@@ -250,7 +277,7 @@ func (s *Service) RequestDocumentUpload(ctx context.Context, userID, claimID str
 		return nil, ErrNotOwner
 	}
 
-	if claim.Status != StatusDraft && claim.Status != StatusSubmitted && claim.Status != StatusRejected {
+	if claim.Status != StatusDraft && claim.Status != StatusRejected && claim.Status != StatusDisputed {
 		return nil, ErrInvalidStatus
 	}
 
@@ -341,10 +368,26 @@ func (s *Service) ConfirmDocumentUpload(ctx context.Context, userID, claimID, do
 		return ErrDocNotFound
 	}
 
+	if s.Storage == nil {
+		return fmt.Errorf("storage not configured")
+	}
+
+	exists, err := s.Storage.ObjectExists(ctx, doc.FileKey)
+	if err != nil {
+		return fmt.Errorf("failed to verify upload: %w", err)
+	}
+	if !exists {
+		return ErrUploadNotConfirmed
+	}
+
 	return s.Queries.MarkDocumentUploaded(ctx, did)
 }
 
-func (s *Service) GetClaimDocuments(ctx context.Context, claimID string) ([]DocumentResponse, error) {
+func (s *Service) GetClaimDocuments(ctx context.Context, userID, claimID string) ([]DocumentResponse, error) {
+	if err := s.ensureClaimOwner(ctx, userID, claimID); err != nil {
+		return nil, err
+	}
+
 	cid, err := uuid.Parse(claimID)
 	if err != nil {
 		return nil, ErrClaimNotFound
@@ -388,7 +431,18 @@ func (s *Service) GetMyClaims(ctx context.Context, userID string) ([]ClaimRespon
 	return resp, nil
 }
 
-func (s *Service) GetClaim(ctx context.Context, claimID string) (*ClaimDetailResponse, error) {
+func (s *Service) GetClaimForUser(ctx context.Context, userID, claimID string) (*ClaimDetailResponse, error) {
+	if err := s.ensureClaimOwner(ctx, userID, claimID); err != nil {
+		return nil, err
+	}
+	return s.getClaimDetail(ctx, claimID)
+}
+
+func (s *Service) GetClaimDetail(ctx context.Context, claimID string) (*ClaimDetailResponse, error) {
+	return s.getClaimDetail(ctx, claimID)
+}
+
+func (s *Service) getClaimDetail(ctx context.Context, claimID string) (*ClaimDetailResponse, error) {
 	cid, err := uuid.Parse(claimID)
 	if err != nil {
 		return nil, ErrClaimNotFound
@@ -475,7 +529,7 @@ func (s *Service) DisputeClaim(ctx context.Context, userID, claimID string, req 
 		return ErrNotOwner
 	}
 
-	if claim.Status != StatusSubmitted && claim.Status != StatusUnderReview {
+	if claim.Status != StatusRejected {
 		return ErrInvalidStatus
 	}
 
@@ -495,6 +549,17 @@ func (s *Service) DisputeClaim(ctx context.Context, userID, claimID string, req 
 		DisputeReason: pgtype.Text{String: req.Reason, Valid: true},
 	}); err != nil {
 		return fmt.Errorf("failed to dispute claim: %w", err)
+	}
+
+	if err := s.ensureVerificationRecordTx(ctx, qtx, claim.EntityID); err != nil {
+		return err
+	}
+
+	if err := qtx.UpdateEntityVerificationStatus(ctx, db.UpdateEntityVerificationStatusParams{
+		EntityID: claim.EntityID,
+		Status:   identity.StatusPending,
+	}); err != nil {
+		return fmt.Errorf("failed to update verification status: %w", err)
 	}
 
 	details, _ := json.Marshal(map[string]string{"reason": req.Reason})
@@ -670,6 +735,14 @@ func (s *Service) ApproveClaim(ctx context.Context, adminID, claimID string, req
 		return fmt.Errorf("failed to link shadow entity: %w", err)
 	}
 
+	entity, err := qtx.GetEntityByID(ctx, claim.EntityID)
+	if err != nil {
+		return fmt.Errorf("failed to load entity: %w", err)
+	}
+	if err := s.IdentityService.EnsureNormalizedName(ctx, claim.EntityID, entity.NamaUtama); err != nil {
+		return fmt.Errorf("failed to normalize entity name: %w", err)
+	}
+
 	if err := qtx.UpdateEntityVerificationStatus(ctx, db.UpdateEntityVerificationStatusParams{
 		EntityID:   claim.EntityID,
 		Status:     identity.StatusVerified,
@@ -701,7 +774,17 @@ func (s *Service) ApproveClaim(ctx context.Context, adminID, claimID string, req
 		events.WithActor(aid.String()),
 	)
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit: %w", err)
+	}
+
+	if s.Workspace != nil {
+		if err := s.Workspace.EnsureWorkspaceForClaimedEntity(ctx, claim.ClaimantUserID.String(), claim.EntityID); err != nil {
+			return fmt.Errorf("failed to bootstrap workspace: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) RejectClaim(ctx context.Context, adminID, claimID string, req *ReviewRequest) error {
@@ -823,6 +906,29 @@ func (s *Service) CountPendingClaims(ctx context.Context) (int64, error) {
 }
 
 // --- Internal ---
+
+func (s *Service) ensureClaimOwner(ctx context.Context, userID, claimID string) error {
+	cid, err := uuid.Parse(claimID)
+	if err != nil {
+		return ErrClaimNotFound
+	}
+
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return ErrNotOwner
+	}
+
+	claim, err := s.Queries.GetCompanyClaimByID(ctx, cid)
+	if err != nil {
+		return ErrClaimNotFound
+	}
+
+	if claim.ClaimantUserID != uid {
+		return ErrNotOwner
+	}
+
+	return nil
+}
 
 func (s *Service) linkShadowEntity(ctx context.Context, qtx *db.Queries, claim db.CompanyClaim) error {
 	return qtx.LinkShadowEntity(ctx, db.LinkShadowEntityParams{

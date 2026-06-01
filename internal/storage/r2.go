@@ -2,11 +2,13 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"codeberg.org/azzet/azzetbe/internal/config"
 )
@@ -87,6 +89,21 @@ func (r *R2Client) DeleteObject(ctx context.Context, key string) error {
 	}
 
 	return nil
+}
+
+func (r *R2Client) ObjectExists(ctx context.Context, key string) (bool, error) {
+	_, err := r.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: &r.bucketName,
+		Key:    &key,
+	})
+	if err != nil {
+		var notFound *types.NotFound
+		if errors.As(err, &notFound) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check object: %w", err)
+	}
+	return true, nil
 }
 
 func ClaimDocumentKey(claimID, documentID, filename string) string {

@@ -116,6 +116,19 @@ func EntityToResponse(e *db.Entity) EntityResponse {
 	return resp
 }
 
+// EntityToPublicResponse returns a privacy-safe entity view (no PII or meta).
+func EntityToPublicResponse(e *db.Entity) EntityResponse {
+	return EntityResponse{
+		ID:         e.ID.String(),
+		EntityType: e.EntityType,
+		NamaUtama:  e.NamaUtama,
+		IsShadow:   e.IsShadow,
+		Status:     e.Status,
+		CreatedAt:  e.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:  e.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
 func EntityMetaToResponse(m *db.EntityMetum) *EntityMetaResponse {
 	if m == nil {
 		return nil

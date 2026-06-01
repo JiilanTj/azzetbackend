@@ -16,6 +16,7 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/db"
 	"codeberg.org/azzet/azzetbe/internal/entity"
 	"codeberg.org/azzet/azzetbe/internal/events"
+	"codeberg.org/azzet/azzetbe/internal/identity"
 )
 
 var ErrWorkspaceNotFound = errors.New("workspace not found")
@@ -107,6 +108,67 @@ func (s *Service) CreateWorkspace(ctx context.Context, userID string, req *Creat
 		Role:       RelationPemilik,
 		CreatedAt:  rel.CreatedAt.Format(time.RFC3339),
 	}, nil
+}
+
+// EnsureWorkspaceForClaimedEntity idempotently creates a PEMILIK workspace after claim approval.
+func (s *Service) EnsureWorkspaceForClaimedEntity(ctx context.Context, userID string, entityID uuid.UUID) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user_id")
+	}
+
+	e, err := s.Queries.GetEntityByID(ctx, entityID)
+	if err != nil {
+		return fmt.Errorf("entity not found")
+	}
+	if !e.UserID.Valid || e.UserID.Bytes != uid {
+		return ErrNotAuthorized
+	}
+
+	personalEntity, err := s.EntityService.GetPersonalEntity(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("personal entity not found")
+	}
+
+	exists, err := s.Queries.ExistsRelation(ctx, db.ExistsRelationParams{
+		ObjectID:     entityID,
+		SubjectID:    personalEntity.ID,
+		RelationType: RelationPemilik,
+	})
+	if err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
+
+	now := time.Now()
+	_, err = s.Queries.CreateRelation(ctx, db.CreateRelationParams{
+		ID:           uuid.New(),
+		ObjectID:     entityID,
+		SubjectID:    personalEntity.ID,
+		RelationType: RelationPemilik,
+		Status:       "ACTIVE",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create workspace: %w", err)
+	}
+
+	if err := s.bootstrapOwnerRole(ctx, entityID, uid, now); err != nil {
+		return fmt.Errorf("failed to bootstrap owner role: %w", err)
+	}
+
+	if s.Pool != nil {
+		if err := events.EmitEventDirect(ctx, s.Pool, events.WorkspaceCreated, map[string]string{
+			"workspace_id": entityID.String(),
+		}, events.WithWorkspace(entityID.String()), events.WithActor(uid.String())); err != nil {
+			slog.Warn("failed to emit workspace.created event", "error", err, "workspace_id", entityID.String())
+		}
+	}
+
+	return nil
 }
 
 // CreatePersonalWorkspace creates the personal workspace for a user (called during registration)
@@ -365,6 +427,9 @@ func (s *Service) AddCounterparty(ctx context.Context, workspaceID string, req *
 	}
 
 	resp := RelationToCounterpartyResponse(&rel, &counterpartyEntity)
+	if alias != nil && *alias != "" {
+		_ = s.syncCounterpartyAlias(ctx, wsID, counterpartyEntity.ID, *alias)
+	}
 	return &resp, nil
 }
 
@@ -733,39 +798,27 @@ func (s *Service) SetCounterpartyAlias(ctx context.Context, workspaceID string, 
 		return nil, fmt.Errorf("custom_alias is required")
 	}
 
-	now := time.Now()
-
-	existing, err := s.Queries.GetCounterpartyAlias(ctx, db.GetCounterpartyAliasParams{
-		WorkspaceID: wsID,
-		EntityID:    eid,
-	})
-	if err == nil {
-		if err := s.Queries.UpdateCounterpartyAlias(ctx, db.UpdateCounterpartyAliasParams{
-			WorkspaceID: wsID,
-			EntityID:    eid,
-			CustomAlias: req.CustomAlias,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to update alias: %w", err)
-		}
-		return &CounterpartyAliasResponse{
-			ID:          existing.ID.String(),
-			WorkspaceID: workspaceID,
-			EntityID:    req.EntityID,
-			CustomAlias: req.CustomAlias,
-			CreatedAt:   existing.CreatedAt.Format(time.RFC3339),
-		}, nil
-	}
-
-	ca, err := s.Queries.CreateCounterpartyAlias(ctx, db.CreateCounterpartyAliasParams{
-		ID:          uuid.New(),
-		WorkspaceID: wsID,
-		EntityID:    eid,
-		CustomAlias: req.CustomAlias,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+	isCounterparty, err := s.Queries.ExistsCounterpartyRelation(ctx, db.ExistsCounterpartyRelationParams{
+		ObjectID:  wsID,
+		SubjectID: eid,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create alias: %w", err)
+		return nil, err
+	}
+	if !isCounterparty {
+		return nil, fmt.Errorf("entity is not a counterparty of this workspace")
+	}
+
+	if err := s.Queries.UpdateCounterpartyRelationAlias(ctx, db.UpdateCounterpartyRelationAliasParams{
+		ObjectID:    wsID,
+		SubjectID:   eid,
+		CustomAlias: pgtype.Text{String: req.CustomAlias, Valid: true},
+	}); err != nil {
+		return nil, fmt.Errorf("failed to update relation alias: %w", err)
+	}
+
+	if err := s.syncCounterpartyAlias(ctx, wsID, eid, req.CustomAlias); err != nil {
+		return nil, err
 	}
 
 	entityName := ""
@@ -774,12 +827,10 @@ func (s *Service) SetCounterpartyAlias(ctx context.Context, workspaceID string, 
 	}
 
 	return &CounterpartyAliasResponse{
-		ID:          ca.ID.String(),
 		WorkspaceID: workspaceID,
 		EntityID:    req.EntityID,
 		EntityName:  entityName,
-		CustomAlias: ca.CustomAlias,
-		CreatedAt:   ca.CreatedAt.Format(time.RFC3339),
+		CustomAlias: req.CustomAlias,
 	}, nil
 }
 
@@ -789,7 +840,7 @@ func (s *Service) ListCounterpartyAliases(ctx context.Context, workspaceID strin
 		return nil, ErrWorkspaceNotFound
 	}
 
-	aliases, err := s.Queries.ListCounterpartyAliases(ctx, wsID)
+	aliases, err := s.Queries.ListCounterpartyAliasesFromRelations(ctx, wsID)
 	if err != nil {
 		return nil, err
 	}
@@ -801,7 +852,7 @@ func (s *Service) ListCounterpartyAliases(ctx context.Context, workspaceID strin
 			WorkspaceID: workspaceID,
 			EntityID:    a.EntityID.String(),
 			EntityName:  a.EntityName,
-			CustomAlias: a.CustomAlias,
+			CustomAlias: a.CustomAlias.String,
 			CreatedAt:   a.CreatedAt.Format(time.RFC3339),
 		})
 	}
@@ -816,6 +867,25 @@ func (s *Service) DeleteCounterpartyAlias(ctx context.Context, workspaceID, enti
 	eid, err := uuid.Parse(entityID)
 	if err != nil {
 		return fmt.Errorf("invalid entity_id")
+	}
+
+	isCounterparty, err := s.Queries.ExistsCounterpartyRelation(ctx, db.ExistsCounterpartyRelationParams{
+		ObjectID:  wsID,
+		SubjectID: eid,
+	})
+	if err != nil {
+		return err
+	}
+	if !isCounterparty {
+		return fmt.Errorf("entity is not a counterparty of this workspace")
+	}
+
+	if err := s.Queries.UpdateCounterpartyRelationAlias(ctx, db.UpdateCounterpartyRelationAliasParams{
+		ObjectID:    wsID,
+		SubjectID:   eid,
+		CustomAlias: pgtype.Text{Valid: false},
+	}); err != nil {
+		return fmt.Errorf("failed to clear relation alias: %w", err)
 	}
 
 	return s.Queries.DeleteCounterpartyAlias(ctx, db.DeleteCounterpartyAliasParams{
@@ -833,8 +903,8 @@ func (s *Service) SearchCounterparties(ctx context.Context, query string, limit 
 		limit = 50
 	}
 
-	normalized := query
-	if len(query) < 2 {
+	normalized := identity.NormalizeName(query)
+	if len(normalized) < 2 {
 		return []map[string]interface{}{}, nil
 	}
 
@@ -860,6 +930,38 @@ func (s *Service) SearchCounterparties(ctx context.Context, query string, limit 
 }
 
 // --- Helpers ---
+
+func (s *Service) syncCounterpartyAlias(ctx context.Context, workspaceID, entityID uuid.UUID, alias string) error {
+	now := time.Now()
+	existing, err := s.Queries.GetCounterpartyAlias(ctx, db.GetCounterpartyAliasParams{
+		WorkspaceID: workspaceID,
+		EntityID:    entityID,
+	})
+	if err == nil {
+		_ = existing
+		return s.Queries.UpdateCounterpartyAlias(ctx, db.UpdateCounterpartyAliasParams{
+			WorkspaceID: workspaceID,
+			EntityID:    entityID,
+			CustomAlias: alias,
+		})
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("failed to check counterparty alias: %w", err)
+	}
+
+	_, err = s.Queries.CreateCounterpartyAlias(ctx, db.CreateCounterpartyAliasParams{
+		ID:          uuid.New(),
+		WorkspaceID: workspaceID,
+		EntityID:    entityID,
+		CustomAlias: alias,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create counterparty alias: %w", err)
+	}
+	return nil
+}
 
 // bootstrapOwnerRole creates the system "Owner" role with wildcard permissions for a new workspace
 func (s *Service) bootstrapOwnerRole(ctx context.Context, workspaceID, userID uuid.UUID, now time.Time) error {

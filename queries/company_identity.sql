@@ -117,6 +117,32 @@ SELECT * FROM company_claims
 WHERE entity_id = $1 AND status NOT IN ('REJECTED', 'APPROVED')
 LIMIT 1;
 
+-- name: HasClaimForEntity :one
+SELECT EXISTS(SELECT 1 FROM company_claims WHERE entity_id = $1);
+
+-- name: UserIsClaimantForEntity :one
+SELECT EXISTS(
+    SELECT 1 FROM company_claims
+    WHERE entity_id = $1 AND claimant_user_id = $2
+);
+
+-- name: UserCanManageClaimEntity :one
+SELECT EXISTS(
+    SELECT 1 FROM company_claims
+    WHERE entity_id = $1 AND claimant_user_id = $2
+      AND status IN ('DRAFT', 'REJECTED', 'DISPUTED')
+);
+
+-- name: ResubmitCompanyClaim :exec
+UPDATE company_claims
+SET status = 'SUBMITTED',
+    rejection_reason = NULL,
+    dispute_reason = NULL,
+    reviewer_id = NULL,
+    reviewed_at = NULL,
+    updated_at = NOW()
+WHERE id = $1;
+
 -- name: GetClaimsByClaimant :many
 SELECT cc.*, e.nama_utama as entity_name, e.entity_type
 FROM company_claims cc

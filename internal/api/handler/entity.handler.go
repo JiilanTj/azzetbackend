@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -87,10 +88,15 @@ func (h *EntityHandler) ListMyEntities(w http.ResponseWriter, r *http.Request) {
 // @Failure      404  {object}  shared.ErrorResponse
 // @Router       /entities/{id} [get]
 func (h *EntityHandler) GetEntity(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
 
-	resp, err := h.Service.GetEntityByID(r.Context(), entityID)
+	resp, err := h.Service.GetEntityForUser(r.Context(), userID, entityID)
 	if err != nil {
+		if err == entity.ErrNotAuthorized {
+			shared.Forbidden(w, r, "entity", "not authorized to view this entity")
+			return
+		}
 		shared.NotFound(w, r, "entity", "entity not found")
 		return
 	}
@@ -162,26 +168,30 @@ func (h *EntityHandler) UpdateEntityMeta(w http.ResponseWriter, r *http.Request)
 
 // SearchEntities godoc
 // @Summary      Search entities
-// @Description  Search entities by name. Returns active entities matching the query.
+// @Description  Search active entities by name. Returns privacy-safe results; full profile only for entities the caller owns or has workspace/claim access to.
 // @Tags         Entities
 // @Produce      json
 // @Security     BearerAuth
-// @Param        q       query     string  true   "Search query"
+// @Param        q       query     string  true   "Search query (min 3 characters)"
 // @Param        limit   query     int     false  "Limit (default 20, max 100)"
 // @Param        offset  query     int     false  "Offset (default 0)"
 // @Success      200     {object}  shared.APIResponse{data=[]entity.EntityResponse}
 // @Failure      400     {object}  shared.ErrorResponse
 // @Router       /entities/search [get]
 func (h *EntityHandler) SearchEntities(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("q")
+	userID := middleware.GetUserID(r.Context())
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if query == "" {
 		shared.BadRequest(w, r, "entity", "query parameter 'q' is required")
+		return
+	}
+	if len(query) < 3 {
+		shared.OK(w, r, []entity.EntityResponse{})
 		return
 	}
 
 	limit := 20
 	offset := 0
-	// Simple parsing, ignore errors (defaults apply)
 	if l := r.URL.Query().Get("limit"); l != "" {
 		fmt.Sscanf(l, "%d", &limit)
 	}
@@ -189,7 +199,7 @@ func (h *EntityHandler) SearchEntities(w http.ResponseWriter, r *http.Request) {
 		fmt.Sscanf(o, "%d", &offset)
 	}
 
-	entities, err := h.Service.SearchEntities(r.Context(), query, limit, offset)
+	entities, err := h.Service.SearchEntitiesForUser(r.Context(), userID, query, limit, offset)
 	if err != nil {
 		shared.InternalError(w, r, "entity", "search failed")
 		return

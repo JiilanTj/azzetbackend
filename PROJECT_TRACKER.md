@@ -1056,6 +1056,7 @@ Phase 13: ░░░░░░░░░░░░░░░░░░░░   0%
 | 13 | 013_subscription_pending_payment.sql | Add pending_payment to check_sub_status constraint |
 | 14 | 014_accounting.sql | accounts, items, transactions, transaction_line_items, journal_entries, ledger_entries, account_balances |
 | 15 | 015_company_identity.sql | entity_verification, entity_legal_ids, entity_aliases, company_claims, claim_documents, claim_audit_log, counterparty_aliases |
+| 16 | 016_backfill_nama_normalized.sql | Backfill nama_normalized for existing entities |
 
 ---
 

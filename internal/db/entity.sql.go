@@ -14,23 +14,24 @@ import (
 )
 
 const createEntity = `-- name: CreateEntity :one
-INSERT INTO entities (id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+INSERT INTO entities (id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at, nama_normalized)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at, nama_normalized
 `
 
 type CreateEntityParams struct {
-	ID            uuid.UUID   `json:"id"`
-	UserID        pgtype.UUID `json:"user_id"`
-	EntityType    string      `json:"entity_type"`
-	NamaUtama     string      `json:"nama_utama"`
-	NikNpwp       pgtype.Text `json:"nik_npwp"`
-	NomorWa       pgtype.Text `json:"nomor_wa"`
-	AlamatLengkap pgtype.Text `json:"alamat_lengkap"`
-	IsShadow      bool        `json:"is_shadow"`
-	Status        string      `json:"status"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
+	ID             uuid.UUID   `json:"id"`
+	UserID         pgtype.UUID `json:"user_id"`
+	EntityType     string      `json:"entity_type"`
+	NamaUtama      string      `json:"nama_utama"`
+	NikNpwp        pgtype.Text `json:"nik_npwp"`
+	NomorWa        pgtype.Text `json:"nomor_wa"`
+	AlamatLengkap  pgtype.Text `json:"alamat_lengkap"`
+	IsShadow       bool        `json:"is_shadow"`
+	Status         string      `json:"status"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	NamaNormalized pgtype.Text `json:"nama_normalized"`
 }
 
 func (q *Queries) CreateEntity(ctx context.Context, arg CreateEntityParams) (Entity, error) {
@@ -46,6 +47,7 @@ func (q *Queries) CreateEntity(ctx context.Context, arg CreateEntityParams) (Ent
 		arg.Status,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.NamaNormalized,
 	)
 	var i Entity
 	err := row.Scan(
@@ -264,16 +266,17 @@ func (q *Queries) SearchEntitiesByName(ctx context.Context, arg SearchEntitiesBy
 
 const updateEntity = `-- name: UpdateEntity :exec
 UPDATE entities
-SET nama_utama = $2, nik_npwp = $3, nomor_wa = $4, alamat_lengkap = $5, updated_at = NOW()
+SET nama_utama = $2, nik_npwp = $3, nomor_wa = $4, alamat_lengkap = $5, nama_normalized = $6, updated_at = NOW()
 WHERE id = $1
 `
 
 type UpdateEntityParams struct {
-	ID            uuid.UUID   `json:"id"`
-	NamaUtama     string      `json:"nama_utama"`
-	NikNpwp       pgtype.Text `json:"nik_npwp"`
-	NomorWa       pgtype.Text `json:"nomor_wa"`
-	AlamatLengkap pgtype.Text `json:"alamat_lengkap"`
+	ID             uuid.UUID   `json:"id"`
+	NamaUtama      string      `json:"nama_utama"`
+	NikNpwp        pgtype.Text `json:"nik_npwp"`
+	NomorWa        pgtype.Text `json:"nomor_wa"`
+	AlamatLengkap  pgtype.Text `json:"alamat_lengkap"`
+	NamaNormalized pgtype.Text `json:"nama_normalized"`
 }
 
 func (q *Queries) UpdateEntity(ctx context.Context, arg UpdateEntityParams) error {
@@ -283,6 +286,7 @@ func (q *Queries) UpdateEntity(ctx context.Context, arg UpdateEntityParams) erro
 		arg.NikNpwp,
 		arg.NomorWa,
 		arg.AlamatLengkap,
+		arg.NamaNormalized,
 	)
 	return err
 }
@@ -373,4 +377,53 @@ func (q *Queries) UpsertEntityMeta(ctx context.Context, arg UpsertEntityMetaPara
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const userCanViewEntityAsCounterparty = `-- name: UserCanViewEntityAsCounterparty :one
+SELECT EXISTS(
+    SELECT 1 FROM entity_relations cp
+    JOIN entity_relations member ON member.object_id = cp.object_id
+    JOIN entities pe ON pe.id = member.subject_id
+    WHERE cp.subject_id = $1
+      AND pe.user_id = $2
+      AND cp.relation_type IN ('PELANGGAN', 'VENDOR')
+      AND member.relation_type IN ('PEMILIK', 'KARYAWAN')
+      AND cp.status = 'ACTIVE'
+      AND member.status = 'ACTIVE'
+)
+`
+
+type UserCanViewEntityAsCounterpartyParams struct {
+	SubjectID uuid.UUID   `json:"subject_id"`
+	UserID    pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) UserCanViewEntityAsCounterparty(ctx context.Context, arg UserCanViewEntityAsCounterpartyParams) (bool, error) {
+	row := q.db.QueryRow(ctx, userCanViewEntityAsCounterparty, arg.SubjectID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const userCanViewEntityAsWorkspaceMember = `-- name: UserCanViewEntityAsWorkspaceMember :one
+SELECT EXISTS(
+    SELECT 1 FROM entity_relations er
+    JOIN entities pe ON pe.id = er.subject_id
+    WHERE er.object_id = $1
+      AND pe.user_id = $2
+      AND er.relation_type IN ('PEMILIK', 'KARYAWAN')
+      AND er.status = 'ACTIVE'
+)
+`
+
+type UserCanViewEntityAsWorkspaceMemberParams struct {
+	ObjectID uuid.UUID   `json:"object_id"`
+	UserID   pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) UserCanViewEntityAsWorkspaceMember(ctx context.Context, arg UserCanViewEntityAsWorkspaceMemberParams) (bool, error) {
+	row := q.db.QueryRow(ctx, userCanViewEntityAsWorkspaceMember, arg.ObjectID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }

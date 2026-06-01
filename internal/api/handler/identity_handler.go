@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"codeberg.org/azzet/azzetbe/internal/api/middleware"
 	"codeberg.org/azzet/azzetbe/internal/identity"
 	"codeberg.org/azzet/azzetbe/internal/shared"
 )
@@ -31,6 +32,7 @@ func (h *IdentityHandler) GetVerificationStatus(w http.ResponseWriter, r *http.R
 }
 
 func (h *IdentityHandler) AddLegalID(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
 
 	var req identity.AddLegalIDRequest
@@ -47,8 +49,12 @@ func (h *IdentityHandler) AddLegalID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.Service.AddLegalID(r.Context(), entityID, &req)
+	resp, err := h.Service.AddLegalID(r.Context(), userID, entityID, &req)
 	if err != nil {
+		if err == identity.ErrNotAuthorized {
+			shared.Error(w, r, 403, "FORBIDDEN", "identity", "not authorized")
+			return
+		}
 		if err == identity.ErrInvalidLegalIDType {
 			shared.Error(w, r, 400, "INVALID_TYPE", "identity", "invalid legal ID type. Must be one of: NPWP, NIB, SIUP, KTP, AKTA")
 			return
@@ -60,10 +66,15 @@ func (h *IdentityHandler) AddLegalID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *IdentityHandler) GetLegalIDs(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
 
-	resp, err := h.Service.GetLegalIDs(r.Context(), entityID)
+	resp, err := h.Service.GetLegalIDs(r.Context(), userID, entityID)
 	if err != nil {
+		if err == identity.ErrNotAuthorized {
+			shared.Error(w, r, 403, "FORBIDDEN", "identity", "not authorized")
+			return
+		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "identity", "failed to get legal IDs")
 		return
 	}
@@ -71,6 +82,7 @@ func (h *IdentityHandler) GetLegalIDs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *IdentityHandler) UpdateLegalID(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
 	idType := strings.ToUpper(chi.URLParam(r, "type"))
 
@@ -87,7 +99,11 @@ func (h *IdentityHandler) UpdateLegalID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := h.Service.UpdateLegalID(r.Context(), entityID, idType, req.IDValue); err != nil {
+	if err := h.Service.UpdateLegalID(r.Context(), userID, entityID, idType, req.IDValue); err != nil {
+		if err == identity.ErrNotAuthorized {
+			shared.Error(w, r, 403, "FORBIDDEN", "identity", "not authorized")
+			return
+		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "identity", "failed to update legal ID")
 		return
 	}
@@ -95,10 +111,15 @@ func (h *IdentityHandler) UpdateLegalID(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *IdentityHandler) DeleteLegalID(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
 	idType := strings.ToUpper(chi.URLParam(r, "type"))
 
-	if err := h.Service.DeleteLegalID(r.Context(), entityID, idType); err != nil {
+	if err := h.Service.DeleteLegalID(r.Context(), userID, entityID, idType); err != nil {
+		if err == identity.ErrNotAuthorized {
+			shared.Error(w, r, 403, "FORBIDDEN", "identity", "not authorized")
+			return
+		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "identity", "failed to delete legal ID")
 		return
 	}
@@ -106,6 +127,7 @@ func (h *IdentityHandler) DeleteLegalID(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *IdentityHandler) AddAlias(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
 
 	var req identity.AddAliasRequest
@@ -119,8 +141,12 @@ func (h *IdentityHandler) AddAlias(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.Service.AddAlias(r.Context(), entityID, &req)
+	resp, err := h.Service.AddAlias(r.Context(), userID, entityID, &req)
 	if err != nil {
+		if err == identity.ErrNotAuthorized {
+			shared.Error(w, r, 403, "FORBIDDEN", "identity", "not authorized")
+			return
+		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "identity", "failed to add alias")
 		return
 	}
@@ -128,10 +154,15 @@ func (h *IdentityHandler) AddAlias(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *IdentityHandler) GetAliases(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
 
-	resp, err := h.Service.GetAliases(r.Context(), entityID)
+	resp, err := h.Service.GetAliases(r.Context(), userID, entityID)
 	if err != nil {
+		if err == identity.ErrNotAuthorized {
+			shared.Error(w, r, 403, "FORBIDDEN", "identity", "not authorized")
+			return
+		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "identity", "failed to get aliases")
 		return
 	}
@@ -139,10 +170,15 @@ func (h *IdentityHandler) GetAliases(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *IdentityHandler) DeleteAlias(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
 	aliasID := chi.URLParam(r, "alias_id")
 
-	if err := h.Service.DeleteAlias(r.Context(), entityID, aliasID); err != nil {
+	if err := h.Service.DeleteAlias(r.Context(), userID, entityID, aliasID); err != nil {
+		if err == identity.ErrNotAuthorized {
+			shared.Error(w, r, 403, "FORBIDDEN", "identity", "not authorized")
+			return
+		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "identity", "failed to delete alias")
 		return
 	}
@@ -168,11 +204,16 @@ func (h *IdentityHandler) SearchFuzzy(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *IdentityHandler) FindDuplicates(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 
-	resp, err := h.Service.FindDuplicates(r.Context(), entityID, limit)
+	resp, err := h.Service.FindDuplicates(r.Context(), userID, entityID, limit)
 	if err != nil {
+		if err == identity.ErrNotAuthorized {
+			shared.Error(w, r, 403, "FORBIDDEN", "identity", "not authorized")
+			return
+		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "identity", "duplicate search failed")
 		return
 	}

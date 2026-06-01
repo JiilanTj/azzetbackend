@@ -20,6 +20,7 @@ var (
 	ErrLegalIDExists        = errors.New("legal ID already exists for this type")
 	ErrInvalidLegalIDType   = errors.New("invalid legal ID type")
 	ErrInvalidAliasSource   = errors.New("invalid alias source")
+	ErrNotAuthorized        = errors.New("not authorized")
 )
 
 var validLegalIDTypes = map[string]bool{
@@ -143,7 +144,11 @@ func (s *Service) SetVerificationStatus(ctx context.Context, entityID string, st
 
 // --- Legal IDs ---
 
-func (s *Service) AddLegalID(ctx context.Context, entityID string, req *AddLegalIDRequest) (*LegalIDResponse, error) {
+func (s *Service) AddLegalID(ctx context.Context, userID, entityID string, req *AddLegalIDRequest) (*LegalIDResponse, error) {
+	if err := s.authorizeEntityWrite(ctx, userID, entityID); err != nil {
+		return nil, err
+	}
+
 	if !validLegalIDTypes[req.IDType] {
 		return nil, ErrInvalidLegalIDType
 	}
@@ -169,7 +174,11 @@ func (s *Service) AddLegalID(ctx context.Context, entityID string, req *AddLegal
 	return legalIDToResponse(&lid), nil
 }
 
-func (s *Service) GetLegalIDs(ctx context.Context, entityID string) ([]LegalIDResponse, error) {
+func (s *Service) GetLegalIDs(ctx context.Context, userID, entityID string) ([]LegalIDResponse, error) {
+	if err := s.authorizeEntityRead(ctx, userID, entityID); err != nil {
+		return nil, err
+	}
+
 	eid, err := uuid.Parse(entityID)
 	if err != nil {
 		return nil, ErrEntityNotFound
@@ -187,7 +196,11 @@ func (s *Service) GetLegalIDs(ctx context.Context, entityID string) ([]LegalIDRe
 	return resp, nil
 }
 
-func (s *Service) UpdateLegalID(ctx context.Context, entityID, idType, idValue string) error {
+func (s *Service) UpdateLegalID(ctx context.Context, userID, entityID, idType, idValue string) error {
+	if err := s.authorizeEntityWrite(ctx, userID, entityID); err != nil {
+		return err
+	}
+
 	if !validLegalIDTypes[idType] {
 		return ErrInvalidLegalIDType
 	}
@@ -204,7 +217,11 @@ func (s *Service) UpdateLegalID(ctx context.Context, entityID, idType, idValue s
 	})
 }
 
-func (s *Service) DeleteLegalID(ctx context.Context, entityID, idType string) error {
+func (s *Service) DeleteLegalID(ctx context.Context, userID, entityID, idType string) error {
+	if err := s.authorizeEntityWrite(ctx, userID, entityID); err != nil {
+		return err
+	}
+
 	eid, err := uuid.Parse(entityID)
 	if err != nil {
 		return ErrEntityNotFound
@@ -218,7 +235,11 @@ func (s *Service) DeleteLegalID(ctx context.Context, entityID, idType string) er
 
 // --- Aliases ---
 
-func (s *Service) AddAlias(ctx context.Context, entityID string, req *AddAliasRequest) (*AliasResponse, error) {
+func (s *Service) AddAlias(ctx context.Context, userID, entityID string, req *AddAliasRequest) (*AliasResponse, error) {
+	if err := s.authorizeEntityWrite(ctx, userID, entityID); err != nil {
+		return nil, err
+	}
+
 	source := req.Source
 	if source == "" {
 		source = "MANUAL"
@@ -250,7 +271,11 @@ func (s *Service) AddAlias(ctx context.Context, entityID string, req *AddAliasRe
 	return aliasToResponse(&a), nil
 }
 
-func (s *Service) GetAliases(ctx context.Context, entityID string) ([]AliasResponse, error) {
+func (s *Service) GetAliases(ctx context.Context, userID, entityID string) ([]AliasResponse, error) {
+	if err := s.authorizeEntityRead(ctx, userID, entityID); err != nil {
+		return nil, err
+	}
+
 	eid, err := uuid.Parse(entityID)
 	if err != nil {
 		return nil, ErrEntityNotFound
@@ -268,7 +293,11 @@ func (s *Service) GetAliases(ctx context.Context, entityID string) ([]AliasRespo
 	return resp, nil
 }
 
-func (s *Service) DeleteAlias(ctx context.Context, entityID, aliasID string) error {
+func (s *Service) DeleteAlias(ctx context.Context, userID, entityID, aliasID string) error {
+	if err := s.authorizeEntityWrite(ctx, userID, entityID); err != nil {
+		return err
+	}
+
 	eid, err := uuid.Parse(entityID)
 	if err != nil {
 		return ErrEntityNotFound
@@ -321,7 +350,11 @@ func (s *Service) SearchFuzzy(ctx context.Context, query string, limit, offset i
 	return resp, nil
 }
 
-func (s *Service) FindDuplicates(ctx context.Context, entityID string, limit int) ([]FuzzyMatchResponse, error) {
+func (s *Service) FindDuplicates(ctx context.Context, userID, entityID string, limit int) ([]FuzzyMatchResponse, error) {
+	if err := s.authorizeEntityRead(ctx, userID, entityID); err != nil {
+		return nil, err
+	}
+
 	eid, err := uuid.Parse(entityID)
 	if err != nil {
 		return nil, ErrEntityNotFound
@@ -371,6 +404,67 @@ func (s *Service) EnsureNormalizedName(ctx context.Context, entityID uuid.UUID, 
 		ID:             entityID,
 		NamaNormalized: pgtype.Text{String: normalized, Valid: true},
 	})
+}
+
+// --- Authorization ---
+
+func (s *Service) authorizeEntityRead(ctx context.Context, userID, entityID string) error {
+	return s.authorizeEntity(ctx, userID, entityID, false)
+}
+
+func (s *Service) authorizeEntityWrite(ctx context.Context, userID, entityID string) error {
+	return s.authorizeEntity(ctx, userID, entityID, true)
+}
+
+func (s *Service) authorizeEntity(ctx context.Context, userID, entityID string, requireWrite bool) error {
+	eid, err := uuid.Parse(entityID)
+	if err != nil {
+		return ErrEntityNotFound
+	}
+
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return ErrNotAuthorized
+	}
+
+	e, err := s.Queries.GetEntityByID(ctx, eid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrEntityNotFound
+		}
+		return err
+	}
+
+	if e.UserID.Valid && e.UserID.Bytes == uid {
+		return nil
+	}
+
+	if requireWrite {
+		canManage, err := s.Queries.UserCanManageClaimEntity(ctx, db.UserCanManageClaimEntityParams{
+			EntityID:        eid,
+			ClaimantUserID:  uid,
+		})
+		if err != nil {
+			return err
+		}
+		if canManage {
+			return nil
+		}
+		return ErrNotAuthorized
+	}
+
+	isClaimant, err := s.Queries.UserIsClaimantForEntity(ctx, db.UserIsClaimantForEntityParams{
+		EntityID:       eid,
+		ClaimantUserID: uid,
+	})
+	if err != nil {
+		return err
+	}
+	if isClaimant {
+		return nil
+	}
+
+	return ErrNotAuthorized
 }
 
 // --- Helpers ---

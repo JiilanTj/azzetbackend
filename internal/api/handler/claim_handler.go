@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"codeberg.org/azzet/azzetbe/internal/api/middleware"
 	"codeberg.org/azzet/azzetbe/internal/claim"
 	"codeberg.org/azzet/azzetbe/internal/shared"
 )
@@ -20,7 +21,7 @@ func NewClaimHandler(service *claim.Service) *ClaimHandler {
 }
 
 func (h *ClaimHandler) CreateClaim(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID := middleware.GetUserID(r.Context())
 
 	var req claim.CreateClaimRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -40,7 +41,11 @@ func (h *ClaimHandler) CreateClaim(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err == claim.ErrClaimExists {
-			shared.Error(w, r, 409, "CLAIM_EXISTS", "claim", "active claim already exists for this entity")
+			shared.Error(w, r, 409, "CLAIM_EXISTS", "claim", "a claim already exists for this entity")
+			return
+		}
+		if err == claim.ErrEntityNotFound {
+			shared.Error(w, r, 404, "NOT_FOUND", "claim", "entity not found")
 			return
 		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "claim", "failed to create claim")
@@ -50,7 +55,7 @@ func (h *ClaimHandler) CreateClaim(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClaimHandler) GetMyClaims(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID := middleware.GetUserID(r.Context())
 
 	resp, err := h.Service.GetMyClaims(r.Context(), userID)
 	if err != nil {
@@ -61,12 +66,17 @@ func (h *ClaimHandler) GetMyClaims(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClaimHandler) GetClaim(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	claimID := chi.URLParam(r, "id")
 
-	resp, err := h.Service.GetClaim(r.Context(), claimID)
+	resp, err := h.Service.GetClaimForUser(r.Context(), userID, claimID)
 	if err != nil {
 		if err == claim.ErrClaimNotFound {
 			shared.Error(w, r, 404, "NOT_FOUND", "claim", "claim not found")
+			return
+		}
+		if err == claim.ErrNotOwner {
+			shared.Error(w, r, 403, "FORBIDDEN", "claim", "not authorized")
 			return
 		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "claim", "failed to get claim")
@@ -76,7 +86,7 @@ func (h *ClaimHandler) GetClaim(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClaimHandler) SubmitClaim(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID := middleware.GetUserID(r.Context())
 	claimID := chi.URLParam(r, "id")
 
 	resp, err := h.Service.SubmitClaim(r.Context(), userID, claimID)
@@ -104,7 +114,7 @@ func (h *ClaimHandler) SubmitClaim(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClaimHandler) RequestUpload(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID := middleware.GetUserID(r.Context())
 	claimID := chi.URLParam(r, "id")
 
 	var req claim.DocumentUploadRequest
@@ -135,11 +145,23 @@ func (h *ClaimHandler) RequestUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClaimHandler) ConfirmUpload(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID := middleware.GetUserID(r.Context())
 	claimID := chi.URLParam(r, "id")
 	docID := chi.URLParam(r, "doc_id")
 
 	if err := h.Service.ConfirmDocumentUpload(r.Context(), userID, claimID, docID); err != nil {
+		if err == claim.ErrClaimNotFound || err == claim.ErrDocNotFound {
+			shared.Error(w, r, 404, "NOT_FOUND", "claim", "document not found")
+			return
+		}
+		if err == claim.ErrNotOwner {
+			shared.Error(w, r, 403, "FORBIDDEN", "claim", "not authorized")
+			return
+		}
+		if err == claim.ErrUploadNotConfirmed {
+			shared.Error(w, r, 400, "UPLOAD_MISSING", "claim", "document not found in storage")
+			return
+		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "claim", "failed to confirm upload")
 		return
 	}
@@ -147,10 +169,19 @@ func (h *ClaimHandler) ConfirmUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClaimHandler) GetClaimDocuments(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	claimID := chi.URLParam(r, "id")
 
-	resp, err := h.Service.GetClaimDocuments(r.Context(), claimID)
+	resp, err := h.Service.GetClaimDocuments(r.Context(), userID, claimID)
 	if err != nil {
+		if err == claim.ErrClaimNotFound {
+			shared.Error(w, r, 404, "NOT_FOUND", "claim", "claim not found")
+			return
+		}
+		if err == claim.ErrNotOwner {
+			shared.Error(w, r, 403, "FORBIDDEN", "claim", "not authorized")
+			return
+		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "claim", "failed to get documents")
 		return
 	}
@@ -158,7 +189,7 @@ func (h *ClaimHandler) GetClaimDocuments(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *ClaimHandler) DisputeClaim(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID := middleware.GetUserID(r.Context())
 	claimID := chi.URLParam(r, "id")
 
 	var req claim.DisputeRequest
@@ -179,6 +210,10 @@ func (h *ClaimHandler) DisputeClaim(w http.ResponseWriter, r *http.Request) {
 		}
 		if err == claim.ErrNotOwner {
 			shared.Error(w, r, 403, "FORBIDDEN", "claim", "not authorized")
+			return
+		}
+		if err == claim.ErrInvalidStatus {
+			shared.Error(w, r, 400, "INVALID_STATUS", "claim", "claim can only be disputed after rejection")
 			return
 		}
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "claim", "failed to dispute claim")
@@ -223,7 +258,7 @@ func (h *ClaimAdminHandler) ListClaims(w http.ResponseWriter, r *http.Request) {
 func (h *ClaimAdminHandler) GetClaim(w http.ResponseWriter, r *http.Request) {
 	claimID := chi.URLParam(r, "id")
 
-	resp, err := h.Service.GetClaim(r.Context(), claimID)
+	resp, err := h.Service.GetClaimDetail(r.Context(), claimID)
 	if err != nil {
 		if err == claim.ErrClaimNotFound {
 			shared.Error(w, r, 404, "NOT_FOUND", "claim", "claim not found")

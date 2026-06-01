@@ -37,7 +37,7 @@ func (w *ClaimWorker) HandleClaimRequested(ctx context.Context, event *events.Ev
 		return fmt.Errorf("failed to parse claim_requested payload: %w", err)
 	}
 
-	duplicates, err := w.IdentityService.FindDuplicates(ctx, payload.EntityID, 5)
+	duplicates, err := w.IdentityService.FindDuplicates(ctx, payload.UserID, payload.EntityID, 5)
 	if err != nil {
 		return fmt.Errorf("failed to check duplicates: %w", err)
 	}

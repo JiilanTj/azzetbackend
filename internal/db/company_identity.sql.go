@@ -836,6 +836,17 @@ func (q *Queries) GetEntityVerification(ctx context.Context, entityID uuid.UUID)
 	return i, err
 }
 
+const hasClaimForEntity = `-- name: HasClaimForEntity :one
+SELECT EXISTS(SELECT 1 FROM company_claims WHERE entity_id = $1)
+`
+
+func (q *Queries) HasClaimForEntity(ctx context.Context, entityID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasClaimForEntity, entityID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const linkShadowEntity = `-- name: LinkShadowEntity :exec
 UPDATE entities
 SET user_id = $2, is_shadow = FALSE, status = 'CLAIMED', updated_at = NOW()
@@ -1131,6 +1142,22 @@ func (q *Queries) RejectCompanyClaim(ctx context.Context, arg RejectCompanyClaim
 	return err
 }
 
+const resubmitCompanyClaim = `-- name: ResubmitCompanyClaim :exec
+UPDATE company_claims
+SET status = 'SUBMITTED',
+    rejection_reason = NULL,
+    dispute_reason = NULL,
+    reviewer_id = NULL,
+    reviewed_at = NULL,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) ResubmitCompanyClaim(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, resubmitCompanyClaim, id)
+	return err
+}
+
 const searchCounterpartiesFuzzy = `-- name: SearchCounterpartiesFuzzy :many
 
 SELECT e.id, e.nama_utama, e.entity_type, e.is_shadow,
@@ -1420,6 +1447,45 @@ func (q *Queries) UpdateEntityVerificationStatus(ctx context.Context, arg Update
 		arg.Notes,
 	)
 	return err
+}
+
+const userCanManageClaimEntity = `-- name: UserCanManageClaimEntity :one
+SELECT EXISTS(
+    SELECT 1 FROM company_claims
+    WHERE entity_id = $1 AND claimant_user_id = $2
+      AND status IN ('DRAFT', 'REJECTED', 'DISPUTED')
+)
+`
+
+type UserCanManageClaimEntityParams struct {
+	EntityID       uuid.UUID `json:"entity_id"`
+	ClaimantUserID uuid.UUID `json:"claimant_user_id"`
+}
+
+func (q *Queries) UserCanManageClaimEntity(ctx context.Context, arg UserCanManageClaimEntityParams) (bool, error) {
+	row := q.db.QueryRow(ctx, userCanManageClaimEntity, arg.EntityID, arg.ClaimantUserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const userIsClaimantForEntity = `-- name: UserIsClaimantForEntity :one
+SELECT EXISTS(
+    SELECT 1 FROM company_claims
+    WHERE entity_id = $1 AND claimant_user_id = $2
+)
+`
+
+type UserIsClaimantForEntityParams struct {
+	EntityID       uuid.UUID `json:"entity_id"`
+	ClaimantUserID uuid.UUID `json:"claimant_user_id"`
+}
+
+func (q *Queries) UserIsClaimantForEntity(ctx context.Context, arg UserIsClaimantForEntityParams) (bool, error) {
+	row := q.db.QueryRow(ctx, userIsClaimantForEntity, arg.EntityID, arg.ClaimantUserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const verifyEntityLegalID = `-- name: VerifyEntityLegalID :exec

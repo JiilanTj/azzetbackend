@@ -193,6 +193,26 @@ func (q *Queries) DeleteWorkspaceRole(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const existsCounterpartyRelation = `-- name: ExistsCounterpartyRelation :one
+SELECT EXISTS(
+    SELECT 1 FROM entity_relations
+    WHERE object_id = $1 AND subject_id = $2
+      AND relation_type IN ('PELANGGAN', 'VENDOR') AND status = 'ACTIVE'
+)
+`
+
+type ExistsCounterpartyRelationParams struct {
+	ObjectID  uuid.UUID `json:"object_id"`
+	SubjectID uuid.UUID `json:"subject_id"`
+}
+
+func (q *Queries) ExistsCounterpartyRelation(ctx context.Context, arg ExistsCounterpartyRelationParams) (bool, error) {
+	row := q.db.QueryRow(ctx, existsCounterpartyRelation, arg.ObjectID, arg.SubjectID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const existsRelation = `-- name: ExistsRelation :one
 SELECT EXISTS(
     SELECT 1 FROM entity_relations
@@ -391,6 +411,54 @@ func (q *Queries) GetWorkspaceRoleByName(ctx context.Context, arg GetWorkspaceRo
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listCounterpartyAliasesFromRelations = `-- name: ListCounterpartyAliasesFromRelations :many
+SELECT er.id, er.object_id as workspace_id, er.subject_id as entity_id,
+       e.nama_utama as entity_name, er.custom_alias, er.created_at
+FROM entity_relations er
+JOIN entities e ON e.id = er.subject_id
+WHERE er.object_id = $1
+  AND er.relation_type IN ('PELANGGAN', 'VENDOR')
+  AND er.status = 'ACTIVE'
+  AND er.custom_alias IS NOT NULL
+ORDER BY er.custom_alias ASC
+`
+
+type ListCounterpartyAliasesFromRelationsRow struct {
+	ID          uuid.UUID   `json:"id"`
+	WorkspaceID uuid.UUID   `json:"workspace_id"`
+	EntityID    uuid.UUID   `json:"entity_id"`
+	EntityName  string      `json:"entity_name"`
+	CustomAlias pgtype.Text `json:"custom_alias"`
+	CreatedAt   time.Time   `json:"created_at"`
+}
+
+func (q *Queries) ListCounterpartyAliasesFromRelations(ctx context.Context, objectID uuid.UUID) ([]ListCounterpartyAliasesFromRelationsRow, error) {
+	rows, err := q.db.Query(ctx, listCounterpartyAliasesFromRelations, objectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCounterpartyAliasesFromRelationsRow{}
+	for rows.Next() {
+		var i ListCounterpartyAliasesFromRelationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.EntityID,
+			&i.EntityName,
+			&i.CustomAlias,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRelationsByObject = `-- name: ListRelationsByObject :many
@@ -670,6 +738,24 @@ func (q *Queries) ListWorkspacesBySubject(ctx context.Context, subjectID uuid.UU
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateCounterpartyRelationAlias = `-- name: UpdateCounterpartyRelationAlias :exec
+UPDATE entity_relations
+SET custom_alias = $3, updated_at = NOW()
+WHERE object_id = $1 AND subject_id = $2
+  AND relation_type IN ('PELANGGAN', 'VENDOR') AND status = 'ACTIVE'
+`
+
+type UpdateCounterpartyRelationAliasParams struct {
+	ObjectID    uuid.UUID   `json:"object_id"`
+	SubjectID   uuid.UUID   `json:"subject_id"`
+	CustomAlias pgtype.Text `json:"custom_alias"`
+}
+
+func (q *Queries) UpdateCounterpartyRelationAlias(ctx context.Context, arg UpdateCounterpartyRelationAliasParams) error {
+	_, err := q.db.Exec(ctx, updateCounterpartyRelationAlias, arg.ObjectID, arg.SubjectID, arg.CustomAlias)
+	return err
 }
 
 const updateRelation = `-- name: UpdateRelation :exec

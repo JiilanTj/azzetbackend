@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -142,8 +143,11 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	// --- Identity & Claim (Phase 8) ---
 	identityService := identity.NewService(queries, database.Pool)
 	var r2Client *storage.R2Client
-	r2Client, _ = storage.NewR2Client(cfg)
-	claimService := claim.NewService(queries, database.Pool, r2Client, identityService)
+	r2Client, err := storage.NewR2Client(cfg)
+	if err != nil {
+		slog.Warn("R2 storage not configured; claim document upload will be unavailable", "error", err)
+	}
+	claimService := claim.NewService(queries, database.Pool, r2Client, identityService, workspaceService)
 	identityHandler := handler.NewIdentityHandler(identityService)
 	claimHandler := handler.NewClaimHandler(claimService)
 	claimAdminHandler := handler.NewClaimAdminHandler(claimService)

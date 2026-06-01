@@ -47,6 +47,30 @@ SELECT EXISTS(
     WHERE object_id = $1 AND subject_id = $2 AND relation_type = $3
 );
 
+-- name: ExistsCounterpartyRelation :one
+SELECT EXISTS(
+    SELECT 1 FROM entity_relations
+    WHERE object_id = $1 AND subject_id = $2
+      AND relation_type IN ('PELANGGAN', 'VENDOR') AND status = 'ACTIVE'
+);
+
+-- name: UpdateCounterpartyRelationAlias :exec
+UPDATE entity_relations
+SET custom_alias = $3, updated_at = NOW()
+WHERE object_id = $1 AND subject_id = $2
+  AND relation_type IN ('PELANGGAN', 'VENDOR') AND status = 'ACTIVE';
+
+-- name: ListCounterpartyAliasesFromRelations :many
+SELECT er.id, er.object_id as workspace_id, er.subject_id as entity_id,
+       e.nama_utama as entity_name, er.custom_alias, er.created_at
+FROM entity_relations er
+JOIN entities e ON e.id = er.subject_id
+WHERE er.object_id = $1
+  AND er.relation_type IN ('PELANGGAN', 'VENDOR')
+  AND er.status = 'ACTIVE'
+  AND er.custom_alias IS NOT NULL
+ORDER BY er.custom_alias ASC;
+
 -- name: GetUserWorkspaceAccess :one
 SELECT er.id, er.object_id, er.subject_id, er.relation_type, er.custom_alias, er.status, er.created_at, er.updated_at
 FROM entity_relations er
