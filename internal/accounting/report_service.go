@@ -180,9 +180,9 @@ func (s *ReportService) GetCashFlow(ctx context.Context, workspaceID uuid.UUID, 
 	for _, r := range rows {
 		entries = append(entries, CashFlowEntry{
 			Date:        r.TransactionDate.Time.Format("2006-01-02"),
-			TotalDebit:  fmt.Sprintf("%.2f", float64(r.TotalDebit)),
-			TotalCredit: fmt.Sprintf("%.2f", float64(r.TotalCredit)),
-			NetFlow:     fmt.Sprintf("%.2f", float64(r.NetFlow)),
+			TotalDebit:  fmt.Sprintf("%.2f", r.TotalDebit),
+			TotalCredit: fmt.Sprintf("%.2f", r.TotalCredit),
+			NetFlow:     fmt.Sprintf("%.2f", r.NetFlow),
 		})
 	}
 	return entries, nil

@@ -23,7 +23,7 @@ func setupTestRouter(authHandler *handler.AuthHandler, jwtService *shared.JWTSer
 	isBlacklisted := func(ctx context.Context, jti string) (bool, error) {
 		return false, nil
 	}
-	authMw := middleware.NewAuthMiddleware(jwtService, isBlacklisted)
+	authMw := middleware.NewAuthMiddleware(jwtService, isBlacklisted, nil)
 
 	r.Route("/api/v1/auth", func(r chi.Router) {
 		r.Post("/register", authHandler.Register)
@@ -211,7 +211,7 @@ func TestAuthMiddleware_MissingHeader(t *testing.T) {
 	isBlacklisted := func(ctx context.Context, jti string) (bool, error) {
 		return false, nil
 	}
-	authMw := middleware.NewAuthMiddleware(jwtService, isBlacklisted)
+	authMw := middleware.NewAuthMiddleware(jwtService, isBlacklisted, nil)
 
 	r := chi.NewRouter()
 	r.With(authMw.Authenticate).Get("/protected", func(w http.ResponseWriter, r *http.Request) {
@@ -233,7 +233,7 @@ func TestAuthMiddleware_InvalidToken(t *testing.T) {
 	isBlacklisted := func(ctx context.Context, jti string) (bool, error) {
 		return false, nil
 	}
-	authMw := middleware.NewAuthMiddleware(jwtService, isBlacklisted)
+	authMw := middleware.NewAuthMiddleware(jwtService, isBlacklisted, nil)
 
 	r := chi.NewRouter()
 	r.With(authMw.Authenticate).Get("/protected", func(w http.ResponseWriter, r *http.Request) {
@@ -256,7 +256,7 @@ func TestAuthMiddleware_ValidToken(t *testing.T) {
 	isBlacklisted := func(ctx context.Context, jti string) (bool, error) {
 		return false, nil
 	}
-	authMw := middleware.NewAuthMiddleware(jwtService, isBlacklisted)
+	authMw := middleware.NewAuthMiddleware(jwtService, isBlacklisted, nil)
 
 	token, _ := jwtService.GenerateAccessToken("user-123", "session-456")
 
@@ -290,7 +290,7 @@ func TestAuthMiddleware_BlacklistedToken(t *testing.T) {
 	isBlacklisted := func(ctx context.Context, jti string) (bool, error) {
 		return true, nil
 	}
-	authMw := middleware.NewAuthMiddleware(jwtService, isBlacklisted)
+	authMw := middleware.NewAuthMiddleware(jwtService, isBlacklisted, nil)
 
 	token, _ := jwtService.GenerateAccessToken("user-123", "session-456")
 

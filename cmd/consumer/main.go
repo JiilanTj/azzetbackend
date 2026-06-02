@@ -36,16 +36,7 @@ func main() {
 
 	shared.NewLogger(cfg.AppEnv)
 
-	fmt.Println()
-	fmt.Printf("  \033[36m╭─── Azzet Consumer ─────────────────────────────────────╮\033[0m\n")
-	fmt.Printf("  \033[36m│                                                         │\033[0m\n")
-	fmt.Printf("  \033[36m│   \033[1m\033[37mNATS JetStream Event Consumer\033[0m\033[36m                        │\033[0m\n")
-	fmt.Printf("  \033[36m│                                                         │\033[0m\n")
-	fmt.Printf("  \033[36m│   \033[32m●\033[0m NATS     \033[1m→\033[0m \033[37m%-37s\033[36m│\033[0m\n", cfg.NatsURL)
-	fmt.Printf("  \033[36m│   \033[32m●\033[0m Env      \033[1m→\033[0m \033[33m%-37s\033[36m│\033[0m\n", cfg.AppEnv)
-	fmt.Printf("  \033[36m│                                                         │\033[0m\n")
-	fmt.Printf("  \033[36m╰─────────────────────────────────────────────────────────╯\033[0m\n")
-	fmt.Println()
+	slog.Info("starting azzet consumer", "env", cfg.AppEnv, "concurrency", cfg.WorkerConcurrency, "nats", cfg.NatsURL)
 
 	db, err := database.NewFromEnv(cfg.DatabaseURL)
 	if err != nil {

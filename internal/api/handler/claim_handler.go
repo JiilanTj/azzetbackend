@@ -389,7 +389,11 @@ func (h *ClaimAdminHandler) GetClaim(w http.ResponseWriter, r *http.Request) {
 // @Failure      404 {object} shared.ErrorResponse
 // @Router       /admin/claims/{id}/assign [post]
 func (h *ClaimAdminHandler) AssignClaim(w http.ResponseWriter, r *http.Request) {
-	adminID := r.Context().Value("admin_id").(string)
+	adminID, ok := middleware.GetAdminIDOrError(r.Context())
+	if !ok {
+		shared.Unauthorized(w, r, "claim", "admin not authenticated")
+		return
+	}
 	claimID := chi.URLParam(r, "id")
 
 	if err := h.Service.AssignClaim(r.Context(), adminID, claimID); err != nil {
@@ -420,7 +424,11 @@ func (h *ClaimAdminHandler) AssignClaim(w http.ResponseWriter, r *http.Request) 
 // @Failure      404 {object} shared.ErrorResponse
 // @Router       /admin/claims/{id}/approve [post]
 func (h *ClaimAdminHandler) ApproveClaim(w http.ResponseWriter, r *http.Request) {
-	adminID := r.Context().Value("admin_id").(string)
+	adminID, ok := middleware.GetAdminIDOrError(r.Context())
+	if !ok {
+		shared.Unauthorized(w, r, "claim", "admin not authenticated")
+		return
+	}
 	claimID := chi.URLParam(r, "id")
 
 	var req claim.ReviewRequest
@@ -454,7 +462,11 @@ func (h *ClaimAdminHandler) ApproveClaim(w http.ResponseWriter, r *http.Request)
 // @Failure      404 {object} shared.ErrorResponse
 // @Router       /admin/claims/{id}/reject [post]
 func (h *ClaimAdminHandler) RejectClaim(w http.ResponseWriter, r *http.Request) {
-	adminID := r.Context().Value("admin_id").(string)
+	adminID, ok := middleware.GetAdminIDOrError(r.Context())
+	if !ok {
+		shared.Unauthorized(w, r, "claim", "admin not authenticated")
+		return
+	}
 	claimID := chi.URLParam(r, "id")
 
 	var req claim.ReviewRequest
@@ -512,9 +524,10 @@ func (h *ClaimAdminHandler) GetClaimAuditLog(w http.ResponseWriter, r *http.Requ
 // @Success      200 {object} shared.APIResponse{data=object}
 // @Router       /admin/claims/{id}/documents/{doc_id}/view [get]
 func (h *ClaimAdminHandler) GetDocumentViewURL(w http.ResponseWriter, r *http.Request) {
+	claimID := chi.URLParam(r, "id")
 	docID := chi.URLParam(r, "doc_id")
 
-	url, err := h.Service.GetDocumentViewURL(r.Context(), docID)
+	url, err := h.Service.GetDocumentViewURL(r.Context(), claimID, docID)
 	if err != nil {
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "claim", "failed to generate view URL")
 		return

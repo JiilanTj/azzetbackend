@@ -99,30 +99,31 @@ func (h *TaxHandler) ListCalculations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit, _ := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32)
-	offset, _ := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32)
-	if limit <= 0 {
-		limit = 50
+	pagination := shared.ParsePagination(r)
+	if r.URL.Query().Get("page") == "" && r.URL.Query().Get("offset") != "" {
+		offset, _ := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32)
+		limit := int64(pagination.PerPage)
+		if limit > 0 && offset%limit == 0 {
+			pagination.Page = int(offset/limit) + 1
+		}
 	}
-	page := int(offset/limit) + 1
-	if offset == 0 {
-		page = 1
+	if r.URL.Query().Get("limit") != "" {
+		if lim, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && lim > 0 {
+			pagination.PerPage = lim
+		}
 	}
 
 	items, total, err := h.Service.ListCalculations(r.Context(), workspaceID,
 		r.URL.Query().Get("period"),
 		r.URL.Query().Get("tax_type"),
 		r.URL.Query().Get("status"),
-		int32(limit), int32(offset),
+		int32(pagination.Limit()), int32(pagination.Offset()),
 	)
 	if err != nil {
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "tax", "failed to list calculations")
 		return
 	}
-	shared.Paginated(w, 200, items, shared.NewPaginationMeta(shared.PaginationParams{
-		Page:    page,
-		PerPage: int(limit),
-	}, total))
+	shared.Paginated(w, 200, items, shared.NewPaginationMeta(pagination, total))
 }
 
 // GetCalculation godoc

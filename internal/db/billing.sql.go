@@ -222,6 +222,36 @@ func (q *Queries) GetPaymentByXenditID(ctx context.Context, xenditInvoiceID pgty
 	return i, err
 }
 
+const getPendingPaymentByInvoice = `-- name: GetPendingPaymentByInvoice :one
+SELECT id, invoice_id, workspace_id, xendit_invoice_id, xendit_payment_url, amount, currency, status, payment_method, paid_at, expired_at, failure_reason, xendit_callback_data, created_at, updated_at FROM payments
+WHERE invoice_id = $1 AND status = 'pending'
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetPendingPaymentByInvoice(ctx context.Context, invoiceID uuid.UUID) (Payment, error) {
+	row := q.db.QueryRow(ctx, getPendingPaymentByInvoice, invoiceID)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.InvoiceID,
+		&i.WorkspaceID,
+		&i.XenditInvoiceID,
+		&i.XenditPaymentUrl,
+		&i.Amount,
+		&i.Currency,
+		&i.Status,
+		&i.PaymentMethod,
+		&i.PaidAt,
+		&i.ExpiredAt,
+		&i.FailureReason,
+		&i.XenditCallbackData,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listAllInvoices = `-- name: ListAllInvoices :many
 SELECT i.id, i.workspace_id, i.subscription_id, i.invoice_number, i.amount, i.currency, i.status, i.description, i.due_date, i.paid_at, i.created_at, i.updated_at, e.nama_utama as workspace_name
 FROM invoices i

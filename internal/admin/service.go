@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -64,24 +65,20 @@ func (s *Service) Login(ctx context.Context, req *LoginRequest, ip string) (*Log
 		}, nil
 	}
 
-	// MFA not enabled yet - force setup on first login
-	// Issue temporary token that only allows MFA setup
-	if !admin.MfaEnabled {
-		accessToken, err := s.JWT.GenerateAccessToken(admin.ID.String(), "mfa-setup")
-		if err != nil {
-			return nil, err
-		}
-		expiresIn := int(AdminAccessTokenExpiry.Seconds())
-		resp := AdminToResponse(&admin)
-		return &LoginResponse{
-			RequiresMFA: false,
-			AccessToken: &accessToken,
-			ExpiresIn:   &expiresIn,
-			Admin:       &resp,
-		}, nil
+	// MFA not enabled — issue setup-scoped token (not full admin access)
+	sessionID := uuid.New().String()
+	accessToken, err := s.JWT.GenerateAccessTokenWithScope(admin.ID.String(), sessionID, shared.TokenScopeMFASetup)
+	if err != nil {
+		return nil, err
 	}
-
-	return nil, fmt.Errorf("unexpected state")
+	expiresIn := int(AdminAccessTokenExpiry.Seconds())
+	resp := AdminToResponse(&admin)
+	return &LoginResponse{
+		RequiresMFA: false,
+		AccessToken: &accessToken,
+		ExpiresIn:   &expiresIn,
+		Admin:       &resp,
+	}, nil
 }
 
 // VerifyMFA validates TOTP code and issues full access token
@@ -102,10 +99,19 @@ func (s *Service) VerifyMFA(ctx context.Context, req *MFAVerifyRequest, ip strin
 		return nil, "", fmt.Errorf("admin not found")
 	}
 
+	// Rate limit MFA attempts per token
+	failKey := "admin:mfa:fail:" + req.MFAToken
+	if n, _ := s.Redis.Get(ctx, failKey).Int64(); n >= 5 {
+		return nil, "", fmt.Errorf("too many MFA attempts, try again later")
+	}
+
 	// Validate TOTP code
 	if !admin.MfaSecret.Valid || !ValidateMFACode(admin.MfaSecret.String, req.Code) {
+		_ = s.Redis.Incr(ctx, failKey).Err()
+		_ = s.Redis.Expire(ctx, failKey, 5*time.Minute).Err()
 		return nil, "", fmt.Errorf("invalid MFA code")
 	}
+	_ = s.Redis.Del(ctx, failKey)
 
 	// Delete temp MFA token
 	_ = s.Redis.Del(ctx, "mfa:"+req.MFAToken)
@@ -188,13 +194,16 @@ func (s *Service) ConfirmMFASetup(ctx context.Context, adminID string, req *MFAS
 	return s.issueTokens(ctx, &admin)
 }
 
-// Logout blacklists the admin access token
+// Logout blacklists the admin access token and deletes the Redis session
 func (s *Service) Logout(ctx context.Context, accessToken string) error {
 	claims, err := s.JWT.ValidateAccessToken(accessToken)
 	if err != nil {
 		return fmt.Errorf("invalid access token")
 	}
 	_ = s.Redis.Set(ctx, "admin:blacklist:"+claims.JTI, claims.UserID, AdminAccessTokenExpiry).Err()
+	if claims.SessionID != "" {
+		_ = s.Redis.Del(ctx, adminSessionKey(claims.SessionID))
+	}
 	return nil
 }
 
@@ -291,6 +300,10 @@ func (s *Service) UpdateAdmin(ctx context.Context, adminID string, req *UpdateAd
 		status = *req.Status
 	}
 
+	if err := s.guardLastSuperAdmin(ctx, admin, role, status); err != nil {
+		return err
+	}
+
 	return s.Queries.UpdateAdmin(ctx, db.UpdateAdminParams{
 		ID:     id,
 		Name:   name,
@@ -305,7 +318,38 @@ func (s *Service) DeleteAdmin(ctx context.Context, adminID string) error {
 	if err != nil {
 		return ErrAdminNotFound
 	}
+	admin, err := s.Queries.GetAdminByID(ctx, id)
+	if err != nil {
+		return ErrAdminNotFound
+	}
+	if err := s.guardLastSuperAdmin(ctx, admin, admin.Role, AdminStatusSuspended); err != nil {
+		return err
+	}
 	return s.Queries.DeleteAdmin(ctx, id)
+}
+
+func (s *Service) guardLastSuperAdmin(ctx context.Context, admin db.PlatformAdmin, newRole, newStatus string) error {
+	if admin.Role != RoleSuperAdmin {
+		return nil
+	}
+	if newRole == RoleSuperAdmin && newStatus == AdminStatusActive {
+		return nil
+	}
+
+	admins, err := s.Queries.ListAdmins(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to verify super admin count: %w", err)
+	}
+	activeSuper := 0
+	for _, a := range admins {
+		if a.Role == RoleSuperAdmin && a.Status == AdminStatusActive {
+			activeSuper++
+		}
+	}
+	if activeSuper <= 1 {
+		return fmt.Errorf("cannot remove or suspend the last active SUPER_ADMIN")
+	}
+	return nil
 }
 
 // IsTokenBlacklisted checks if an admin token is blacklisted
@@ -334,10 +378,26 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (*AuthR
 		return nil, "", fmt.Errorf("account is suspended")
 	}
 
+	if claims.Scope == shared.TokenScopeMFASetup {
+		return nil, "", fmt.Errorf("invalid refresh token")
+	}
+
+	tokenHash := shared.HashOTP(refreshToken)
+	storedHash, err := s.Redis.Get(ctx, adminSessionKey(claims.SessionID)).Result()
+	if err != nil || subtle.ConstantTimeCompare([]byte(storedHash), []byte(tokenHash)) != 1 {
+		return nil, "", fmt.Errorf("invalid refresh token")
+	}
+
+	_ = s.Redis.Del(ctx, adminSessionKey(claims.SessionID))
+
 	return s.issueTokens(ctx, &admin)
 }
 
 // --- Private helpers ---
+
+func adminSessionKey(sessionID string) string {
+	return "admin:session:" + sessionID
+}
 
 func (s *Service) issueTokens(ctx context.Context, admin *db.PlatformAdmin) (*AuthResponse, string, error) {
 	sessionID := uuid.New().String()
@@ -352,9 +412,8 @@ func (s *Service) issueTokens(ctx context.Context, admin *db.PlatformAdmin) (*Au
 		return nil, "", err
 	}
 
-	// Store refresh token hash in Redis (admin sessions are simpler)
 	tokenHash := shared.HashOTP(refreshToken)
-	_ = s.Redis.Set(ctx, "admin:session:"+admin.ID.String(), tokenHash, AdminRefreshTokenExpiry).Err()
+	_ = s.Redis.Set(ctx, adminSessionKey(sessionID), tokenHash, AdminRefreshTokenExpiry).Err()
 
 	resp := &AuthResponse{
 		AccessToken: accessToken,

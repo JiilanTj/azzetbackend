@@ -36,8 +36,9 @@ func (e *EmailOTPSender) SendOTP(_ context.Context, to, code string) error {
 	if e.Host == "" || e.User == "" {
 		if e.Env == "development" {
 			slog.Debug("email OTP generated (SMTP not configured)", "to", to)
+			return nil
 		}
-		return nil
+		return fmt.Errorf("email delivery is not configured")
 	}
 
 	mailer := smtpclient.New(e.Host, e.Port, e.User, e.Pass, e.From)

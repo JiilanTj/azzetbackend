@@ -54,11 +54,12 @@ type ResetPasswordRequest struct {
 }
 
 // VerifyOTPRequest represents OTP verification payload
-// @Description Verify OTP to activate account
+// @Description Verify OTP to activate account. Password required when activating an unverified account.
 type VerifyOTPRequest struct {
 	Identifier string `json:"identifier" example:"+628123456789"`
 	OTP        string `json:"otp" example:"123456"`
 	Purpose    string `json:"purpose" example:"verify_whatsapp" enums:"verify_whatsapp,verify_email"`
+	Password   string `json:"password,omitempty" example:"SecurePass123"`
 }
 
 // --- Response DTOs ---

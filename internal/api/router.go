@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -46,15 +47,17 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	r.Use(chimw.Timeout(60 * time.Second))
 	r.Use(middleware.MaxBodySize(1 << 20)) // 1MB request body limit
 
-	// Swagger documentation
-	r.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("/swagger/doc.json"),
-	))
+	// Swagger documentation (development only)
+	if cfg.AppEnv == "development" {
+		r.Get("/swagger/*", httpSwagger.Handler(
+			httpSwagger.URL("/swagger/doc.json"),
+		))
+	}
 
-	// --- Shared services ---
+	secureCookie := cfg.AppEnv != "development"
 	queries := db.New(database.Pool)
 	otpService := shared.NewOTPService(6)
-	zenzivaClient := shared.NewZenzivaClient(cfg.ZenzivaURL, cfg.ZenzivaUserKey, cfg.ZenzivaPassKey, cfg.ZenzivaBrand)
+	zenzivaClient := shared.NewZenzivaClient(cfg.ZenzivaURL, cfg.ZenzivaUserKey, cfg.ZenzivaPassKey, cfg.ZenzivaBrand, cfg.AppEnv)
 	emailSender := shared.NewEmailOTPSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom, cfg.AppEnv)
 
 	// --- Entity & Workspace ---
@@ -79,13 +82,19 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 	userIsBlacklisted := func(ctx context.Context, jti string) (bool, error) {
 		return authService.IsTokenBlacklisted(ctx, jti)
 	}
-	authMiddleware := middleware.NewAuthMiddleware(userJWT, userIsBlacklisted)
+	getUserStatus := func(ctx context.Context, userID string) (string, error) {
+		u, err := authService.GetMe(ctx, userID)
+		if err != nil {
+			return "", err
+		}
+		return u.Status, nil
+	}
+	authMiddleware := middleware.NewAuthMiddleware(userJWT, userIsBlacklisted, getUserStatus)
 
-	secureCookie := true // Always secure — required for cross-subdomain cookies via HTTPS
 	authHandler := handler.NewAuthHandler(authService, userRefreshExpiry, secureCookie)
 
 	// --- Admin Auth ---
-	adminJWT := shared.NewJWTService(cfg.AppSecret+"_admin", cfg.RefreshTokenSecret+"_admin", admin.AdminAccessTokenExpiry, admin.AdminRefreshTokenExpiry)
+	adminJWT := shared.NewJWTService(cfg.AdminJWTSecret, cfg.AdminRefreshTokenSecret, admin.AdminAccessTokenExpiry, admin.AdminRefreshTokenExpiry)
 	adminService := admin.NewService(queries, redis, adminJWT)
 
 	adminIsBlacklisted := func(ctx context.Context, jti string) (bool, error) {
@@ -95,6 +104,9 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		a, err := adminService.GetMe(ctx, adminID)
 		if err != nil {
 			return "", err
+		}
+		if a.Status != admin.AdminStatusActive {
+			return "", fmt.Errorf("admin account is not active")
 		}
 		return a.Role, nil
 	}
@@ -182,15 +194,16 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			r.Get("/{slug}", planHandler.GetPlanBySlug)
 		})
 
-		// Public auth routes
+		// Public auth routes (rate-limited)
+		authRateLimit := middleware.RateLimit(redis, "auth", 20, time.Minute)
 		r.Route("/auth", func(r chi.Router) {
-			r.Post("/register", authHandler.Register)
-			r.Post("/login/email", authHandler.LoginEmail)
-			r.Post("/login/otp", authHandler.LoginOTP)
-			r.Post("/otp/request", authHandler.RequestOTP)
+			r.With(authRateLimit).Post("/register", authHandler.Register)
+			r.With(authRateLimit).Post("/login/email", authHandler.LoginEmail)
+			r.With(authRateLimit).Post("/login/otp", authHandler.LoginOTP)
+			r.With(authRateLimit).Post("/otp/request", authHandler.RequestOTP)
 			r.Post("/refresh", authHandler.RefreshToken)
-			r.Post("/verify", authHandler.VerifyOTP)
-			r.Post("/password/reset", authHandler.ResetPassword)
+			r.With(authRateLimit).Post("/verify", authHandler.VerifyOTP)
+			r.With(authRateLimit).Post("/password/reset", authHandler.ResetPassword)
 
 			// Protected auth routes
 			r.Group(func(r chi.Router) {
@@ -250,15 +263,16 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			// Workspace-scoped routes (requires X-Workspace-ID header)
 			r.Group(func(r chi.Router) {
 				r.Use(workspaceMiddleware.RequireWorkspace)
+				r.Use(workspaceMiddleware.RequireAssignedRole)
 
 				r.Route("/members", func(r chi.Router) {
-					r.Get("/", workspaceHandler.ListMembers)
+					r.With(workspaceMiddleware.RequirePermission(workspace.PermMemberInvite)).Get("/", workspaceHandler.ListMembers)
 					r.With(workspaceMiddleware.RequirePermission("member:manage")).Patch("/{id}", workspaceHandler.UpdateMember)
 					r.With(workspaceMiddleware.RequirePermission("member:remove")).Delete("/{id}", workspaceHandler.RemoveMember)
 				})
 
 				r.Route("/roles", func(r chi.Router) {
-					r.Get("/", workspaceHandler.ListRoles)
+					r.With(workspaceMiddleware.RequirePermission(workspace.PermRoleAssign)).Get("/", workspaceHandler.ListRoles)
 					r.With(workspaceMiddleware.RequirePermission("role:create")).Post("/", workspaceHandler.CreateRole)
 					r.With(workspaceMiddleware.RequirePermission("role:update")).Patch("/{id}", workspaceHandler.UpdateRole)
 					r.With(workspaceMiddleware.RequirePermission("role:delete")).Delete("/{id}", workspaceHandler.DeleteRole)
@@ -268,17 +282,17 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 
 				r.Route("/invites", func(r chi.Router) {
 					r.With(workspaceMiddleware.RequirePermission("member:invite")).Post("/", inviteHandler.CreateInvite)
-					r.Get("/", inviteHandler.ListInvites)
+					r.With(workspaceMiddleware.RequirePermission("member:invite")).Get("/", inviteHandler.ListInvites)
 					r.With(workspaceMiddleware.RequirePermission("member:invite")).Delete("/{id}", inviteHandler.RevokeInvite)
 				})
 
 				r.Route("/counterparties", func(r chi.Router) {
-					r.Post("/", workspaceHandler.AddCounterparty)
-					r.Get("/", workspaceHandler.ListCounterparties)
-					r.Get("/search", workspaceHandler.SearchCounterparties)
-					r.Post("/aliases", workspaceHandler.SetCounterpartyAlias)
-					r.Get("/aliases", workspaceHandler.ListCounterpartyAliases)
-					r.Delete("/aliases/{entity_id}", workspaceHandler.DeleteCounterpartyAlias)
+					r.With(workspaceMiddleware.RequirePermission(workspace.PermTransactionCreate)).Post("/", workspaceHandler.AddCounterparty)
+					r.With(workspaceMiddleware.RequirePermission(workspace.PermTransactionRead)).Get("/", workspaceHandler.ListCounterparties)
+					r.With(workspaceMiddleware.RequirePermission(workspace.PermTransactionRead)).Get("/search", workspaceHandler.SearchCounterparties)
+					r.With(workspaceMiddleware.RequirePermission(workspace.PermTransactionUpdate)).Post("/aliases", workspaceHandler.SetCounterpartyAlias)
+					r.With(workspaceMiddleware.RequirePermission(workspace.PermTransactionRead)).Get("/aliases", workspaceHandler.ListCounterpartyAliases)
+					r.With(workspaceMiddleware.RequirePermission(workspace.PermTransactionUpdate)).Delete("/aliases/{entity_id}", workspaceHandler.DeleteCounterpartyAlias)
 				})
 			})
 		})
@@ -287,22 +301,22 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		r.Route("/subscription", func(r chi.Router) {
 			r.Use(authMiddleware.Authenticate)
 			r.Use(workspaceMiddleware.RequireWorkspace)
-			r.Post("/", subscriptionHandler.Subscribe)
-			r.Get("/", subscriptionHandler.GetActive)
-			r.Get("/history", subscriptionHandler.ListSubscriptions)
-			r.Post("/cancel", subscriptionHandler.Cancel)
-			r.Post("/change", subscriptionHandler.ChangePlan)
-			r.Get("/usage", subscriptionHandler.GetUsage)
+			r.With(workspaceMiddleware.RequirePermission(workspace.PermBillingManage)).Post("/", subscriptionHandler.Subscribe)
+			r.With(workspaceMiddleware.RequirePermission(workspace.PermBillingRead)).Get("/", subscriptionHandler.GetActive)
+			r.With(workspaceMiddleware.RequirePermission(workspace.PermBillingRead)).Get("/history", subscriptionHandler.ListSubscriptions)
+			r.With(workspaceMiddleware.RequirePermission(workspace.PermBillingManage)).Post("/cancel", subscriptionHandler.Cancel)
+			r.With(workspaceMiddleware.RequirePermission(workspace.PermBillingManage)).Post("/change", subscriptionHandler.ChangePlan)
+			r.With(workspaceMiddleware.RequirePermission(workspace.PermBillingRead)).Get("/usage", subscriptionHandler.GetUsage)
 		})
 
 		// Billing routes (workspace-scoped)
 		r.Route("/billing", func(r chi.Router) {
 			r.Use(authMiddleware.Authenticate)
 			r.Use(workspaceMiddleware.RequireWorkspace)
-			r.Get("/invoices", billingHandler.ListInvoices)
-			r.Get("/invoices/{id}", billingHandler.GetInvoice)
-			r.Post("/pay", billingHandler.PayInvoice)
-			r.Get("/payments", billingHandler.ListPayments)
+			r.With(workspaceMiddleware.RequirePermission(workspace.PermBillingRead)).Get("/invoices", billingHandler.ListInvoices)
+			r.With(workspaceMiddleware.RequirePermission(workspace.PermBillingRead)).Get("/invoices/{id}", billingHandler.GetInvoice)
+			r.With(workspaceMiddleware.RequirePermission(workspace.PermBillingManage)).Post("/pay", billingHandler.PayInvoice)
+			r.With(workspaceMiddleware.RequirePermission(workspace.PermBillingRead)).Get("/payments", billingHandler.ListPayments)
 		})
 
 		// Xendit webhook (public, verified by x-callback-token)
@@ -388,17 +402,23 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			MaxAge:           300,
 		}))
 
-		// Public admin auth
+		// Public admin auth (rate-limited)
+		adminAuthRateLimit := middleware.RateLimit(redis, "admin-auth", 10, time.Minute)
 		r.Route("/auth", func(r chi.Router) {
-			r.Post("/login", adminHandler.Login)
-			r.Post("/mfa/verify", adminHandler.VerifyMFA)
+			r.With(adminAuthRateLimit).Post("/login", adminHandler.Login)
+			r.With(adminAuthRateLimit).Post("/mfa/verify", adminHandler.VerifyMFA)
 			r.Post("/refresh", adminHandler.RefreshToken)
 
-			// Protected (needs token from login step 1 for MFA setup)
 			r.Group(func(r chi.Router) {
 				r.Use(adminMiddleware.Authenticate)
+				r.Use(adminMiddleware.RequireMFASetupScope)
 				r.Post("/mfa/setup", adminHandler.SetupMFA)
 				r.Post("/mfa/confirm", adminHandler.ConfirmMFASetup)
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Use(adminMiddleware.Authenticate)
+				r.Use(adminMiddleware.RequireFullAuth)
 				r.Post("/logout", adminHandler.Logout)
 				r.Get("/me", adminHandler.Me)
 			})
@@ -407,6 +427,7 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		// Admin management (SUPER_ADMIN only)
 		r.Route("/admins", func(r chi.Router) {
 			r.Use(adminMiddleware.Authenticate)
+			r.Use(adminMiddleware.RequireFullAuth)
 			r.Use(adminMiddleware.RequireRole(admin.RoleSuperAdmin))
 			r.Post("/", adminHandler.InviteAdmin)
 			r.Get("/", adminHandler.ListAdmins)
@@ -417,6 +438,7 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		// Plan management (SUPER_ADMIN + ENGINEER)
 		r.Route("/plans", func(r chi.Router) {
 			r.Use(adminMiddleware.Authenticate)
+			r.Use(adminMiddleware.RequireFullAuth)
 			r.Use(adminMiddleware.RequireRole(admin.RoleSuperAdmin, admin.RoleEngineer))
 			r.Get("/", planHandler.AdminListPlans)
 			r.Post("/", planHandler.AdminCreatePlan)
@@ -430,6 +452,7 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		// Subscription management (SUPER_ADMIN + ENGINEER)
 		r.Route("/subscriptions", func(r chi.Router) {
 			r.Use(adminMiddleware.Authenticate)
+			r.Use(adminMiddleware.RequireFullAuth)
 			r.Use(adminMiddleware.RequireRole(admin.RoleSuperAdmin, admin.RoleEngineer))
 			r.Get("/", subscriptionHandler.AdminListSubscriptions)
 		})
@@ -437,6 +460,7 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		// Billing management (SUPER_ADMIN + ENGINEER)
 		r.Route("/billing", func(r chi.Router) {
 			r.Use(adminMiddleware.Authenticate)
+			r.Use(adminMiddleware.RequireFullAuth)
 			r.Use(adminMiddleware.RequireRole(admin.RoleSuperAdmin, admin.RoleEngineer))
 			r.Get("/invoices", billingHandler.AdminListInvoices)
 		})
@@ -444,6 +468,7 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		// Company claims review (REVIEWER+)
 		r.Route("/claims", func(r chi.Router) {
 			r.Use(adminMiddleware.Authenticate)
+			r.Use(adminMiddleware.RequireFullAuth)
 			r.Use(adminMiddleware.RequireRole(admin.RoleSuperAdmin, admin.RoleEngineer, admin.RoleReviewer))
 			r.Get("/", claimAdminHandler.ListClaims)
 			r.Get("/stats", claimAdminHandler.CountPendingClaims)

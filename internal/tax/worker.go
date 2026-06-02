@@ -3,11 +3,13 @@ package tax
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"codeberg.org/azzet/azzetbe/internal/accounting"
@@ -55,6 +57,21 @@ func (w *Worker) HandleLedgerPosted(ctx context.Context, event *events.Event) er
 
 	if payload.IsReversal == "true" {
 		return w.handleReversal(ctx, txID, workspaceID)
+	}
+
+	transaction, err := w.Queries.GetTransactionByID(ctx, db.GetTransactionByIDParams{
+		ID:          txID,
+		WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return fmt.Errorf("transaction not found: %w", err)
+	}
+	if transaction.ReversedTransactionID.Valid {
+		originalID := uuid.UUID(transaction.ReversedTransactionID.Bytes)
+		return w.Queries.VoidTaxCalculationsByTransaction(ctx, db.VoidTaxCalculationsByTransactionParams{
+			TransactionID: originalID,
+			WorkspaceID:   workspaceID,
+		})
 	}
 
 	return w.calculateForTransaction(ctx, txID, workspaceID)
@@ -126,7 +143,8 @@ func (w *Worker) calculateForTransaction(ctx context.Context, txID, workspaceID 
 	for _, calc := range calcs {
 		if _, err := w.Queries.GetTaxCalculationByTransactionAndType(ctx, db.GetTaxCalculationByTransactionAndTypeParams{
 			TransactionID: txID,
-			TaxType:     calc.TaxType,
+			TaxType:       calc.TaxType,
+			WorkspaceID:   workspaceID,
 		}); err == nil {
 			continue
 		}
@@ -182,7 +200,14 @@ func (w *Worker) HandleReportGeneration(ctx context.Context, event *events.Event
 		return fmt.Errorf("invalid workspace_id: %w", err)
 	}
 
-	if err := w.Queries.UpdateTaxReportJobProcessing(ctx, jobID); err != nil {
+	_, err = w.Queries.UpdateTaxReportJobProcessing(ctx, db.UpdateTaxReportJobProcessingParams{
+		ID:          jobID,
+		WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
 		return fmt.Errorf("failed to mark job processing: %w", err)
 	}
 
@@ -204,6 +229,7 @@ func (w *Worker) HandleReportGeneration(ctx context.Context, event *events.Event
 		_ = w.Queries.FailTaxReportJob(ctx, db.FailTaxReportJobParams{
 			ID:           jobID,
 			ErrorMessage: pgtype.Text{String: genErr.Error(), Valid: true},
+			WorkspaceID:  workspaceID,
 		})
 		return genErr
 	}
@@ -214,8 +240,9 @@ func (w *Worker) HandleReportGeneration(ctx context.Context, event *events.Event
 	}
 
 	if err := w.Queries.CompleteTaxReportJob(ctx, db.CompleteTaxReportJobParams{
-		ID:     jobID,
-		Result: resultJSON,
+		ID:          jobID,
+		Result:      resultJSON,
+		WorkspaceID: workspaceID,
 	}); err != nil {
 		return fmt.Errorf("failed to complete report job: %w", err)
 	}

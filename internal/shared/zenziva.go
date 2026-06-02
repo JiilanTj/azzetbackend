@@ -15,15 +15,17 @@ type ZenzivaClient struct {
 	UserKey string
 	PassKey string
 	Brand   string
+	Env     string
 	Client  *http.Client
 }
 
-func NewZenzivaClient(apiURL, userKey, passKey, brand string) *ZenzivaClient {
+func NewZenzivaClient(apiURL, userKey, passKey, brand, env string) *ZenzivaClient {
 	return &ZenzivaClient{
 		URL:     apiURL,
 		UserKey: userKey,
 		PassKey: passKey,
 		Brand:   brand,
+		Env:     env,
 		Client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -32,8 +34,11 @@ func NewZenzivaClient(apiURL, userKey, passKey, brand string) *ZenzivaClient {
 
 func (z *ZenzivaClient) SendOTP(ctx context.Context, to, code string) error {
 	if z.UserKey == "" || z.PassKey == "" {
-		slog.Warn("zenziva: credentials not configured, skipping OTP send", "to", to)
-		return nil
+		if z.Env == "development" {
+			slog.Debug("zenziva: credentials not configured, skipping OTP send", "to", to)
+			return nil
+		}
+		return fmt.Errorf("whatsapp OTP delivery is not configured")
 	}
 
 	form := url.Values{}

@@ -1,8 +1,10 @@
 package billing
 
 import (
-	"fmt"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // --- Request DTOs ---
@@ -70,7 +72,7 @@ const (
 	InvoiceDuration = 24 * time.Hour // 24 hours to pay
 )
 
-func GenerateInvoiceNumber(seq int) string {
-	now := time.Now()
-	return now.Format("INV-2006-01") + fmt.Sprintf("-%04d", seq)
+func GenerateInvoiceNumber(now time.Time) string {
+	suffix := uuid.New().String()[:8]
+	return now.Format("INV-20060102") + "-" + strings.ToUpper(suffix)
 }

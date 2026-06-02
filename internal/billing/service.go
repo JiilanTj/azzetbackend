@@ -42,7 +42,7 @@ func (s *Service) CreateInvoice(ctx context.Context, workspaceID, subscriptionID
 	}
 
 	now := time.Now()
-	invoiceNumber := GenerateInvoiceNumber(int(now.UnixNano() % 10000))
+	invoiceNumber := GenerateInvoiceNumber(now)
 
 	var desc pgtype.Text
 	if description != "" {
@@ -95,11 +95,21 @@ func (s *Service) PayInvoice(ctx context.Context, workspaceID, invoiceID string)
 		return nil, ErrAlreadyPaid
 	}
 
+	now := time.Now()
+
+	// Reuse existing pending payment when still valid
+	if existing, err := s.Queries.GetPendingPaymentByInvoice(ctx, invID); err == nil {
+		if existing.ExpiredAt == nil || existing.ExpiredAt.After(now) {
+			return PaymentToResponse(&existing), nil
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
 	// Get amount as float
 	amount := numericToFloat(invoice.Amount)
 
 	// Create Xendit invoice
-	now := time.Now()
 	expiresAt := now.Add(InvoiceDuration)
 
 	xenditResp, err := s.Xendit.CreateInvoice(ctx, &XenditCreateInvoiceRequest{
@@ -158,6 +168,22 @@ func (s *Service) HandleWebhook(ctx context.Context, payload *XenditWebhookPaylo
 
 	now := time.Now()
 
+	invoice, err := s.Queries.GetInvoiceByID(ctx, payment.InvoiceID)
+	if err != nil {
+		return fmt.Errorf("invoice not found")
+	}
+	if payload.ExternalID != "" && payload.ExternalID != invoice.ID.String() {
+		return fmt.Errorf("webhook external_id mismatch")
+	}
+	invoiceAmount := numericToFloat(invoice.Amount)
+	paidAmount := payload.PaidAmount
+	if paidAmount == 0 {
+		paidAmount = payload.Amount
+	}
+	if paidAmount > 0 && paidAmount != invoiceAmount {
+		return fmt.Errorf("webhook amount mismatch")
+	}
+
 	switch payload.Status {
 	case "PAID", "SETTLED":
 		// Mark payment as paid
@@ -180,15 +206,16 @@ func (s *Service) HandleWebhook(ctx context.Context, payload *XenditWebhookPaylo
 		}
 
 		// Mark invoice as paid
-		_ = s.Queries.MarkInvoicePaid(ctx, payment.InvoiceID)
+		if err := s.Queries.MarkInvoicePaid(ctx, payment.InvoiceID); err != nil {
+			return fmt.Errorf("failed to mark invoice paid: %w", err)
+		}
 
 		// Activate subscription
-		invoice, err := s.Queries.GetInvoiceByID(ctx, payment.InvoiceID)
-		if err == nil {
-			_ = s.Queries.UpdateSubscriptionStatus(ctx, db.UpdateSubscriptionStatusParams{
-				ID:     invoice.SubscriptionID,
-				Status: "active",
-			})
+		if err := s.Queries.UpdateSubscriptionStatus(ctx, db.UpdateSubscriptionStatusParams{
+			ID:     invoice.SubscriptionID,
+			Status: "active",
+		}); err != nil {
+			return fmt.Errorf("failed to activate subscription: %w", err)
 		}
 
 	case "EXPIRED":

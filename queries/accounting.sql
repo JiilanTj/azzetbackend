@@ -226,7 +226,7 @@ ON CONFLICT (workspace_id, account_id, period)
 DO UPDATE SET
     total_debit = account_balances.total_debit + EXCLUDED.total_debit,
     total_credit = account_balances.total_credit + EXCLUDED.total_credit,
-    ending_balance = account_balances.ending_balance + EXCLUDED.ending_balance,
+    ending_balance = EXCLUDED.ending_balance,
     transaction_count = account_balances.transaction_count + 1,
     updated_at = NOW()
 RETURNING *;
@@ -285,9 +285,9 @@ ORDER BY a.code ASC;
 
 -- name: GetCashFlow :many
 SELECT le.transaction_date,
-    SUM(le.debit) as total_debit,
-    SUM(le.credit) as total_credit,
-    SUM(le.debit) - SUM(le.credit) as net_flow
+    COALESCE(SUM(le.debit), 0)::float8 as total_debit,
+    COALESCE(SUM(le.credit), 0)::float8 as total_credit,
+    (COALESCE(SUM(le.debit), 0) - COALESCE(SUM(le.credit), 0))::float8 as net_flow
 FROM ledger_entries le
 JOIN accounts a ON le.account_id = a.id
 WHERE le.workspace_id = $1 AND a.code IN ('1-1001', '1-1002') AND le.transaction_date >= $2 AND le.transaction_date <= $3

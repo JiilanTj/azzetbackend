@@ -44,28 +44,24 @@ func ComputeTaxes(input CalcInput) []CalcResult {
 }
 
 func computePPN(input CalcInput, rate float64) *CalcResult {
+	category := input.Category
+	hasPPNSignal := input.IncludesTax ||
+		category == accounting.CatPenjualanDenganPPN ||
+		category == accounting.CatPembelianDenganPPN
+	if !hasPPNSignal {
+		return nil
+	}
 	if !input.IsPPNLiable && !input.IncludesTax {
 		return nil
 	}
 
-	category := input.Category
 	isSalesPPN := category == accounting.CatPenjualanDenganPPN ||
 		(input.IncludesTax && (input.TransactionType == accounting.TxTypeSales || input.TransactionType == accounting.TxTypeCashIn))
 	isPurchasePPN := category == accounting.CatPembelianDenganPPN ||
 		(input.IncludesTax && input.TransactionType == accounting.TxTypePurchase)
 
 	if !isSalesPPN && !isPurchasePPN {
-		if !input.IncludesTax {
-			return nil
-		}
-		switch input.TransactionType {
-		case accounting.TxTypeSales, accounting.TxTypeCashIn:
-			isSalesPPN = true
-		case accounting.TxTypePurchase, accounting.TxTypeCashOut:
-			isPurchasePPN = true
-		default:
-			return nil
-		}
+		return nil
 	}
 
 	base, tax := splitTaxAmount(input.Amount, rate, input.IncludesTax || category == accounting.CatPenjualanDenganPPN || category == accounting.CatPembelianDenganPPN)
@@ -113,7 +109,14 @@ func computePPh23(input CalcInput) *CalcResult {
 		return nil
 	}
 
-	base, _ := splitTaxAmount(input.Amount, rate, input.IncludesTax)
+	ppnRate := input.PPNRate
+	if ppnRate <= 0 {
+		ppnRate = DefaultPPNRate
+	}
+	base := input.Amount
+	if input.IncludesTax {
+		base, _ = splitTaxAmount(input.Amount, ppnRate, true)
+	}
 	tax := base * rate
 
 	if isPurchaseJasa {

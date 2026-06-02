@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -141,5 +142,8 @@ func (c *XenditClient) VerifyWebhookSignature(payload []byte, signature string) 
 
 // VerifyWebhookToken verifies using x-callback-token header (Xendit's simpler method)
 func (c *XenditClient) VerifyWebhookToken(token string) bool {
-	return token == c.WebhookSecret
+	if c.WebhookSecret == "" || token == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(token), []byte(c.WebhookSecret)) == 1
 }

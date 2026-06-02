@@ -9,6 +9,12 @@ WHERE workspace_id = $1 AND status IN ('active', 'trial')
 ORDER BY created_at DESC
 LIMIT 1;
 
+-- name: GetBlockingSubscription :one
+SELECT * FROM tenant_subscriptions
+WHERE workspace_id = $1 AND status IN ('active', 'trial', 'pending_payment')
+ORDER BY created_at DESC
+LIMIT 1;
+
 -- name: GetSubscriptionByID :one
 SELECT * FROM tenant_subscriptions WHERE id = $1;
 

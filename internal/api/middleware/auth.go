@@ -13,14 +13,20 @@ type contextKey string
 const UserIDKey contextKey = "user_id"
 
 type AuthMiddleware struct {
-	JWT           *shared.JWTService
-	IsBlacklisted func(ctx context.Context, jti string) (bool, error)
+	JWT            *shared.JWTService
+	IsBlacklisted  func(ctx context.Context, jti string) (bool, error)
+	GetUserStatus  func(ctx context.Context, userID string) (string, error)
 }
 
-func NewAuthMiddleware(jwt *shared.JWTService, isBlacklisted func(ctx context.Context, jti string) (bool, error)) *AuthMiddleware {
+func NewAuthMiddleware(
+	jwt *shared.JWTService,
+	isBlacklisted func(ctx context.Context, jti string) (bool, error),
+	getUserStatus func(ctx context.Context, userID string) (string, error),
+) *AuthMiddleware {
 	return &AuthMiddleware{
 		JWT:           jwt,
 		IsBlacklisted: isBlacklisted,
+		GetUserStatus: getUserStatus,
 	}
 }
 
@@ -56,6 +62,18 @@ func (m *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 			}
 			if blacklisted {
 				shared.Unauthorized(w, r, "auth", "token has been revoked")
+				return
+			}
+		}
+
+		if m.GetUserStatus != nil {
+			status, err := m.GetUserStatus(r.Context(), claims.UserID)
+			if err != nil {
+				shared.Unauthorized(w, r, "auth", "invalid or expired token")
+				return
+			}
+			if status != "ACTIVE" {
+				shared.Unauthorized(w, r, "auth", "account is not active")
 				return
 			}
 		}

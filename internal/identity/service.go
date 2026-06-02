@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -60,10 +61,14 @@ func (s *Service) EnsureVerificationRecord(ctx context.Context, entityID uuid.UU
 	return err
 }
 
-func (s *Service) GetVerificationStatus(ctx context.Context, entityID string) (*VerificationResponse, error) {
+func (s *Service) GetVerificationStatus(ctx context.Context, userID, entityID string) (*VerificationResponse, error) {
 	eid, err := uuid.Parse(entityID)
 	if err != nil {
 		return nil, ErrEntityNotFound
+	}
+
+	if err := s.authorizeEntityRead(ctx, userID, entityID); err != nil {
+		return nil, err
 	}
 
 	v, err := s.Queries.GetEntityVerification(ctx, eid)
@@ -99,6 +104,10 @@ func (s *Service) GetVerificationStatus(ctx context.Context, entityID string) (*
 }
 
 func (s *Service) SetVerificationStatus(ctx context.Context, entityID string, status string, verifiedBy *string, reason *string, notes *string) error {
+	if !isValidVerificationStatus(status) {
+		return fmt.Errorf("invalid verification status")
+	}
+
 	eid, err := uuid.Parse(entityID)
 	if err != nil {
 		return ErrEntityNotFound
@@ -168,10 +177,23 @@ func (s *Service) AddLegalID(ctx context.Context, userID, entityID string, req *
 		UpdatedAt: now,
 	})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, ErrLegalIDExists
+		}
 		return nil, fmt.Errorf("failed to create legal ID: %w", err)
 	}
 
 	return legalIDToResponse(&lid), nil
+}
+
+func isValidVerificationStatus(status string) bool {
+	switch status {
+	case StatusUnverified, StatusPending, StatusVerified, StatusRejected:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Service) GetLegalIDs(ctx context.Context, userID, entityID string) ([]LegalIDResponse, error) {
@@ -315,7 +337,12 @@ func (s *Service) DeleteAlias(ctx context.Context, userID, entityID, aliasID str
 
 // --- Fuzzy Search ---
 
-func (s *Service) SearchFuzzy(ctx context.Context, query string, limit, offset int) ([]FuzzyMatchResponse, error) {
+func (s *Service) SearchFuzzy(ctx context.Context, workspaceID, query string, limit, offset int) ([]FuzzyMatchResponse, error) {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid workspace_id")
+	}
+
 	if limit <= 0 {
 		limit = 20
 	}
@@ -329,6 +356,7 @@ func (s *Service) SearchFuzzy(ctx context.Context, query string, limit, offset i
 	}
 
 	results, err := s.Queries.SearchEntitiesFuzzy(ctx, db.SearchEntitiesFuzzyParams{
+		ObjectID:   wsID,
 		Similarity: normalized,
 		Limit:      int32(limit),
 		Offset:     int32(offset),

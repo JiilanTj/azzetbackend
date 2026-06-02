@@ -1166,13 +1166,23 @@ FROM entities e
 WHERE e.nama_normalized % $1
   AND e.status = 'ACTIVE'
   AND e.entity_type = 'BADAN_USAHA'
+  AND (
+    e.is_shadow = TRUE
+    OR EXISTS (
+      SELECT 1 FROM entity_relations er
+      WHERE er.subject_id = e.id
+        AND er.object_id = $3
+        AND er.relation_type IN ('PELANGGAN', 'VENDOR')
+    )
+  )
 ORDER BY similarity(e.nama_normalized, $1) DESC
 LIMIT $2
 `
 
 type SearchCounterpartiesFuzzyParams struct {
-	Similarity string `json:"similarity"`
-	Limit      int32  `json:"limit"`
+	Similarity string    `json:"similarity"`
+	Limit      int32     `json:"limit"`
+	ObjectID   uuid.UUID `json:"object_id"`
 }
 
 type SearchCounterpartiesFuzzyRow struct {
@@ -1187,7 +1197,7 @@ type SearchCounterpartiesFuzzyRow struct {
 // Counterparty Search (privacy-safe)
 // ============================================================
 func (q *Queries) SearchCounterpartiesFuzzy(ctx context.Context, arg SearchCounterpartiesFuzzyParams) ([]SearchCounterpartiesFuzzyRow, error) {
-	rows, err := q.db.Query(ctx, searchCounterpartiesFuzzy, arg.Similarity, arg.Limit)
+	rows, err := q.db.Query(ctx, searchCounterpartiesFuzzy, arg.Similarity, arg.Limit, arg.ObjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -1277,17 +1287,23 @@ func (q *Queries) SearchEntitiesByAlias(ctx context.Context, arg SearchEntitiesB
 }
 
 const searchEntitiesFuzzy = `-- name: SearchEntitiesFuzzy :many
-SELECT id, user_id, entity_type, nama_utama, nik_npwp, nomor_wa, alamat_lengkap, is_shadow, status, created_at, updated_at, nama_normalized, similarity(nama_normalized, $1) as match_score
-FROM entities
-WHERE nama_normalized % $1 AND status = 'ACTIVE'
-ORDER BY similarity(nama_normalized, $1) DESC
-LIMIT $2 OFFSET $3
+SELECT e.id, e.user_id, e.entity_type, e.nama_utama, e.nik_npwp, e.nomor_wa, e.alamat_lengkap, e.is_shadow, e.status, e.created_at, e.updated_at, e.nama_normalized, similarity(e.nama_normalized, $2) as match_score
+FROM entities e
+INNER JOIN entity_relations er ON er.subject_id = e.id
+WHERE er.object_id = $1
+  AND er.relation_type IN ('PELANGGAN', 'VENDOR')
+  AND er.status = 'ACTIVE'
+  AND e.nama_normalized % $2
+  AND e.status = 'ACTIVE'
+ORDER BY similarity(e.nama_normalized, $2) DESC
+LIMIT $3 OFFSET $4
 `
 
 type SearchEntitiesFuzzyParams struct {
-	Similarity string `json:"similarity"`
-	Limit      int32  `json:"limit"`
-	Offset     int32  `json:"offset"`
+	ObjectID   uuid.UUID `json:"object_id"`
+	Similarity string    `json:"similarity"`
+	Limit      int32     `json:"limit"`
+	Offset     int32     `json:"offset"`
 }
 
 type SearchEntitiesFuzzyRow struct {
@@ -1307,7 +1323,12 @@ type SearchEntitiesFuzzyRow struct {
 }
 
 func (q *Queries) SearchEntitiesFuzzy(ctx context.Context, arg SearchEntitiesFuzzyParams) ([]SearchEntitiesFuzzyRow, error) {
-	rows, err := q.db.Query(ctx, searchEntitiesFuzzy, arg.Similarity, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, searchEntitiesFuzzy,
+		arg.ObjectID,
+		arg.Similarity,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}

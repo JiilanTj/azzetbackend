@@ -182,7 +182,7 @@ func TestBillingConstants(t *testing.T) {
 }
 
 func TestGenerateInvoiceNumber(t *testing.T) {
-	num := billing.GenerateInvoiceNumber(1)
+	num := billing.GenerateInvoiceNumber(time.Now())
 	if num == "" {
 		t.Fatal("expected non-empty invoice number")
 	}

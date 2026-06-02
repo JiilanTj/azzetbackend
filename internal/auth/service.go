@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/netip"
 	"time"
 
@@ -149,9 +150,15 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 		if s.SubscriptionService != nil {
 			freePlan, err := s.Queries.GetFreePlan(ctx)
 			if err == nil {
-				_, _ = s.SubscriptionService.Subscribe(ctx, personalEntity.ID.String(), &subscription.SubscribeRequest{
+				if _, subErr := s.SubscriptionService.Subscribe(ctx, personalEntity.ID.String(), &subscription.SubscribeRequest{
 					PlanID: freePlan.ID.String(),
-				})
+				}); subErr != nil {
+					slog.Warn("failed to assign free plan on registration",
+						"user_id", user.ID.String(),
+						"entity_id", personalEntity.ID.String(),
+						"error", subErr,
+					)
+				}
 			}
 		}
 	}
@@ -178,6 +185,9 @@ func (s *Service) LoginWithEmail(ctx context.Context, req *LoginEmailRequest, lc
 	if user.Status == StatusSuspended {
 		return nil, "", fmt.Errorf("account is suspended")
 	}
+	if user.Status != StatusActive {
+		return nil, "", fmt.Errorf("account is not verified")
+	}
 
 	return s.createTokenPair(ctx, &user, lc)
 }
@@ -195,6 +205,9 @@ func (s *Service) LoginWithOTP(ctx context.Context, req *LoginOTPRequest, lc *Lo
 	if user.Status == StatusSuspended {
 		return nil, "", fmt.Errorf("account is suspended")
 	}
+	if user.Status != StatusActive {
+		return nil, "", fmt.Errorf("account is not verified")
+	}
 
 	return s.createTokenPair(ctx, &user, lc)
 }
@@ -204,6 +217,10 @@ func (s *Service) RequestOTP(ctx context.Context, req *RequestOTPRequest) error 
 	// Validate purpose
 	if req.Purpose != OTPPurposeLogin && req.Purpose != OTPPurposeVerifyWA && req.Purpose != OTPPurposeResetPass {
 		return fmt.Errorf("invalid OTP purpose")
+	}
+
+	if err := s.checkOTPRateLimit(ctx, req.WhatsApp); err != nil {
+		return err
 	}
 
 	_, err := s.Queries.GetUserByWhatsApp(ctx, pgtype.Text{String: req.WhatsApp, Valid: true})
@@ -249,12 +266,25 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string, lc *Log
 	if err != nil {
 		return nil, "", fmt.Errorf("user not found")
 	}
+	if user.Status == StatusSuspended {
+		_ = s.Queries.DeleteSessionByID(ctx, sessionID)
+		return nil, "", fmt.Errorf("account is suspended")
+	}
+	if user.Status != StatusActive {
+		_ = s.Queries.DeleteSessionByID(ctx, sessionID)
+		return nil, "", fmt.Errorf("account is not verified")
+	}
 
-	// Delete old session
-	_ = s.Queries.DeleteSessionByID(ctx, sessionID)
+	resp, newRefresh, err := s.createTokenPair(ctx, &user, lc)
+	if err != nil {
+		return nil, "", err
+	}
 
-	// Create new token pair
-	return s.createTokenPair(ctx, &user, lc)
+	if err := s.Queries.DeleteSessionByID(ctx, sessionID); err != nil {
+		slog.Warn("failed to delete rotated session", "session_id", sessionID.String(), "error", err)
+	}
+
+	return resp, newRefresh, nil
 }
 
 // Logout blacklists the access token (Redis) and deletes the session
@@ -265,7 +295,9 @@ func (s *Service) Logout(ctx context.Context, accessToken, refreshToken string) 
 	}
 
 	// Blacklist access token in Redis (auto-expires)
-	_ = s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry).Err()
+	if err := s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry).Err(); err != nil {
+		return fmt.Errorf("failed to revoke token")
+	}
 
 	// Delete session by hashed refresh token
 	if refreshToken != "" {
@@ -282,7 +314,9 @@ func (s *Service) LogoutAll(ctx context.Context, accessToken string) error {
 		return fmt.Errorf("invalid access token")
 	}
 
-	_ = s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry).Err()
+	if err := s.Redis.Set(ctx, "blacklist:"+claims.JTI, claims.UserID, s.Config.AccessTokenExpiry).Err(); err != nil {
+		return fmt.Errorf("failed to revoke token")
+	}
 
 	userID, err := uuid.Parse(claims.UserID)
 	if err != nil {
@@ -345,6 +379,25 @@ func (s *Service) VerifyOTP(ctx context.Context, req *VerifyOTPRequest) error {
 		return err
 	}
 
+	var user db.User
+	var err error
+	if req.Purpose == OTPPurposeVerifyEmail {
+		user, err = s.Queries.GetUserByEmail(ctx, pgtype.Text{String: req.Identifier, Valid: true})
+	} else {
+		user, err = s.Queries.GetUserByWhatsApp(ctx, pgtype.Text{String: req.Identifier, Valid: true})
+	}
+	if err != nil {
+		return fmt.Errorf("user not found")
+	}
+	if user.Status == StatusUnverified {
+		if req.Password == "" {
+			return fmt.Errorf("password is required to activate account")
+		}
+		if !user.PasswordHash.Valid || !shared.VerifyPassword(user.PasswordHash.String, req.Password) {
+			return fmt.Errorf("invalid password")
+		}
+	}
+
 	switch req.Purpose {
 	case OTPPurposeVerifyWA:
 		return s.Queries.VerifyUserWhatsApp(ctx, pgtype.Text{String: req.Identifier, Valid: true})
@@ -377,10 +430,14 @@ func (s *Service) ChangePassword(ctx context.Context, userID string, req *Change
 		return err
 	}
 
-	return s.Queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+	if err := s.Queries.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
 		ID:           id,
 		PasswordHash: pgtype.Text{String: hash, Valid: true},
-	})
+	}); err != nil {
+		return err
+	}
+	_ = s.Queries.DeleteUserSessions(ctx, id)
+	return nil
 }
 
 // ResetPassword resets password using OTP
@@ -397,10 +454,22 @@ func (s *Service) ResetPassword(ctx context.Context, req *ResetPasswordRequest) 
 		return err
 	}
 
-	return s.Queries.ResetPasswordByIdentifier(ctx, db.ResetPasswordByIdentifierParams{
+	user, lookupErr := s.Queries.GetUserByEmail(ctx, pgtype.Text{String: req.Identifier, Valid: true})
+	if lookupErr != nil {
+		user, lookupErr = s.Queries.GetUserByWhatsApp(ctx, pgtype.Text{String: req.Identifier, Valid: true})
+		if lookupErr != nil {
+			return fmt.Errorf("user not found")
+		}
+	}
+
+	if err := s.Queries.ResetPasswordByIdentifier(ctx, db.ResetPasswordByIdentifierParams{
 		Email:        pgtype.Text{String: req.Identifier, Valid: true},
 		PasswordHash: pgtype.Text{String: hash, Valid: true},
-	})
+	}); err != nil {
+		return err
+	}
+	_ = s.Queries.DeleteUserSessions(ctx, user.ID)
+	return nil
 }
 
 // IsTokenBlacklisted checks Redis for blacklisted token
@@ -502,11 +571,30 @@ func (s *Service) validateOTP(ctx context.Context, identifier, code, purpose str
 
 	// Compare hashed OTP
 	if !shared.VerifyOTP(code, otp.Code) {
-		_ = s.Queries.IncrementOTPAttempts(ctx, otp.ID)
+		if err := s.Queries.IncrementOTPAttempts(ctx, otp.ID); err != nil {
+			slog.Warn("failed to increment OTP attempts", "otp_id", otp.ID.String(), "error", err)
+		}
 		return fmt.Errorf("invalid OTP")
 	}
 
-	_ = s.Queries.MarkOTPUsed(ctx, otp.ID)
+	if err := s.Queries.MarkOTPUsed(ctx, otp.ID); err != nil {
+		return fmt.Errorf("failed to mark OTP used: %w", err)
+	}
+	return nil
+}
+
+func (s *Service) checkOTPRateLimit(ctx context.Context, identifier string) error {
+	key := "otp:ratelimit:" + identifier
+	count, err := s.Redis.Incr(ctx, key).Result()
+	if err != nil {
+		return fmt.Errorf("OTP request failed")
+	}
+	if count == 1 {
+		_ = s.Redis.Expire(ctx, key, 15*time.Minute).Err()
+	}
+	if count > 5 {
+		return fmt.Errorf("too many OTP requests, try again later")
+	}
 	return nil
 }
 

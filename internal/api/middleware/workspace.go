@@ -81,6 +81,31 @@ func GetWorkspacePermissions(ctx context.Context) []byte {
 	return perms
 }
 
+// RequireAssignedRole denies KARYAWAN members with no role permissions (default-deny).
+func (m *WorkspaceMiddleware) RequireAssignedRole(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		role := GetWorkspaceRole(r.Context())
+		if role == "PEMILIK" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		perms := GetWorkspacePermissions(r.Context())
+		if len(perms) == 0 {
+			shared.Forbidden(w, r, "workspace", "no role assigned")
+			return
+		}
+
+		var permissions []string
+		if err := json.Unmarshal(perms, &permissions); err != nil || len(permissions) == 0 {
+			shared.Forbidden(w, r, "workspace", "no role assigned")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 // hasPermission checks if permissions JSON array contains the required permission
 func hasPermission(permissionsJSON []byte, required string) bool {
 	if len(permissionsJSON) == 0 {

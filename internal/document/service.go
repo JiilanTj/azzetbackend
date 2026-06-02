@@ -62,7 +62,10 @@ func (s *Service) RequestUpload(ctx context.Context, workspaceID, userID string,
 		return nil, fmt.Errorf("file_name is required")
 	}
 	if req.MimeType == "" {
-		req.MimeType = "application/pdf"
+		return nil, fmt.Errorf("mime_type is required")
+	}
+	if !IsImageMimeType(req.MimeType) {
+		return nil, fmt.Errorf("only image MIME types are supported (image/jpeg, image/png, image/webp)")
 	}
 
 	if s.Storage == nil {

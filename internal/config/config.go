@@ -26,6 +26,8 @@ type Config struct {
 	RefreshTokenSecret       string
 	AccessTokenExpiryMinutes int
 	RefreshTokenExpiryDays   int
+	AdminJWTSecret           string
+	AdminRefreshTokenSecret  string
 
 	// Cloudflare R2
 	R2AccountID       string
@@ -84,6 +86,8 @@ func Load() (*Config, error) {
 		RefreshTokenSecret:       getEnv("REFRESH_TOKEN_SECRET", ""),
 		AccessTokenExpiryMinutes: getEnvInt("ACCESS_TOKEN_EXPIRY_MINUTES", 15),
 		RefreshTokenExpiryDays:   getEnvInt("REFRESH_TOKEN_EXPIRY_DAYS", 7),
+		AdminJWTSecret:           getEnv("ADMIN_JWT_SECRET", ""),
+		AdminRefreshTokenSecret:  getEnv("ADMIN_REFRESH_TOKEN_SECRET", ""),
 
 		R2AccountID:       getEnv("R2_ACCOUNT_ID", ""),
 		R2AccessKeyID:     getEnv("R2_ACCESS_KEY_ID", ""),
@@ -125,8 +129,37 @@ func Load() (*Config, error) {
 	if cfg.RefreshTokenSecret == "" {
 		return nil, errors.New("REFRESH_TOKEN_SECRET is required")
 	}
+	if cfg.AppEnv != "development" {
+		if cfg.XenditWebhookSecret == "" {
+			return nil, errors.New("XENDIT_WEBHOOK_SECRET is required in non-development environments")
+		}
+		if cfg.AdminJWTSecret == "" {
+			return nil, errors.New("ADMIN_JWT_SECRET is required in non-development environments")
+		}
+		if cfg.AdminRefreshTokenSecret == "" {
+			return nil, errors.New("ADMIN_REFRESH_TOKEN_SECRET is required in non-development environments")
+		}
+		for _, origins := range [][]string{cfg.CORSAllowedOrigins, cfg.AdminCORSAllowedOrigins} {
+			for _, o := range origins {
+				if o == "*" {
+					return nil, errors.New("wildcard CORS origin is not allowed in non-development environments")
+				}
+			}
+		}
+	}
+	if cfg.AdminJWTSecret == "" {
+		cfg.AdminJWTSecret = cfg.AppSecret + "_admin"
+	}
+	if cfg.AdminRefreshTokenSecret == "" {
+		cfg.AdminRefreshTokenSecret = cfg.RefreshTokenSecret + "_admin"
+	}
 
 	return cfg, nil
+}
+
+// IsProduction returns true when running outside development.
+func (c *Config) IsProduction() bool {
+	return c.AppEnv != "development"
 }
 
 // RedisAddr returns the host:port for Redis (used by asynq)

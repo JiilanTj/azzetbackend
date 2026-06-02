@@ -117,6 +117,32 @@ func (q *Queries) GetActiveSubscription(ctx context.Context, workspaceID uuid.UU
 	return i, err
 }
 
+const getBlockingSubscription = `-- name: GetBlockingSubscription :one
+SELECT id, workspace_id, plan_id, status, billing_cycle, started_at, expires_at, trial_ends_at, cancelled_at, created_at, updated_at FROM tenant_subscriptions
+WHERE workspace_id = $1 AND status IN ('active', 'trial', 'pending_payment')
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetBlockingSubscription(ctx context.Context, workspaceID uuid.UUID) (TenantSubscription, error) {
+	row := q.db.QueryRow(ctx, getBlockingSubscription, workspaceID)
+	var i TenantSubscription
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.PlanID,
+		&i.Status,
+		&i.BillingCycle,
+		&i.StartedAt,
+		&i.ExpiresAt,
+		&i.TrialEndsAt,
+		&i.CancelledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getSubscriptionByID = `-- name: GetSubscriptionByID :one
 SELECT id, workspace_id, plan_id, status, billing_cycle, started_at, expires_at, trial_ends_at, cancelled_at, created_at, updated_at FROM tenant_subscriptions WHERE id = $1
 `

@@ -16,25 +16,26 @@ import (
 const completeTaxReportJob = `-- name: CompleteTaxReportJob :exec
 UPDATE tax_report_jobs
 SET status = 'COMPLETED', result = $2, completed_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND workspace_id = $3 AND status = 'PROCESSING'
 `
 
 type CompleteTaxReportJobParams struct {
-	ID     uuid.UUID `json:"id"`
-	Result []byte    `json:"result"`
+	ID          uuid.UUID `json:"id"`
+	Result      []byte    `json:"result"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
 }
 
 func (q *Queries) CompleteTaxReportJob(ctx context.Context, arg CompleteTaxReportJobParams) error {
-	_, err := q.db.Exec(ctx, completeTaxReportJob, arg.ID, arg.Result)
+	_, err := q.db.Exec(ctx, completeTaxReportJob, arg.ID, arg.Result, arg.WorkspaceID)
 	return err
 }
 
 const countTaxCalculations = `-- name: CountTaxCalculations :one
 SELECT COUNT(*) FROM tax_calculations
 WHERE workspace_id = $1
-  AND ($2::text IS NULL OR period = $2)
-  AND ($3::text IS NULL OR tax_type = $3)
-  AND ($4::text IS NULL OR status = $4)
+  AND ($2::text IS NULL OR $2::text = '' OR period = $2)
+  AND ($3::text IS NULL OR $3::text = '' OR tax_type = $3)
+  AND ($4::text IS NULL OR $4::text = '' OR status = $4)
 `
 
 type CountTaxCalculationsParams struct {
@@ -277,16 +278,17 @@ func (q *Queries) CreateTaxReportJob(ctx context.Context, arg CreateTaxReportJob
 const failTaxReportJob = `-- name: FailTaxReportJob :exec
 UPDATE tax_report_jobs
 SET status = 'FAILED', error_message = $2, completed_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND workspace_id = $3 AND status IN ('PENDING', 'PROCESSING')
 `
 
 type FailTaxReportJobParams struct {
 	ID           uuid.UUID   `json:"id"`
 	ErrorMessage pgtype.Text `json:"error_message"`
+	WorkspaceID  uuid.UUID   `json:"workspace_id"`
 }
 
 func (q *Queries) FailTaxReportJob(ctx context.Context, arg FailTaxReportJobParams) error {
-	_, err := q.db.Exec(ctx, failTaxReportJob, arg.ID, arg.ErrorMessage)
+	_, err := q.db.Exec(ctx, failTaxReportJob, arg.ID, arg.ErrorMessage, arg.WorkspaceID)
 	return err
 }
 
@@ -420,16 +422,17 @@ func (q *Queries) GetTaxCalculationByID(ctx context.Context, arg GetTaxCalculati
 
 const getTaxCalculationByTransactionAndType = `-- name: GetTaxCalculationByTransactionAndType :one
 SELECT id, workspace_id, transaction_id, tax_type, direction, base_amount, tax_rate, tax_amount, period, status, counterparty_entity_id, faktur_number, metadata, created_at, updated_at FROM tax_calculations
-WHERE transaction_id = $1 AND tax_type = $2
+WHERE transaction_id = $1 AND tax_type = $2 AND workspace_id = $3
 `
 
 type GetTaxCalculationByTransactionAndTypeParams struct {
 	TransactionID uuid.UUID `json:"transaction_id"`
 	TaxType       string    `json:"tax_type"`
+	WorkspaceID   uuid.UUID `json:"workspace_id"`
 }
 
 func (q *Queries) GetTaxCalculationByTransactionAndType(ctx context.Context, arg GetTaxCalculationByTransactionAndTypeParams) (TaxCalculation, error) {
-	row := q.db.QueryRow(ctx, getTaxCalculationByTransactionAndType, arg.TransactionID, arg.TaxType)
+	row := q.db.QueryRow(ctx, getTaxCalculationByTransactionAndType, arg.TransactionID, arg.TaxType, arg.WorkspaceID)
 	var i TaxCalculation
 	err := row.Scan(
 		&i.ID,
@@ -512,9 +515,9 @@ SELECT tc.id, tc.workspace_id, tc.transaction_id, tc.tax_type, tc.direction, tc.
 FROM tax_calculations tc
 JOIN transactions t ON t.id = tc.transaction_id
 WHERE tc.workspace_id = $1
-  AND ($2::text IS NULL OR tc.period = $2)
-  AND ($3::text IS NULL OR tc.tax_type = $3)
-  AND ($4::text IS NULL OR tc.status = $4)
+  AND ($2::text IS NULL OR $2::text = '' OR tc.period = $2)
+  AND ($3::text IS NULL OR $3::text = '' OR tc.tax_type = $3)
+  AND ($4::text IS NULL OR $4::text = '' OR tc.status = $4)
 ORDER BY tc.created_at DESC
 LIMIT $5 OFFSET $6
 `
@@ -758,15 +761,23 @@ func (q *Queries) UpdateTaxProfile(ctx context.Context, arg UpdateTaxProfilePara
 	return i, err
 }
 
-const updateTaxReportJobProcessing = `-- name: UpdateTaxReportJobProcessing :exec
+const updateTaxReportJobProcessing = `-- name: UpdateTaxReportJobProcessing :one
 UPDATE tax_report_jobs
 SET status = 'PROCESSING'
-WHERE id = $1 AND status = 'PENDING'
+WHERE id = $1 AND workspace_id = $2 AND status = 'PENDING'
+RETURNING id
 `
 
-func (q *Queries) UpdateTaxReportJobProcessing(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, updateTaxReportJobProcessing, id)
-	return err
+type UpdateTaxReportJobProcessingParams struct {
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) UpdateTaxReportJobProcessing(ctx context.Context, arg UpdateTaxReportJobProcessingParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, updateTaxReportJobProcessing, arg.ID, arg.WorkspaceID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const voidTaxCalculationsByTransaction = `-- name: VoidTaxCalculationsByTransaction :exec

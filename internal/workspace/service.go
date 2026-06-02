@@ -291,7 +291,11 @@ func (s *Service) ListMembers(ctx context.Context, workspaceID string) ([]Member
 }
 
 // UpdateMember updates a member's alias/status
-func (s *Service) UpdateMember(ctx context.Context, relationID string, req *UpdateMemberRequest) error {
+func (s *Service) UpdateMember(ctx context.Context, workspaceID, relationID string, req *UpdateMemberRequest) error {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return ErrWorkspaceNotFound
+	}
 	relID, err := uuid.Parse(relationID)
 	if err != nil {
 		return fmt.Errorf("invalid relation_id")
@@ -304,6 +308,9 @@ func (s *Service) UpdateMember(ctx context.Context, relationID string, req *Upda
 		}
 		return err
 	}
+	if rel.ObjectID != wsID {
+		return fmt.Errorf("member not found")
+	}
 
 	customAlias := rel.CustomAlias
 	status := rel.Status
@@ -314,6 +321,9 @@ func (s *Service) UpdateMember(ctx context.Context, relationID string, req *Upda
 	if req.Status != nil {
 		if *req.Status != "ACTIVE" && *req.Status != "INACTIVE" {
 			return fmt.Errorf("invalid status")
+		}
+		if rel.RelationType == "PEMILIK" {
+			return fmt.Errorf("cannot change owner status")
 		}
 		status = *req.Status
 	}
@@ -326,7 +336,11 @@ func (s *Service) UpdateMember(ctx context.Context, relationID string, req *Upda
 }
 
 // RemoveMember removes a member from workspace
-func (s *Service) RemoveMember(ctx context.Context, relationID string) error {
+func (s *Service) RemoveMember(ctx context.Context, workspaceID, relationID string) error {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return ErrWorkspaceNotFound
+	}
 	relID, err := uuid.Parse(relationID)
 	if err != nil {
 		return fmt.Errorf("invalid relation_id")
@@ -334,6 +348,9 @@ func (s *Service) RemoveMember(ctx context.Context, relationID string) error {
 
 	rel, err := s.Queries.GetRelationByID(ctx, relID)
 	if err != nil {
+		return fmt.Errorf("member not found")
+	}
+	if rel.ObjectID != wsID {
 		return fmt.Errorf("member not found")
 	}
 
@@ -555,7 +572,11 @@ func (s *Service) CreateWorkspaceRole(ctx context.Context, workspaceID, userID s
 }
 
 // UpdateWorkspaceRole updates a custom role
-func (s *Service) UpdateWorkspaceRole(ctx context.Context, roleID string, req *UpdateRoleRequest) error {
+func (s *Service) UpdateWorkspaceRole(ctx context.Context, workspaceID, roleID string, req *UpdateRoleRequest) error {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return ErrWorkspaceNotFound
+	}
 	rID, err := uuid.Parse(roleID)
 	if err != nil {
 		return fmt.Errorf("invalid role_id")
@@ -563,6 +584,9 @@ func (s *Service) UpdateWorkspaceRole(ctx context.Context, roleID string, req *U
 
 	role, err := s.Queries.GetWorkspaceRoleByID(ctx, rID)
 	if err != nil {
+		return fmt.Errorf("role not found")
+	}
+	if role.WorkspaceID != wsID {
 		return fmt.Errorf("role not found")
 	}
 
@@ -601,7 +625,11 @@ func (s *Service) UpdateWorkspaceRole(ctx context.Context, roleID string, req *U
 }
 
 // DeleteWorkspaceRole deletes a custom role (system roles cannot be deleted)
-func (s *Service) DeleteWorkspaceRole(ctx context.Context, roleID string) error {
+func (s *Service) DeleteWorkspaceRole(ctx context.Context, workspaceID, roleID string) error {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return ErrWorkspaceNotFound
+	}
 	rID, err := uuid.Parse(roleID)
 	if err != nil {
 		return fmt.Errorf("invalid role_id")
@@ -609,6 +637,9 @@ func (s *Service) DeleteWorkspaceRole(ctx context.Context, roleID string) error 
 
 	role, err := s.Queries.GetWorkspaceRoleByID(ctx, rID)
 	if err != nil {
+		return fmt.Errorf("role not found")
+	}
+	if role.WorkspaceID != wsID {
 		return fmt.Errorf("role not found")
 	}
 
@@ -645,6 +676,9 @@ func (s *Service) AssignRole(ctx context.Context, workspaceID, userID string, re
 	}
 	if role.WorkspaceID != wsID {
 		return nil, fmt.Errorf("role does not belong to this workspace")
+	}
+	if role.IsSystem {
+		return nil, fmt.Errorf("cannot assign system roles")
 	}
 
 	// Verify member exists in workspace
@@ -741,9 +775,11 @@ func (s *Service) VerifyWorkspaceAccess(ctx context.Context, workspaceID, userID
 		WorkspaceID:    wsID,
 		MemberEntityID: personalEntity.ID,
 	})
-	if err != nil || len(assignments) == 0 {
-		// Member exists but has no role assigned — minimal access
-		return RelationKaryawan, []byte(`[]`), nil
+	if err != nil {
+		return "", nil, err
+	}
+	if len(assignments) == 0 {
+		return "", nil, ErrNotAuthorized
 	}
 
 	// Merge all permissions from all assigned roles
@@ -894,8 +930,12 @@ func (s *Service) DeleteCounterpartyAlias(ctx context.Context, workspaceID, enti
 	})
 }
 
-// SearchCounterparties does a privacy-safe fuzzy search for entities (returns only name, type, is_shadow)
-func (s *Service) SearchCounterparties(ctx context.Context, query string, limit int) ([]map[string]interface{}, error) {
+// SearchCounterparties does a privacy-safe fuzzy search scoped to workspace counterparties and shadow entities.
+func (s *Service) SearchCounterparties(ctx context.Context, workspaceID, query string, limit int) ([]map[string]interface{}, error) {
+	wsID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return nil, ErrWorkspaceNotFound
+	}
 	if limit <= 0 {
 		limit = 10
 	}
@@ -911,6 +951,7 @@ func (s *Service) SearchCounterparties(ctx context.Context, query string, limit 
 	results, err := s.Queries.SearchCounterpartiesFuzzy(ctx, db.SearchCounterpartiesFuzzyParams{
 		Similarity: normalized,
 		Limit:      int32(limit),
+		ObjectID:   wsID,
 	})
 	if err != nil {
 		return nil, err

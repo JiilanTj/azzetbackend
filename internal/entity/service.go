@@ -39,6 +39,14 @@ func (s *Service) CreateEntity(ctx context.Context, userID string, req *CreateEn
 		return nil, fmt.Errorf("invalid user_id")
 	}
 
+	if req.EntityType == TypeOrangPribadi {
+		if _, err := s.Queries.GetEntityByUserID(ctx, pgtype.UUID{Bytes: uid, Valid: true}); err == nil {
+			return nil, fmt.Errorf("personal entity already exists for this user")
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("failed to check personal entity: %w", err)
+		}
+	}
+
 	now := time.Now()
 	normalized := identity.NormalizeName(req.NamaUtama)
 	e, err := s.Queries.CreateEntity(ctx, db.CreateEntityParams{
@@ -100,6 +108,12 @@ func (s *Service) CreateShadowEntity(ctx context.Context, req *CreateEntityReque
 // CreatePersonalEntity creates a personal entity for a newly registered user
 // This is called during registration (Option A - will be refactored to event-driven in Phase 6)
 func (s *Service) CreatePersonalEntity(ctx context.Context, userID uuid.UUID, name string) (*db.Entity, error) {
+	if existing, err := s.Queries.GetEntityByUserID(ctx, pgtype.UUID{Bytes: userID, Valid: true}); err == nil {
+		return &existing, nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
 	now := time.Now()
 	normalized := identity.NormalizeName(name)
 	e, err := s.Queries.CreateEntity(ctx, db.CreateEntityParams{

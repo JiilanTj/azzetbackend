@@ -35,6 +35,12 @@ SELECT * FROM payments WHERE xendit_invoice_id = $1;
 -- name: ListPaymentsByInvoice :many
 SELECT * FROM payments WHERE invoice_id = $1 ORDER BY created_at DESC;
 
+-- name: GetPendingPaymentByInvoice :one
+SELECT * FROM payments
+WHERE invoice_id = $1 AND status = 'pending'
+ORDER BY created_at DESC
+LIMIT 1;
+
 -- name: ListPaymentsByWorkspace :many
 SELECT * FROM payments WHERE workspace_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;
 

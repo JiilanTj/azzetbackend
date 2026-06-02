@@ -10,6 +10,7 @@ import (
 
 const AdminIDKey contextKey = "admin_id"
 const AdminRoleKey contextKey = "admin_role"
+const AdminScopeKey contextKey = "admin_scope"
 
 type AdminMiddleware struct {
 	JWT           *shared.JWTService
@@ -61,7 +62,7 @@ func (m *AdminMiddleware) Authenticate(next http.Handler) http.Handler {
 			}
 		}
 
-		// Get admin role
+		// Get admin role and verify account is active
 		role := ""
 		if m.GetAdminRole != nil {
 			role, err = m.GetAdminRole(r.Context(), claims.UserID)
@@ -73,7 +74,30 @@ func (m *AdminMiddleware) Authenticate(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(r.Context(), AdminIDKey, claims.UserID)
 		ctx = context.WithValue(ctx, AdminRoleKey, role)
+		ctx = context.WithValue(ctx, AdminScopeKey, claims.Scope)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// RequireFullAuth rejects MFA-setup-scoped tokens on routes that need full admin access.
+func (m *AdminMiddleware) RequireFullAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if GetAdminScope(r.Context()) == shared.TokenScopeMFASetup {
+			shared.Forbidden(w, r, "admin", "MFA setup required before accessing this resource")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// RequireMFASetupScope only allows tokens issued for MFA setup (blocks full admin tokens).
+func (m *AdminMiddleware) RequireMFASetupScope(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if GetAdminScope(r.Context()) != shared.TokenScopeMFASetup {
+			shared.Forbidden(w, r, "admin", "this endpoint requires an MFA setup token")
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -115,4 +139,16 @@ func GetAdminID(ctx context.Context) string {
 func GetAdminRole(ctx context.Context) string {
 	role, _ := ctx.Value(AdminRoleKey).(string)
 	return role
+}
+
+// GetAdminScope extracts token scope from context
+func GetAdminScope(ctx context.Context) string {
+	scope, _ := ctx.Value(AdminScopeKey).(string)
+	return scope
+}
+
+// GetAdminIDOrError returns admin ID or false if missing from context
+func GetAdminIDOrError(ctx context.Context) (string, bool) {
+	id, ok := ctx.Value(AdminIDKey).(string)
+	return id, ok && id != ""
 }

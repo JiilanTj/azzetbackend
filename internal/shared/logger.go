@@ -17,8 +17,12 @@ type Logger struct {
 func NewLogger(env string) *Logger {
 	var h slog.Handler
 
+	level := slog.LevelInfo
+	if env == "development" {
+		level = slog.LevelDebug
+	}
 	opts := &slog.HandlerOptions{
-		Level:     slog.LevelDebug,
+		Level:     level,
 		AddSource: env == "development",
 	}
 

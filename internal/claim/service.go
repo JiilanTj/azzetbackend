@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ var (
 	ErrDocumentsMissing    = errors.New("at least one document is required before submission")
 	ErrNotShadow           = errors.New("entity is not a shadow entity")
 	ErrDocNotFound         = errors.New("document not found")
+	ErrInvalidDocStatus    = errors.New("document upload already confirmed")
 	ErrUploadNotConfirmed  = errors.New("document not found in storage")
 	ErrEntityNotFound      = errors.New("entity not found")
 )
@@ -125,7 +127,7 @@ func (s *Service) CreateClaim(ctx context.Context, userID string, req *CreateCla
 	}
 
 	details, _ := json.Marshal(map[string]string{"entity_id": req.EntityID})
-	_ = qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
+	if err := qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
 		ID:        uuid.New(),
 		ClaimID:   claim.ID,
 		ActorID:   uid,
@@ -134,7 +136,9 @@ func (s *Service) CreateClaim(ctx context.Context, userID string, req *CreateCla
 		NewStatus: pgtype.Text{String: StatusDraft, Valid: true},
 		Details:   details,
 		CreatedAt: now,
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("failed to create audit entry: %w", err)
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("failed to commit: %w", err)
@@ -220,7 +224,7 @@ func (s *Service) SubmitClaim(ctx context.Context, userID, claimID string) (*Cla
 	}
 
 	details, _ := json.Marshal(map[string]string{"from": oldStatus})
-	_ = qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
+	if err := qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
 		ID:        uuid.New(),
 		ClaimID:   cid,
 		ActorID:   uid,
@@ -230,16 +234,20 @@ func (s *Service) SubmitClaim(ctx context.Context, userID, claimID string) (*Cla
 		NewStatus: pgtype.Text{String: StatusSubmitted, Valid: true},
 		Details:   details,
 		CreatedAt: now,
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("failed to create audit entry: %w", err)
+	}
 
-	_ = events.EmitEvent(ctx, tx, events.CompanyClaimRequested, map[string]string{
+	if err := events.EmitEvent(ctx, tx, events.CompanyClaimRequested, map[string]string{
 		"claim_id":  claimID,
 		"entity_id": claim.EntityID.String(),
 		"user_id":   uid.String(),
 	},
 		events.WithWorkspace(claim.EntityID.String()),
 		events.WithActor(uid.String()),
-	)
+	); err != nil {
+		return nil, fmt.Errorf("failed to emit claim event: %w", err)
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("failed to commit: %w", err)
@@ -378,6 +386,10 @@ func (s *Service) ConfirmDocumentUpload(ctx context.Context, userID, claimID, do
 	}
 	if !exists {
 		return ErrUploadNotConfirmed
+	}
+
+	if doc.UploadStatus != DocStatusPending {
+		return ErrInvalidDocStatus
 	}
 
 	return s.Queries.MarkDocumentUploaded(ctx, did)
@@ -563,7 +575,7 @@ func (s *Service) DisputeClaim(ctx context.Context, userID, claimID string, req 
 	}
 
 	details, _ := json.Marshal(map[string]string{"reason": req.Reason})
-	_ = qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
+	if err := qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
 		ID:        uuid.New(),
 		ClaimID:   cid,
 		ActorID:   uid,
@@ -573,7 +585,9 @@ func (s *Service) DisputeClaim(ctx context.Context, userID, claimID string, req 
 		NewStatus: pgtype.Text{String: StatusDisputed, Valid: true},
 		Details:   details,
 		CreatedAt: now,
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to create audit entry: %w", err)
+	}
 
 	return tx.Commit(ctx)
 }
@@ -618,7 +632,7 @@ func (s *Service) ListAllClaims(ctx context.Context, limit, offset int) ([]Claim
 
 	resp := make([]ClaimListResponse, 0, len(claims))
 	for i := range claims {
-		docCount, _ := s.Queries.CountClaimDocuments(context.Background(), claims[i].ID)
+		docCount, _ := s.Queries.CountClaimDocuments(ctx, claims[i].ID)
 		resp = append(resp, ClaimListResponse{
 			ClaimResponse: ClaimResponse{
 				ID:         claims[i].ID.String(),
@@ -673,7 +687,7 @@ func (s *Service) AssignClaim(ctx context.Context, adminID, claimID string) erro
 	}
 
 	details, _ := json.Marshal(map[string]string{"reviewer_id": adminID})
-	_ = qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
+	if err := qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
 		ID:        uuid.New(),
 		ClaimID:   cid,
 		ActorID:   aid,
@@ -683,7 +697,9 @@ func (s *Service) AssignClaim(ctx context.Context, adminID, claimID string) erro
 		NewStatus: pgtype.Text{String: StatusUnderReview, Valid: true},
 		Details:   details,
 		CreatedAt: now,
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to create audit entry: %w", err)
+	}
 
 	return tx.Commit(ctx)
 }
@@ -753,7 +769,7 @@ func (s *Service) ApproveClaim(ctx context.Context, adminID, claimID string, req
 	}
 
 	details, _ := json.Marshal(map[string]string{"action": "approved"})
-	_ = qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
+	if err := qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
 		ID:        uuid.New(),
 		ClaimID:   cid,
 		ActorID:   aid,
@@ -763,16 +779,20 @@ func (s *Service) ApproveClaim(ctx context.Context, adminID, claimID string, req
 		NewStatus: pgtype.Text{String: StatusApproved, Valid: true},
 		Details:   details,
 		CreatedAt: now,
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to create audit entry: %w", err)
+	}
 
-	_ = events.EmitEvent(ctx, tx, events.CompanyClaimApproved, map[string]string{
+	if err := events.EmitEvent(ctx, tx, events.CompanyClaimApproved, map[string]string{
 		"claim_id":         claimID,
 		"entity_id":        claim.EntityID.String(),
 		"claimant_user_id": claim.ClaimantUserID.String(),
 	},
 		events.WithWorkspace(claim.EntityID.String()),
 		events.WithActor(aid.String()),
-	)
+	); err != nil {
+		return fmt.Errorf("failed to emit claim event: %w", err)
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("failed to commit: %w", err)
@@ -780,7 +800,11 @@ func (s *Service) ApproveClaim(ctx context.Context, adminID, claimID string, req
 
 	if s.Workspace != nil {
 		if err := s.Workspace.EnsureWorkspaceForClaimedEntity(ctx, claim.ClaimantUserID.String(), claim.EntityID); err != nil {
-			return fmt.Errorf("failed to bootstrap workspace: %w", err)
+			slog.Error("failed to bootstrap workspace after claim approval",
+				"claim_id", claimID,
+				"entity_id", claim.EntityID.String(),
+				"error", err,
+			)
 		}
 	}
 
@@ -841,7 +865,7 @@ func (s *Service) RejectClaim(ctx context.Context, adminID, claimID string, req 
 	}
 
 	details, _ := json.Marshal(map[string]string{"rejection_reason": rejectionReason.String})
-	_ = qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
+	if err := qtx.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
 		ID:        uuid.New(),
 		ClaimID:   cid,
 		ActorID:   aid,
@@ -851,16 +875,20 @@ func (s *Service) RejectClaim(ctx context.Context, adminID, claimID string, req 
 		NewStatus: pgtype.Text{String: StatusRejected, Valid: true},
 		Details:   details,
 		CreatedAt: now,
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to create audit entry: %w", err)
+	}
 
-	_ = events.EmitEvent(ctx, tx, events.CompanyClaimRejected, map[string]string{
+	if err := events.EmitEvent(ctx, tx, events.CompanyClaimRejected, map[string]string{
 		"claim_id":         claimID,
 		"entity_id":        claim.EntityID.String(),
 		"claimant_user_id": claim.ClaimantUserID.String(),
 	},
 		events.WithWorkspace(claim.EntityID.String()),
 		events.WithActor(aid.String()),
-	)
+	); err != nil {
+		return fmt.Errorf("failed to emit claim event: %w", err)
+	}
 
 	return tx.Commit(ctx)
 }
@@ -883,7 +911,11 @@ func (s *Service) GetClaimAuditLog(ctx context.Context, claimID string) ([]Audit
 	return resp, nil
 }
 
-func (s *Service) GetDocumentViewURL(ctx context.Context, documentID string) (string, error) {
+func (s *Service) GetDocumentViewURL(ctx context.Context, claimID, documentID string) (string, error) {
+	cid, err := uuid.Parse(claimID)
+	if err != nil {
+		return "", ErrClaimNotFound
+	}
 	did, err := uuid.Parse(documentID)
 	if err != nil {
 		return "", ErrDocNotFound
@@ -891,6 +923,9 @@ func (s *Service) GetDocumentViewURL(ctx context.Context, documentID string) (st
 
 	doc, err := s.Queries.GetClaimDocumentByID(ctx, did)
 	if err != nil {
+		return "", ErrDocNotFound
+	}
+	if doc.ClaimID != cid {
 		return "", ErrDocNotFound
 	}
 

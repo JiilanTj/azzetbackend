@@ -30,8 +30,9 @@ func NewIdentityHandler(service *identity.Service) *IdentityHandler {
 // @Success      200 {object} shared.APIResponse{data=identity.VerificationResponse}
 // @Router       /entities/{id}/verification [get]
 func (h *IdentityHandler) GetVerificationStatus(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	entityID := chi.URLParam(r, "id")
-	resp, err := h.Service.GetVerificationStatus(r.Context(), entityID)
+	resp, err := h.Service.GetVerificationStatus(r.Context(), userID, entityID)
 	if err != nil {
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "identity", "failed to get verification status")
 		return
@@ -271,6 +272,7 @@ func (h *IdentityHandler) DeleteAlias(w http.ResponseWriter, r *http.Request) {
 // @Tags         Identity
 // @Produce      json
 // @Security     BearerAuth
+// @Param        workspace_id query string true "Workspace ID"
 // @Param        q query string true "Search query"
 // @Param        limit query int false "Limit"
 // @Param        offset query int false "Offset"
@@ -278,6 +280,11 @@ func (h *IdentityHandler) DeleteAlias(w http.ResponseWriter, r *http.Request) {
 // @Failure      400 {object} shared.ErrorResponse
 // @Router       /entities/match [get]
 func (h *IdentityHandler) SearchFuzzy(w http.ResponseWriter, r *http.Request) {
+	workspaceID := r.URL.Query().Get("workspace_id")
+	if workspaceID == "" {
+		shared.Error(w, r, 400, "VALIDATION_ERROR", "identity", "workspace_id parameter is required")
+		return
+	}
 	query := r.URL.Query().Get("q")
 	if query == "" {
 		shared.Error(w, r, 400, "VALIDATION_ERROR", "identity", "q parameter is required")
@@ -287,7 +294,7 @@ func (h *IdentityHandler) SearchFuzzy(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 
-	resp, err := h.Service.SearchFuzzy(r.Context(), query, limit, offset)
+	resp, err := h.Service.SearchFuzzy(r.Context(), workspaceID, query, limit, offset)
 	if err != nil {
 		shared.Error(w, r, 500, "INTERNAL_ERROR", "identity", "search failed")
 		return

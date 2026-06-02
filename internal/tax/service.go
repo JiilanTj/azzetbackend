@@ -3,10 +3,12 @@ package tax
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -28,6 +30,9 @@ func (s *Service) GetOrCreateProfile(ctx context.Context, workspaceID uuid.UUID)
 	if err == nil {
 		resp := profileFromRow(profile)
 		return &resp, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("failed to get tax profile: %w", err)
 	}
 
 	now := time.Now()
@@ -152,6 +157,17 @@ func (s *Service) GetPPNSummary(ctx context.Context, workspaceID uuid.UUID, peri
 		Period:      period,
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &PPNSummaryResponse{
+				Period:           period,
+				PPNMasukan:       "0.00",
+				PPNKeluaran:      "0.00",
+				NetPPN:           "0.00",
+				DPPMasukan:       "0.00",
+				DPPKeluaran:      "0.00",
+				TransactionCount: 0,
+			}, nil
+		}
 		return nil, fmt.Errorf("failed to get PPN summary: %w", err)
 	}
 
@@ -266,7 +282,15 @@ func (s *Service) RequestReport(ctx context.Context, workspaceID, userID uuid.UU
 
 	now := time.Now()
 	jobID := uuid.New()
-	job, err := s.Queries.CreateTaxReportJob(ctx, db.CreateTaxReportJobParams{
+
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.Queries.WithTx(tx)
+	job, err := qtx.CreateTaxReportJob(ctx, db.CreateTaxReportJobParams{
 		ID:          jobID,
 		WorkspaceID: workspaceID,
 		ReportType:  req.ReportType,
@@ -280,12 +304,6 @@ func (s *Service) RequestReport(ctx context.Context, workspaceID, userID uuid.UU
 		return nil, fmt.Errorf("failed to create report job: %w", err)
 	}
 
-	tx, err := s.Pool.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
 	err = events.EmitEvent(ctx, tx, events.ReportGenerationReq, map[string]string{
 		"job_id":       jobID.String(),
 		"workspace_id": workspaceID.String(),
@@ -297,7 +315,7 @@ func (s *Service) RequestReport(ctx context.Context, workspaceID, userID uuid.UU
 		return nil, fmt.Errorf("failed to emit report event: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit report event: %w", err)
+		return nil, fmt.Errorf("failed to commit report job: %w", err)
 	}
 
 	resp := reportJobFromEntity(job)

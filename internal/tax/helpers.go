@@ -2,6 +2,7 @@ package tax
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/google/uuid"
@@ -9,7 +10,7 @@ import (
 )
 
 func floatToNumeric(f float64) pgtype.Numeric {
-	cents := int64(f * 100)
+	cents := int64(math.Round(f * 100))
 	return pgtype.Numeric{
 		Int:   big.NewInt(cents),
 		Exp:   -2,

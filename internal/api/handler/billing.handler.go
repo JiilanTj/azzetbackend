@@ -157,17 +157,22 @@ func (h *BillingHandler) ListPayments(w http.ResponseWriter, r *http.Request) {
 // @Failure      401               {object}  shared.ErrorResponse
 // @Router       /webhooks/xendit [post]
 func (h *BillingHandler) XenditWebhook(w http.ResponseWriter, r *http.Request) {
-	// Verify webhook token
-	callbackToken := r.Header.Get("x-callback-token")
-	if !h.Service.Xendit.VerifyWebhookToken(callbackToken) {
-		shared.Unauthorized(w, r, "webhook", "invalid callback token")
-		return
-	}
-
 	// Read body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		shared.BadRequest(w, r, "webhook", "failed to read body")
+		return
+	}
+
+	// Verify webhook (HMAC signature preferred, callback token fallback)
+	signature := r.Header.Get("x-xendit-signature")
+	callbackToken := r.Header.Get("x-callback-token")
+	verified := signature != "" && h.Service.Xendit.VerifyWebhookSignature(body, signature)
+	if !verified {
+		verified = h.Service.Xendit.VerifyWebhookToken(callbackToken)
+	}
+	if !verified {
+		shared.Unauthorized(w, r, "webhook", "invalid callback token")
 		return
 	}
 
@@ -180,7 +185,7 @@ func (h *BillingHandler) XenditWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// Process webhook
 	if err := h.Service.HandleWebhook(r.Context(), &payload); err != nil {
-		shared.BadRequest(w, r, "webhook", err.Error())
+		shared.BadRequest(w, r, "webhook", "failed to process webhook")
 		return
 	}
 

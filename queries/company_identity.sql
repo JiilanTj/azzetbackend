@@ -84,11 +84,16 @@ LIMIT $2;
 UPDATE entities SET nama_normalized = $2, updated_at = NOW() WHERE id = $1;
 
 -- name: SearchEntitiesFuzzy :many
-SELECT *, similarity(nama_normalized, $1) as match_score
-FROM entities
-WHERE nama_normalized % $1 AND status = 'ACTIVE'
-ORDER BY similarity(nama_normalized, $1) DESC
-LIMIT $2 OFFSET $3;
+SELECT e.*, similarity(e.nama_normalized, $2) as match_score
+FROM entities e
+INNER JOIN entity_relations er ON er.subject_id = e.id
+WHERE er.object_id = $1
+  AND er.relation_type IN ('PELANGGAN', 'VENDOR')
+  AND er.status = 'ACTIVE'
+  AND e.nama_normalized % $2
+  AND e.status = 'ACTIVE'
+ORDER BY similarity(e.nama_normalized, $2) DESC
+LIMIT $3 OFFSET $4;
 
 -- name: FindDuplicateEntities :many
 SELECT *, similarity(nama_normalized, $1) as match_score
@@ -268,6 +273,15 @@ FROM entities e
 WHERE e.nama_normalized % $1
   AND e.status = 'ACTIVE'
   AND e.entity_type = 'BADAN_USAHA'
+  AND (
+    e.is_shadow = TRUE
+    OR EXISTS (
+      SELECT 1 FROM entity_relations er
+      WHERE er.subject_id = e.id
+        AND er.object_id = $3
+        AND er.relation_type IN ('PELANGGAN', 'VENDOR')
+    )
+  )
 ORDER BY similarity(e.nama_normalized, $1) DESC
 LIMIT $2;
 

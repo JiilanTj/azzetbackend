@@ -91,6 +91,16 @@ func (s *Service) CreateTransaction(ctx context.Context, workspaceID, userID uui
 		if err != nil {
 			return nil, fmt.Errorf("invalid counterparty_entity_id: %w", err)
 		}
+		exists, err := qtx.ExistsCounterpartyRelation(ctx, db.ExistsCounterpartyRelationParams{
+			ObjectID:  workspaceID,
+			SubjectID: cid,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate counterparty: %w", err)
+		}
+		if !exists {
+			return nil, fmt.Errorf("counterparty is not linked to this workspace")
+		}
 		counterpartyEntityID = cid
 	}
 
@@ -109,8 +119,8 @@ func (s *Service) CreateTransaction(ctx context.Context, workspaceID, userID uui
 		}
 	}
 
-	// Validate category for type (if not JOURNAL or ADVANCED mode)
-	if inputMode == InputModeSimple && req.TransactionType != TxTypeJournal {
+	// Validate category for type (all non-JOURNAL modes including OCR)
+	if inputMode != InputModeAdvanced && req.TransactionType != TxTypeJournal {
 		if !IsValidCategoryForType(category, req.TransactionType) {
 			return nil, ErrInvalidCategory
 		}
@@ -118,8 +128,9 @@ func (s *Service) CreateTransaction(ctx context.Context, workspaceID, userID uui
 
 	// Calculate tax if applicable
 	taxAmount := pgtype.Numeric{Valid: true, Int: nil}
-	if req.IncludesTax {
-		taxFloat := amountFloat * PPNRate
+	ppnRate := s.getPPNRate(ctx, workspaceID)
+	if req.IncludesTax || isPPNCategory(category) {
+		_, taxFloat := splitTaxAmount(amountFloat, ppnRate, true)
 		taxAmount = floatToNumeric(taxFloat)
 	}
 
@@ -158,7 +169,10 @@ func (s *Service) CreateTransaction(ctx context.Context, workspaceID, userID uui
 		for i, li := range req.LineItems {
 			var itemID pgtype.UUID
 			if li.ItemID != "" {
-				parsed, _ := uuid.Parse(li.ItemID)
+				parsed, err := uuid.Parse(li.ItemID)
+				if err != nil {
+					return nil, fmt.Errorf("invalid item_id: %w", err)
+				}
 				itemID = pgtype.UUID{Bytes: parsed, Valid: true}
 			}
 
@@ -211,7 +225,7 @@ func (s *Service) CreateTransaction(ctx context.Context, workspaceID, userID uui
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate journal: %w", err)
 	}
-	if interfaceToFloat(sums.TotalDebit) != interfaceToFloat(sums.TotalCredit) {
+	if !balancesEqual(interfaceToFloat(sums.TotalDebit), interfaceToFloat(sums.TotalCredit)) {
 		return nil, ErrDebitCreditMismatch
 	}
 
@@ -254,20 +268,21 @@ func (s *Service) GetTransaction(ctx context.Context, workspaceID, txID uuid.UUI
 		TransactionID: txID,
 		WorkspaceID:   workspaceID,
 	})
-	if err == nil {
-		resp.JournalEntries = make([]JournalEntryResponse, 0, len(journals))
-		for _, j := range journals {
-			resp.JournalEntries = append(resp.JournalEntries, JournalEntryResponse{
-				ID:          j.ID.String(),
-				AccountID:   j.AccountID.String(),
-				AccountCode: j.AccountCode,
-				AccountName: j.AccountName,
-				Description: pgtextToString(j.Description),
-				Debit:       numericToString(j.Debit),
-				Credit:      numericToString(j.Credit),
-				SortOrder:   int(j.SortOrder),
-			})
-		}
+	if err != nil {
+		return nil, fmt.Errorf("failed to load journal entries: %w", err)
+	}
+	resp.JournalEntries = make([]JournalEntryResponse, 0, len(journals))
+	for _, j := range journals {
+		resp.JournalEntries = append(resp.JournalEntries, JournalEntryResponse{
+			ID:          j.ID.String(),
+			AccountID:   j.AccountID.String(),
+			AccountCode: j.AccountCode,
+			AccountName: j.AccountName,
+			Description: pgtextToString(j.Description),
+			Debit:       numericToString(j.Debit),
+			Credit:      numericToString(j.Credit),
+			SortOrder:   int(j.SortOrder),
+		})
 	}
 
 	// Load line items
@@ -275,7 +290,10 @@ func (s *Service) GetTransaction(ctx context.Context, workspaceID, txID uuid.UUI
 		TransactionID: txID,
 		WorkspaceID:   workspaceID,
 	})
-	if err == nil && len(lineItems) > 0 {
+	if err != nil {
+		return nil, fmt.Errorf("failed to load line items: %w", err)
+	}
+	if len(lineItems) > 0 {
 		resp.LineItems = make([]LineItemResponse, 0, len(lineItems))
 		for _, li := range lineItems {
 			itemID := ""
@@ -474,11 +492,13 @@ func (s *Service) createAutoJournalEntries(ctx context.Context, qtx *db.Queries,
 		return fmt.Errorf("credit account %s not found: %w", rule.Primary.CreditCode, err)
 	}
 
-	// If includes tax, the base amount is amount / (1 + PPNRate)
+	// Split DPP/PPN when amount includes tax or category implies PPN
+	ppnRate := s.getPPNRate(ctx, workspaceID)
 	baseAmount := amountFloat
 	taxAmount := 0.0
-	if includesTax {
-		baseAmount = amountFloat / (1 + PPNRate)
+	needsTaxSplit := includesTax || isPPNCategory(category)
+	if needsTaxSplit {
+		baseAmount = amountFloat / (1 + ppnRate)
 		taxAmount = amountFloat - baseAmount
 	}
 
@@ -534,8 +554,8 @@ func (s *Service) createAutoJournalEntries(ctx context.Context, qtx *db.Queries,
 
 		// Determine amount for additional entry
 		addAmount := baseAmount // HPP uses same base amount
-		if includesTax && (additional.DebitCode == "1-1008" || additional.CreditCode == "2-1005") {
-			addAmount = taxAmount // PPN entries use tax amount
+		if needsTaxSplit && isPPNJournalEntry(additional.DebitCode, additional.CreditCode) {
+			addAmount = taxAmount // PPN entries use tax portion only
 		}
 
 		_, err = qtx.CreateJournalEntry(ctx, db.CreateJournalEntryParams{
@@ -721,4 +741,55 @@ func numericToString4(n pgtype.Numeric) string {
 
 func stringToNullable(s string) string {
 	return s
+}
+
+const balanceEpsilon = 0.01
+
+func balancesEqual(a, b float64) bool {
+	diff := a - b
+	return diff >= -balanceEpsilon && diff <= balanceEpsilon
+}
+
+func applyNormalBalance(current, debit, credit float64, normalBalance string) float64 {
+	if normalBalance == NormalBalanceCredit {
+		return current + credit - debit
+	}
+	return current + debit - credit
+}
+
+func splitTaxAmount(total, rate float64, taxInclusive bool) (base, tax float64) {
+	if taxInclusive {
+		base = total / (1 + rate)
+		tax = total - base
+		return base, tax
+	}
+	base = total
+	tax = total * rate
+	return base, tax
+}
+
+func isPPNCategory(category string) bool {
+	return IsPPNCategory(category)
+}
+
+// IsPPNCategory reports whether the category implies inclusive/explicit PPN handling.
+func IsPPNCategory(category string) bool {
+	return category == CatPenjualanDenganPPN || category == CatPembelianDenganPPN
+}
+
+func isPPNJournalEntry(debitCode, creditCode string) bool {
+	return (debitCode == "1-1008" && creditCode == "1-1001") ||
+		(debitCode == "1-1001" && creditCode == "2-1005")
+}
+
+func (s *Service) getPPNRate(ctx context.Context, workspaceID uuid.UUID) float64 {
+	profile, err := s.Queries.GetTaxProfileByWorkspace(ctx, workspaceID)
+	if err != nil {
+		return PPNRate
+	}
+	rate := numericToFloat(profile.DefaultPpnRate)
+	if rate <= 0 {
+		return PPNRate
+	}
+	return rate
 }

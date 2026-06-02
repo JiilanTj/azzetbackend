@@ -114,7 +114,7 @@ func (w *LedgerWorker) HandleTransactionCreated(ctx context.Context, event *even
 	totalDebit := interfaceToFloat(sums.TotalDebit)
 	totalCredit := interfaceToFloat(sums.TotalCredit)
 
-	if totalDebit != totalCredit {
+	if !balancesEqual(totalDebit, totalCredit) {
 		_ = w.Queries.MarkTransactionFailed(ctx, db.MarkTransactionFailedParams{
 			ID:          txID,
 			WorkspaceID: workspaceID,
@@ -135,6 +135,14 @@ func (w *LedgerWorker) HandleTransactionCreated(ctx context.Context, event *even
 
 	// 4. Create ledger entries with running balance
 	for _, journal := range journals {
+		account, err := qtx.GetAccountByID(ctx, db.GetAccountByIDParams{
+			ID:          journal.AccountID,
+			WorkspaceID: workspaceID,
+		})
+		if err != nil {
+			return fmt.Errorf("account not found for journal entry: %w", err)
+		}
+
 		// Get current running balance for this account
 		lastBalance, err := qtx.GetLastLedgerBalance(ctx, db.GetLastLedgerBalanceParams{
 			WorkspaceID: workspaceID,
@@ -147,14 +155,10 @@ func (w *LedgerWorker) HandleTransactionCreated(ctx context.Context, event *even
 		}
 		// If error (no previous entries), currentBalance stays 0
 
-		// Calculate new running balance based on normal balance
 		debit := numericToFloat(journal.Debit)
 		credit := numericToFloat(journal.Credit)
 
-		// Running balance: for DEBIT-normal accounts, debit increases balance
-		// For CREDIT-normal accounts, credit increases balance
-		// We store the absolute effect: debit - credit (positive = debit side)
-		newBalance := currentBalance + debit - credit
+		newBalance := applyNormalBalance(currentBalance, debit, credit, account.NormalBalance)
 
 		_, err = qtx.CreateLedgerEntry(ctx, db.CreateLedgerEntryParams{
 			ID:              uuid.New(),
@@ -172,15 +176,14 @@ func (w *LedgerWorker) HandleTransactionCreated(ctx context.Context, event *even
 			return fmt.Errorf("failed to create ledger entry: %w", err)
 		}
 
-		// 5. Upsert account balance for this period
-		balanceChange := debit - credit
+		// 5. Upsert account balance for this period (ending_balance = cumulative running balance)
 		_, err = qtx.UpsertAccountBalance(ctx, db.UpsertAccountBalanceParams{
 			WorkspaceID:   workspaceID,
 			AccountID:     journal.AccountID,
 			Period:        period,
 			TotalDebit:    floatToNumeric(debit),
 			TotalCredit:   floatToNumeric(credit),
-			EndingBalance: floatToNumeric(balanceChange),
+			EndingBalance: floatToNumeric(newBalance),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to upsert account balance: %w", err)
@@ -206,10 +209,14 @@ func (w *LedgerWorker) HandleTransactionCreated(ctx context.Context, event *even
 	}
 
 	// 8. Emit ledger.posted event
-	err = events.EmitEvent(ctx, dbTx, events.LedgerPosted, map[string]string{
+	ledgerPayload := map[string]string{
 		"transaction_id": txID.String(),
 		"workspace_id":   workspaceID.String(),
-	},
+	}
+	if payload.IsReversal == "true" || transaction.ReversedTransactionID.Valid {
+		ledgerPayload["is_reversal"] = "true"
+	}
+	err = events.EmitEvent(ctx, dbTx, events.LedgerPosted, ledgerPayload,
 		events.WithWorkspace(workspaceID.String()),
 	)
 	if err != nil {

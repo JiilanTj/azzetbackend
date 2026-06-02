@@ -15,15 +15,20 @@ type JWTService struct {
 	RefreshTokenExpiry time.Duration
 }
 
+// TokenScopeMFASetup limits admin tokens to MFA setup routes only.
+const TokenScopeMFASetup = "mfa-setup"
+
 type JWTClaims struct {
 	UserID    string `json:"user_id"`
 	SessionID string `json:"session_id"`
+	Scope     string `json:"scope,omitempty"`
 	JTI       string `json:"jti"`
 }
 
 type jwtCustomClaims struct {
 	UserID    string `json:"user_id"`
 	SessionID string `json:"session_id"`
+	Scope     string `json:"scope,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -37,11 +42,16 @@ func NewJWTService(accessSecret, refreshSecret string, accessExpiry, refreshExpi
 }
 
 func (s *JWTService) GenerateAccessToken(userID, sessionID string) (string, error) {
+	return s.GenerateAccessTokenWithScope(userID, sessionID, "")
+}
+
+func (s *JWTService) GenerateAccessTokenWithScope(userID, sessionID, scope string) (string, error) {
 	jti := uuid.New().String()
 
 	claims := jwtCustomClaims{
 		UserID:    userID,
 		SessionID: sessionID,
+		Scope:     scope,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        jti,
 			Subject:   userID,
@@ -103,6 +113,7 @@ func (s *JWTService) validateToken(tokenString, secret string) (*JWTClaims, erro
 	return &JWTClaims{
 		UserID:    claims.UserID,
 		SessionID: claims.SessionID,
+		Scope:     claims.Scope,
 		JTI:       claims.ID,
 	}, nil
 }

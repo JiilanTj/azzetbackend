@@ -42,25 +42,25 @@ SELECT * FROM tax_calculations WHERE id = $1 AND workspace_id = $2;
 
 -- name: GetTaxCalculationByTransactionAndType :one
 SELECT * FROM tax_calculations
-WHERE transaction_id = $1 AND tax_type = $2;
+WHERE transaction_id = $1 AND tax_type = $2 AND workspace_id = $3;
 
 -- name: ListTaxCalculations :many
 SELECT tc.*, t.transaction_number, t.transaction_type, t.description AS transaction_description
 FROM tax_calculations tc
 JOIN transactions t ON t.id = tc.transaction_id
 WHERE tc.workspace_id = $1
-  AND ($2::text IS NULL OR tc.period = $2)
-  AND ($3::text IS NULL OR tc.tax_type = $3)
-  AND ($4::text IS NULL OR tc.status = $4)
+  AND ($2::text IS NULL OR $2::text = '' OR tc.period = $2)
+  AND ($3::text IS NULL OR $3::text = '' OR tc.tax_type = $3)
+  AND ($4::text IS NULL OR $4::text = '' OR tc.status = $4)
 ORDER BY tc.created_at DESC
 LIMIT $5 OFFSET $6;
 
 -- name: CountTaxCalculations :one
 SELECT COUNT(*) FROM tax_calculations
 WHERE workspace_id = $1
-  AND ($2::text IS NULL OR period = $2)
-  AND ($3::text IS NULL OR tax_type = $3)
-  AND ($4::text IS NULL OR status = $4);
+  AND ($2::text IS NULL OR $2::text = '' OR period = $2)
+  AND ($3::text IS NULL OR $3::text = '' OR tax_type = $3)
+  AND ($4::text IS NULL OR $4::text = '' OR status = $4);
 
 -- name: VoidTaxCalculationsByTransaction :exec
 UPDATE tax_calculations
@@ -117,20 +117,21 @@ RETURNING *;
 -- name: GetTaxReportJob :one
 SELECT * FROM tax_report_jobs WHERE id = $1 AND workspace_id = $2;
 
--- name: UpdateTaxReportJobProcessing :exec
+-- name: UpdateTaxReportJobProcessing :one
 UPDATE tax_report_jobs
 SET status = 'PROCESSING'
-WHERE id = $1 AND status = 'PENDING';
+WHERE id = $1 AND workspace_id = $2 AND status = 'PENDING'
+RETURNING id;
 
 -- name: CompleteTaxReportJob :exec
 UPDATE tax_report_jobs
 SET status = 'COMPLETED', result = $2, completed_at = NOW()
-WHERE id = $1;
+WHERE id = $1 AND workspace_id = $3 AND status = 'PROCESSING';
 
 -- name: FailTaxReportJob :exec
 UPDATE tax_report_jobs
 SET status = 'FAILED', error_message = $2, completed_at = NOW()
-WHERE id = $1;
+WHERE id = $1 AND workspace_id = $3 AND status IN ('PENDING', 'PROCESSING');
 
 -- name: ListTaxReportJobs :many
 SELECT * FROM tax_report_jobs

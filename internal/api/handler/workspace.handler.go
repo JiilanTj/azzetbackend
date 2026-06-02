@@ -114,6 +114,7 @@ func (h *WorkspaceHandler) ListMembers(w http.ResponseWriter, r *http.Request) {
 // @Failure      403             {object}  shared.ErrorResponse
 // @Router       /workspaces/members/{id} [patch]
 func (h *WorkspaceHandler) UpdateMember(w http.ResponseWriter, r *http.Request) {
+	workspaceID := middleware.GetWorkspaceID(r.Context())
 	relationID := chi.URLParam(r, "id")
 
 	var req workspace.UpdateMemberRequest
@@ -122,7 +123,7 @@ func (h *WorkspaceHandler) UpdateMember(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := h.Service.UpdateMember(r.Context(), relationID, &req); err != nil {
+	if err := h.Service.UpdateMember(r.Context(), workspaceID, relationID, &req); err != nil {
 		shared.BadRequest(w, r, "workspace", err.Error())
 		return
 	}
@@ -144,9 +145,10 @@ func (h *WorkspaceHandler) UpdateMember(w http.ResponseWriter, r *http.Request) 
 // @Failure      403             {object}  shared.ErrorResponse
 // @Router       /workspaces/members/{id} [delete]
 func (h *WorkspaceHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
+	workspaceID := middleware.GetWorkspaceID(r.Context())
 	relationID := chi.URLParam(r, "id")
 
-	if err := h.Service.RemoveMember(r.Context(), relationID); err != nil {
+	if err := h.Service.RemoveMember(r.Context(), workspaceID, relationID); err != nil {
 		shared.BadRequest(w, r, "workspace", err.Error())
 		return
 	}
@@ -280,6 +282,7 @@ func (h *WorkspaceHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 // @Failure      400             {object}  shared.ErrorResponse
 // @Router       /workspaces/roles/{id} [patch]
 func (h *WorkspaceHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
+	workspaceID := middleware.GetWorkspaceID(r.Context())
 	roleID := chi.URLParam(r, "id")
 
 	var req workspace.UpdateRoleRequest
@@ -288,7 +291,7 @@ func (h *WorkspaceHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Service.UpdateWorkspaceRole(r.Context(), roleID, &req); err != nil {
+	if err := h.Service.UpdateWorkspaceRole(r.Context(), workspaceID, roleID, &req); err != nil {
 		shared.BadRequest(w, r, "workspace", err.Error())
 		return
 	}
@@ -308,9 +311,10 @@ func (h *WorkspaceHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 // @Failure      400             {object}  shared.ErrorResponse
 // @Router       /workspaces/roles/{id} [delete]
 func (h *WorkspaceHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
+	workspaceID := middleware.GetWorkspaceID(r.Context())
 	roleID := chi.URLParam(r, "id")
 
-	if err := h.Service.DeleteWorkspaceRole(r.Context(), roleID); err != nil {
+	if err := h.Service.DeleteWorkspaceRole(r.Context(), workspaceID, roleID); err != nil {
 		shared.BadRequest(w, r, "workspace", err.Error())
 		return
 	}
@@ -470,7 +474,8 @@ func (h *WorkspaceHandler) SearchCounterparties(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	resp, err := h.Service.SearchCounterparties(r.Context(), query, 10)
+	workspaceID := middleware.GetWorkspaceID(r.Context())
+	resp, err := h.Service.SearchCounterparties(r.Context(), workspaceID, query, 10)
 	if err != nil {
 		shared.InternalError(w, r, "workspace", "search failed")
 		return

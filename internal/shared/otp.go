@@ -3,6 +3,7 @@ package shared
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -28,8 +29,12 @@ func (s *OTPService) Generate() string {
 
 	n, err := rand.Int(rand.Reader, max)
 	if err != nil {
-		// Fallback to UUID-based generation
-		return fmt.Sprintf("%06d", uuid.New().ID()%1000000)
+		b := make([]byte, 8)
+		if _, rerr := rand.Read(b); rerr != nil {
+			panic("crypto/rand unavailable: " + rerr.Error())
+		}
+		n = new(big.Int).SetBytes(b)
+		n.Mod(n, max)
 	}
 
 	format := fmt.Sprintf("%%0%dd", s.Length)
@@ -44,7 +49,7 @@ func HashOTP(code string) string {
 
 // VerifyOTP compares a plaintext OTP against a stored hash
 func VerifyOTP(code, hash string) bool {
-	return HashOTP(code) == hash
+	return subtle.ConstantTimeCompare([]byte(HashOTP(code)), []byte(hash)) == 1
 }
 
 func GenerateUUID() string {

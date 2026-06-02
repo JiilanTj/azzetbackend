@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base32"
 	"fmt"
+	"time"
 
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
@@ -33,9 +34,15 @@ func GenerateMFASecret(email string) (secret string, qrURL string, err error) {
 	return key.Secret(), key.URL(), nil
 }
 
-// ValidateMFACode verifies a TOTP code against the secret
+// ValidateMFACode verifies a TOTP code against the secret (±1 period skew).
 func ValidateMFACode(secret, code string) bool {
-	return totp.Validate(code, secret)
+	ok, _ := totp.ValidateCustom(code, secret, time.Now().UTC(), totp.ValidateOpts{
+		Period:    mfaPeriod,
+		Skew:      1,
+		Digits:    otp.DigitsSix,
+		Algorithm: otp.AlgorithmSHA1,
+	})
+	return ok
 }
 
 // GenerateRandomSecret generates a random base32 secret (fallback)

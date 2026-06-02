@@ -95,26 +95,23 @@ func (w *DocumentWorker) HandleDocumentUploaded(ctx context.Context, event *even
 	if !IsImageMimeType(doc.MimeType) {
 		err := fmt.Errorf("OCR hanya mendukung file gambar (JPEG, PNG, WebP), got %s", doc.MimeType)
 		_ = w.DocumentService.SaveExtractionResult(ctx, payload.WorkspaceID, payload.DocumentID, nil, nil, err)
-		return nil
+		return nil // permanent validation failure — no retry
 	}
 
 	if w.Storage == nil || w.Extractor == nil {
 		err := fmt.Errorf("storage or AI not configured")
-		_ = w.DocumentService.SaveExtractionResult(ctx, payload.WorkspaceID, payload.DocumentID, nil, nil, err)
-		return nil
+		return err
 	}
 
 	imageURL, err := w.Storage.GeneratePresignedGetURL(ctx, doc.FileKey, 10*time.Minute)
 	if err != nil {
-		_ = w.DocumentService.SaveExtractionResult(ctx, payload.WorkspaceID, payload.DocumentID, nil, nil, err)
 		return fmt.Errorf("failed to generate view URL: %w", err)
 	}
 
 	result, err := w.Extractor.ExtractFromImageURL(ctx, imageURL, doc.DocumentType)
 	if err != nil {
 		_ = w.DocumentService.SaveExtractionResult(ctx, payload.WorkspaceID, payload.DocumentID, nil, nil, err)
-		slog.Error("document-worker: extraction failed", "document_id", payload.DocumentID, "error", err)
-		return nil
+		return fmt.Errorf("extraction failed: %w", err)
 	}
 
 	counterpartyEntityID, counterpartyName, err := w.resolveCounterparty(ctx, payload.WorkspaceID, payload.UserID, result)
@@ -122,6 +119,10 @@ func (w *DocumentWorker) HandleDocumentUploaded(ctx context.Context, event *even
 		slog.Warn("document-worker: counterparty resolution failed, using name only", "error", err)
 		counterpartyName = result.VendorName
 	}
+
+	includesTax := accounting.IsPPNCategory(result.Category) ||
+		doc.DocumentType == DocTypeFaktur ||
+		doc.DocumentType == DocTypeInvoice
 
 	txReq := &accounting.CreateTransactionRequest{
 		TransactionType:      result.TransactionType,
@@ -133,13 +134,13 @@ func (w *DocumentWorker) HandleDocumentUploaded(ctx context.Context, event *even
 		CounterpartyEntityID: counterpartyEntityID,
 		CounterpartyName:     counterpartyName,
 		PaymentMethod:        result.PaymentMethod,
+		IncludesTax:          includesTax,
 	}
 
 	txResp, err := w.AccountingService.CreateTransaction(ctx, wsID, userID, txReq)
 	if err != nil {
 		_ = w.DocumentService.SaveExtractionResult(ctx, payload.WorkspaceID, payload.DocumentID, result, nil, err)
-		slog.Error("document-worker: failed to create transaction", "document_id", payload.DocumentID, "error", err)
-		return nil
+		return fmt.Errorf("failed to create transaction: %w", err)
 	}
 
 	txUUID, _ := uuid.Parse(txResp.ID)
@@ -159,7 +160,7 @@ func (w *DocumentWorker) HandleDocumentUploaded(ctx context.Context, event *even
 func (w *DocumentWorker) resolveCounterparty(ctx context.Context, workspaceID, userID string, result *ExtractionResult) (entityID, name string, err error) {
 	name = result.VendorName
 
-	matches, err := w.IdentityService.SearchFuzzy(ctx, result.VendorName, 5, 0)
+	matches, err := w.IdentityService.SearchFuzzy(ctx, workspaceID, result.VendorName, 5, 0)
 	if err == nil && len(matches) > 0 && matches[0].MatchScore >= 0.75 {
 		return matches[0].ID, matches[0].NamaUtama, nil
 	}

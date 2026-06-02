@@ -107,9 +107,9 @@ func (r *R2Client) ObjectExists(ctx context.Context, key string) (bool, error) {
 }
 
 func ClaimDocumentKey(claimID, documentID, filename string) string {
-	return fmt.Sprintf("claims/%s/%s/%s", claimID, documentID, filename)
+	return fmt.Sprintf("claims/%s/%s/%s", claimID, documentID, SanitizeFilename(filename))
 }
 
 func WorkspaceDocumentKey(workspaceID, documentID, filename string) string {
-	return fmt.Sprintf("documents/%s/%s/%s", workspaceID, documentID, filename)
+	return fmt.Sprintf("documents/%s/%s/%s", workspaceID, documentID, SanitizeFilename(filename))
 }

@@ -40,8 +40,8 @@ func (s *Service) Subscribe(ctx context.Context, workspaceID string, req *Subscr
 		return nil, fmt.Errorf("invalid plan_id")
 	}
 
-	// Check if already has active subscription
-	_, err = s.Queries.GetActiveSubscription(ctx, wsID)
+	// Check if already has active or pending subscription
+	_, err = s.Queries.GetBlockingSubscription(ctx, wsID)
 	if err == nil {
 		return nil, ErrAlreadySubscribed
 	}
@@ -201,14 +201,14 @@ func (s *Service) ListSubscriptions(ctx context.Context, workspaceID string) ([]
 	return resp, nil
 }
 
-// Cancel cancels the active subscription
+// Cancel cancels the active or pending subscription
 func (s *Service) Cancel(ctx context.Context, workspaceID string) error {
 	wsID, err := uuid.Parse(workspaceID)
 	if err != nil {
 		return fmt.Errorf("invalid workspace_id")
 	}
 
-	sub, err := s.Queries.GetActiveSubscription(ctx, wsID)
+	sub, err := s.Queries.GetBlockingSubscription(ctx, wsID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNoActiveSubscription
@@ -226,8 +226,8 @@ func (s *Service) ChangePlan(ctx context.Context, workspaceID string, req *Subsc
 		return nil, fmt.Errorf("invalid workspace_id")
 	}
 
-	// Cancel current subscription
-	currentSub, err := s.Queries.GetActiveSubscription(ctx, wsID)
+	// Cancel current subscription (active, trial, or pending payment)
+	currentSub, err := s.Queries.GetBlockingSubscription(ctx, wsID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
@@ -302,12 +302,12 @@ func (s *Service) CheckQuota(ctx context.Context, workspaceID, featureKey string
 		return true, nil // Unlimited
 	}
 
-	// Get current usage
-	now := time.Now()
+	// Get current usage for billing period (month start)
+	periodStart := billingPeriodStart(time.Now())
 	usage, err := s.Queries.GetUsage(ctx, db.GetUsageParams{
 		WorkspaceID: wsID,
 		FeatureKey:  featureKey,
-		PeriodStart: now,
+		PeriodStart: periodStart,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -327,7 +327,7 @@ func (s *Service) IncrementUsage(ctx context.Context, workspaceID, featureKey st
 	}
 
 	now := time.Now()
-	periodStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	periodStart := billingPeriodStart(now)
 	periodEnd := periodStart.AddDate(0, 1, 0)
 
 	_, err = s.Queries.UpsertUsage(ctx, db.UpsertUsageParams{
@@ -362,6 +362,7 @@ func (s *Service) GetUsageSummary(ctx context.Context, workspaceID string) ([]Us
 	}
 
 	now := time.Now()
+	periodStart := billingPeriodStart(now)
 	var resp []UsageResponse
 
 	for _, f := range features {
@@ -375,13 +376,12 @@ func (s *Service) GetUsageSummary(ctx context.Context, workspaceID string) ([]Us
 		usage, err := s.Queries.GetUsage(ctx, db.GetUsageParams{
 			WorkspaceID: wsID,
 			FeatureKey:  f.FeatureKey,
-			PeriodStart: now,
+			PeriodStart: periodStart,
 		})
 		if err == nil {
 			usageCount = int(usage.UsageCount)
 		}
 
-		periodStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 		periodEnd := periodStart.AddDate(0, 1, 0)
 
 		resp = append(resp, UsageResponse{
@@ -445,6 +445,10 @@ func (s *Service) ListAllSubscriptions(ctx context.Context, limit, offset int) (
 }
 
 // --- Helpers ---
+
+func billingPeriodStart(now time.Time) time.Time {
+	return time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+}
 
 func numericToFloat(n pgtype.Numeric) float64 {
 	if !n.Valid {

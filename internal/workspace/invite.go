@@ -303,7 +303,6 @@ func (s *InviteService) ListPendingInvites(ctx context.Context, workspaceID stri
 			WorkspaceID:  inv.WorkspaceID.String(),
 			InvitedEmail: inv.InvitedEmail,
 			RoleName:     roleName,
-			Token:        inv.Token,
 			InvitedBy:    inv.InvitedBy.String(),
 			ExpiresAt:    inv.ExpiresAt.Format(time.RFC3339),
 			CreatedAt:    inv.CreatedAt.Format(time.RFC3339),
