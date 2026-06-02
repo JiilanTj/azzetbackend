@@ -89,7 +89,11 @@ func (w *DocumentWorker) HandleDocumentUploaded(ctx context.Context, event *even
 	}
 
 	if err := w.DocumentService.MarkExtractionProcessing(ctx, payload.WorkspaceID, payload.DocumentID); err != nil {
-		slog.Warn("document-worker: failed to mark processing", "error", err)
+		if errors.Is(err, ErrExtractionAlreadyProcessing) {
+			slog.Info("document-worker: extraction already claimed by another worker", "document_id", payload.DocumentID)
+			return nil
+		}
+		return fmt.Errorf("failed to mark processing: %w", err)
 	}
 
 	if !IsImageMimeType(doc.MimeType) {

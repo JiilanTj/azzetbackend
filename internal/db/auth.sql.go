@@ -453,6 +453,38 @@ func (q *Queries) MarkOTPUsed(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const reclaimUnverifiedUser = `-- name: ReclaimUnverifiedUser :one
+UPDATE users SET password_hash = $2, name = $3, updated_at = NOW()
+WHERE id = $1 AND status = 'UNVERIFIED'
+RETURNING id, email, whatsapp, password_hash, email_verified, whatsapp_verified, status, last_login_at, last_login_ip, created_at, updated_at, name
+`
+
+type ReclaimUnverifiedUserParams struct {
+	ID           uuid.UUID   `json:"id"`
+	PasswordHash pgtype.Text `json:"password_hash"`
+	Name         pgtype.Text `json:"name"`
+}
+
+func (q *Queries) ReclaimUnverifiedUser(ctx context.Context, arg ReclaimUnverifiedUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, reclaimUnverifiedUser, arg.ID, arg.PasswordHash, arg.Name)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Whatsapp,
+		&i.PasswordHash,
+		&i.EmailVerified,
+		&i.WhatsappVerified,
+		&i.Status,
+		&i.LastLoginAt,
+		&i.LastLoginIp,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+	)
+	return i, err
+}
+
 const resetPasswordByIdentifier = `-- name: ResetPasswordByIdentifier :exec
 UPDATE users SET password_hash = $2, updated_at = NOW()
 WHERE email = $1 OR whatsapp = $1

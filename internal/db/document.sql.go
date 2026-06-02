@@ -212,7 +212,7 @@ func (q *Queries) MarkWorkspaceDocumentUploaded(ctx context.Context, arg MarkWor
 	return err
 }
 
-const setDocumentExtractionProcessing = `-- name: SetDocumentExtractionProcessing :exec
+const setDocumentExtractionProcessing = `-- name: SetDocumentExtractionProcessing :execrows
 UPDATE documents
 SET extraction_status = 'PROCESSING', updated_at = NOW()
 WHERE id = $1 AND workspace_id = $2 AND extraction_status = 'PENDING'
@@ -223,9 +223,12 @@ type SetDocumentExtractionProcessingParams struct {
 	WorkspaceID uuid.UUID `json:"workspace_id"`
 }
 
-func (q *Queries) SetDocumentExtractionProcessing(ctx context.Context, arg SetDocumentExtractionProcessingParams) error {
-	_, err := q.db.Exec(ctx, setDocumentExtractionProcessing, arg.ID, arg.WorkspaceID)
-	return err
+func (q *Queries) SetDocumentExtractionProcessing(ctx context.Context, arg SetDocumentExtractionProcessingParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setDocumentExtractionProcessing, arg.ID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateDocumentExtraction = `-- name: UpdateDocumentExtraction :exec

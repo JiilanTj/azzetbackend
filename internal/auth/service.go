@@ -80,22 +80,33 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 		return nil, fmt.Errorf("password must be at least 8 characters")
 	}
 
-	// Check duplicates (generic error to prevent enumeration)
+	// Check duplicates (generic error to prevent enumeration).
+	// An UNVERIFIED account may be re-claimed: whoever sets the final password before
+	// OTP verification owns it. This prevents an attacker from permanently squatting
+	// someone else's email/whatsapp by pre-registering it with their own password.
+	var reclaim *db.User
 	if req.Email != nil && *req.Email != "" {
-		exists, err := s.Queries.ExistsByEmail(ctx, pgtype.Text{String: *req.Email, Valid: true})
-		if err != nil {
+		u, err := s.Queries.GetUserByEmail(ctx, pgtype.Text{String: *req.Email, Valid: true})
+		switch {
+		case err == nil && u.Status != StatusUnverified:
 			return nil, fmt.Errorf("registration failed")
-		}
-		if exists {
+		case err == nil:
+			reclaim = &u
+		case !errors.Is(err, pgx.ErrNoRows):
 			return nil, fmt.Errorf("registration failed")
 		}
 	}
 	if req.WhatsApp != nil && *req.WhatsApp != "" {
-		exists, err := s.Queries.ExistsByWhatsApp(ctx, pgtype.Text{String: *req.WhatsApp, Valid: true})
-		if err != nil {
+		u, err := s.Queries.GetUserByWhatsApp(ctx, pgtype.Text{String: *req.WhatsApp, Valid: true})
+		switch {
+		case err == nil && u.Status != StatusUnverified:
 			return nil, fmt.Errorf("registration failed")
-		}
-		if exists {
+		case err == nil && reclaim != nil && u.ID != reclaim.ID:
+			// Email and WhatsApp map to two different unverified accounts — ambiguous.
+			return nil, fmt.Errorf("registration failed")
+		case err == nil:
+			reclaim = &u
+		case !errors.Is(err, pgx.ErrNoRows):
 			return nil, fmt.Errorf("registration failed")
 		}
 	}
@@ -105,21 +116,38 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 		return nil, fmt.Errorf("registration failed")
 	}
 
-	now := time.Now()
-	params := db.CreateUserParams{
-		ID:           uuid.New(),
-		Email:        toPgText(req.Email),
-		Whatsapp:     toPgText(req.WhatsApp),
-		PasswordHash: pgtype.Text{String: hash, Valid: true},
-		Name:         toPgText(&req.Name),
-		Status:       StatusUnverified,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+	name := req.Name
+	if name == "" {
+		name = "Personal"
 	}
 
-	user, err := s.Queries.CreateUser(ctx, params)
-	if err != nil {
-		return nil, fmt.Errorf("registration failed")
+	now := time.Now()
+	var user db.User
+	if reclaim != nil {
+		// Re-claim existing unverified account: reset credentials & name, reuse personal
+		// entity/workspace. The status guard in the query defeats verify/register races.
+		user, err = s.Queries.ReclaimUnverifiedUser(ctx, db.ReclaimUnverifiedUserParams{
+			ID:           reclaim.ID,
+			PasswordHash: pgtype.Text{String: hash, Valid: true},
+			Name:         pgtype.Text{String: name, Valid: true},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("registration failed")
+		}
+	} else {
+		user, err = s.Queries.CreateUser(ctx, db.CreateUserParams{
+			ID:           uuid.New(),
+			Email:        toPgText(req.Email),
+			Whatsapp:     toPgText(req.WhatsApp),
+			PasswordHash: pgtype.Text{String: hash, Valid: true},
+			Name:         pgtype.Text{String: name, Valid: true},
+			Status:       StatusUnverified,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("registration failed")
+		}
 	}
 
 	// Send verification OTP (non-blocking errors)
@@ -136,28 +164,26 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 		}
 	}
 
-	// Create personal entity + workspace synchronously (instant, no polling needed)
-	// Also emit event for audit trail and future consumers
-	name := req.Name
-	if name == "" {
-		name = "Personal"
-	}
-	personalEntity, err := s.EntityService.CreatePersonalEntity(ctx, user.ID, name)
-	if err == nil {
-		_ = s.WorkspaceService.CreatePersonalWorkspace(ctx, personalEntity.ID, user.ID)
+	// Create personal entity + workspace only for brand-new users (re-claimed accounts
+	// already have theirs). Done synchronously (instant, no polling needed).
+	if reclaim == nil {
+		personalEntity, err := s.EntityService.CreatePersonalEntity(ctx, user.ID, name)
+		if err == nil {
+			_ = s.WorkspaceService.CreatePersonalWorkspace(ctx, personalEntity.ID, user.ID)
 
-		// Auto-assign free plan to personal workspace (if a free plan exists)
-		if s.SubscriptionService != nil {
-			freePlan, err := s.Queries.GetFreePlan(ctx)
-			if err == nil {
-				if _, subErr := s.SubscriptionService.Subscribe(ctx, personalEntity.ID.String(), &subscription.SubscribeRequest{
-					PlanID: freePlan.ID.String(),
-				}); subErr != nil {
-					slog.Warn("failed to assign free plan on registration",
-						"user_id", user.ID.String(),
-						"entity_id", personalEntity.ID.String(),
-						"error", subErr,
-					)
+			// Auto-assign free plan to personal workspace (if a free plan exists)
+			if s.SubscriptionService != nil {
+				freePlan, err := s.Queries.GetFreePlan(ctx)
+				if err == nil {
+					if _, subErr := s.SubscriptionService.Subscribe(ctx, personalEntity.ID.String(), &subscription.SubscribeRequest{
+						PlanID: freePlan.ID.String(),
+					}); subErr != nil {
+						slog.Warn("failed to assign free plan on registration",
+							"user_id", user.ID.String(),
+							"entity_id", personalEntity.ID.String(),
+							"error", subErr,
+						)
+					}
 				}
 			}
 		}
@@ -166,7 +192,7 @@ func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*db.User,
 	// Emit user.registered event (for audit, notifications, future consumers)
 	_ = events.EmitEventDirect(ctx, s.Pool, events.UserRegistered, map[string]string{
 		"user_id": user.ID.String(),
-		"name":    req.Name,
+		"name":    name,
 	})
 
 	return &user, nil
@@ -572,7 +598,10 @@ func (s *Service) validateOTP(ctx context.Context, identifier, code, purpose str
 	// Compare hashed OTP
 	if !shared.VerifyOTP(code, otp.Code) {
 		if err := s.Queries.IncrementOTPAttempts(ctx, otp.ID); err != nil {
-			slog.Warn("failed to increment OTP attempts", "otp_id", otp.ID.String(), "error", err)
+			// Fail closed: if the failed attempt can't be recorded, invalidate the OTP so a
+			// DB-write outage cannot be exploited to brute-force unlimited guesses.
+			slog.Error("failed to increment OTP attempts; invalidating OTP", "otp_id", otp.ID.String(), "error", err)
+			_ = s.Queries.MarkOTPUsed(ctx, otp.ID)
 		}
 		return fmt.Errorf("invalid OTP")
 	}

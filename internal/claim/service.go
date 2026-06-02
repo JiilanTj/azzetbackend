@@ -329,10 +329,12 @@ func (s *Service) RequestDocumentUpload(ctx context.Context, userID, claimID str
 		return nil, fmt.Errorf("failed to create document record: %w", err)
 	}
 
-	s.createAuditEntry(ctx, claimID, uid.String(), ActorUser, ActionDocumentUploaded, claim.Status, claim.Status, map[string]string{
+	if err := s.createAuditEntry(ctx, claimID, uid.String(), ActorUser, ActionDocumentUploaded, claim.Status, claim.Status, map[string]string{
 		"document_id":   doc.ID.String(),
 		"document_type": req.DocumentType,
-	})
+	}); err != nil {
+		slog.Warn("failed to create claim audit entry", "claim_id", claimID, "error", err)
+	}
 
 	return &PresignedUploadResponse{
 		DocumentID: doc.ID.String(),
@@ -472,6 +474,11 @@ func (s *Service) getClaimDetail(ctx context.Context, claimID string) (*ClaimDet
 		entityType = e.EntityType
 	}
 
+	claimantName := ""
+	if u, err := s.Queries.GetUserByID(ctx, claim.ClaimantUserID); err == nil {
+		claimantName = strings.TrimSpace(u.Name.String)
+	}
+
 	docs, _ := s.Queries.GetClaimDocuments(ctx, cid)
 	docResp := make([]DocumentResponse, 0, len(docs))
 	for i := range docs {
@@ -496,6 +503,7 @@ func (s *Service) getClaimDetail(ctx context.Context, claimID string) (*ClaimDet
 		},
 		ClaimantUserID:   claim.ClaimantUserID.String(),
 		ClaimantEntityID: claim.ClaimantEntityID.String(),
+		ClaimantName:     claimantName,
 		Documents:        docResp,
 		AuditLog:         auditResp,
 	}
@@ -611,7 +619,7 @@ func (s *Service) ListClaimsForReview(ctx context.Context, status string, limit,
 		return nil, err
 	}
 
-	return s.claimListToResponse(claims)
+	return s.claimListToResponse(ctx, claims)
 }
 
 func (s *Service) ListAllClaims(ctx context.Context, limit, offset int) ([]ClaimListResponse, error) {
@@ -992,14 +1000,14 @@ func (s *Service) ensureVerificationRecordTx(ctx context.Context, qtx *db.Querie
 	return err
 }
 
-func (s *Service) createAuditEntry(ctx context.Context, claimID, actorID, actorType, action, oldStatus, newStatus string, extra map[string]string) {
+func (s *Service) createAuditEntry(ctx context.Context, claimID, actorID, actorType, action, oldStatus, newStatus string, extra map[string]string) error {
 	cid, _ := uuid.Parse(claimID)
 	aid, _ := uuid.Parse(actorID)
 	now := time.Now()
 
 	details, _ := json.Marshal(extra)
 
-	_ = s.Queries.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
+	return s.Queries.CreateClaimAuditEntry(ctx, db.CreateClaimAuditEntryParams{
 		ID:        uuid.New(),
 		ClaimID:   cid,
 		ActorID:   aid,
@@ -1049,10 +1057,13 @@ func (s *Service) auditToResponse(entry *db.ClaimAuditLog) AuditLogEntry {
 	return audit
 }
 
-func (s *Service) claimListToResponse(claims []db.ListClaimsByStatusRow) ([]ClaimListResponse, error) {
+func (s *Service) claimListToResponse(ctx context.Context, claims []db.ListClaimsByStatusRow) ([]ClaimListResponse, error) {
 	resp := make([]ClaimListResponse, 0, len(claims))
 	for i := range claims {
-		docCount, _ := s.Queries.CountClaimDocuments(context.Background(), claims[i].ID)
+		docCount, err := s.Queries.CountClaimDocuments(ctx, claims[i].ID)
+		if err != nil {
+			return nil, err
+		}
 		resp = append(resp, ClaimListResponse{
 			ClaimResponse: ClaimResponse{
 				ID:         claims[i].ID.String(),

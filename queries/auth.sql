@@ -24,6 +24,11 @@ UPDATE users SET status = $2, updated_at = NOW() WHERE id = $1;
 -- name: UpdateUserPassword :exec
 UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1;
 
+-- name: ReclaimUnverifiedUser :one
+UPDATE users SET password_hash = $2, name = $3, updated_at = NOW()
+WHERE id = $1 AND status = 'UNVERIFIED'
+RETURNING *;
+
 -- name: UpdateUserLastLogin :exec
 UPDATE users SET last_login_at = NOW(), last_login_ip = $2, updated_at = NOW() WHERE id = $1;
 

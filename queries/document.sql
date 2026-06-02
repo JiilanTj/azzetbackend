@@ -38,7 +38,7 @@ UPDATE documents
 SET transaction_id = $3, updated_at = NOW()
 WHERE id = $1 AND workspace_id = $2;
 
--- name: SetDocumentExtractionProcessing :exec
+-- name: SetDocumentExtractionProcessing :execrows
 UPDATE documents
 SET extraction_status = 'PROCESSING', updated_at = NOW()
 WHERE id = $1 AND workspace_id = $2 AND extraction_status = 'PENDING';

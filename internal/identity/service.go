@@ -103,7 +103,7 @@ func (s *Service) GetVerificationStatus(ctx context.Context, userID, entityID st
 	return resp, nil
 }
 
-func (s *Service) SetVerificationStatus(ctx context.Context, entityID string, status string, verifiedBy *string, reason *string, notes *string) error {
+func (s *Service) SetVerificationStatus(ctx context.Context, actorUserID, entityID string, status string, verifiedBy *string, reason *string, notes *string) error {
 	if !isValidVerificationStatus(status) {
 		return fmt.Errorf("invalid verification status")
 	}
@@ -111,6 +111,39 @@ func (s *Service) SetVerificationStatus(ctx context.Context, entityID string, st
 	eid, err := uuid.Parse(entityID)
 	if err != nil {
 		return ErrEntityNotFound
+	}
+
+	actorUID, err := uuid.Parse(actorUserID)
+	if err != nil {
+		return ErrNotAuthorized
+	}
+
+	// BE-I03: require an authenticated actor with write access to the entity.
+	// Previously this method performed no authorization, so any caller could
+	// flip verification state on an arbitrary entity across tenants.
+	if err := s.authorizeEntityWrite(ctx, actorUserID, entityID); err != nil {
+		return err
+	}
+
+	// A verification decision (VERIFIED/REJECTED) must be attributable and
+	// must not be self-approved by the entity owner.
+	if status == StatusVerified || status == StatusRejected {
+		if verifiedBy == nil || *verifiedBy == "" {
+			return fmt.Errorf("verified_by is required for a verification decision")
+		}
+		ent, err := s.Queries.GetEntityByID(ctx, eid)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrEntityNotFound
+			}
+			return err
+		}
+		if ent.UserID.Valid && ent.UserID.Bytes == actorUID {
+			return ErrNotAuthorized
+		}
+	}
+	if status == StatusRejected && (reason == nil || *reason == "") {
+		return fmt.Errorf("rejection reason is required")
 	}
 
 	if err := s.EnsureVerificationRecord(ctx, eid); err != nil {

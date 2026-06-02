@@ -67,6 +67,7 @@ type ClaimDetailResponse struct {
 	ClaimResponse
 	ClaimantUserID    string             `json:"claimant_user_id"`
 	ClaimantEntityID  string             `json:"claimant_entity_id"`
+	ClaimantName      string             `json:"claimant_name"`
 	ReviewerID        *string            `json:"reviewer_id,omitempty"`
 	ReviewedAt        *string            `json:"reviewed_at,omitempty"`
 	RejectionReason   *string            `json:"rejection_reason,omitempty"`

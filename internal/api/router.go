@@ -162,7 +162,10 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 		slog.Warn("R2 storage not configured; claim document upload will be unavailable", "error", err)
 	}
 	claimService := claim.NewService(queries, database.Pool, r2Client, identityService, workspaceService)
-	identityHandler := handler.NewIdentityHandler(identityService)
+	identityHandler := handler.NewIdentityHandler(identityService, func(ctx context.Context, workspaceID, userID string) error {
+		_, _, err := workspaceService.VerifyWorkspaceAccess(ctx, workspaceID, userID)
+		return err
+	})
 	claimHandler := handler.NewClaimHandler(claimService)
 	claimAdminHandler := handler.NewClaimAdminHandler(claimService)
 
@@ -185,6 +188,9 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			AllowCredentials: true,
 			MaxAge:           300,
 		}))
+
+		// Global per-IP rate limit (abuse protection across all user API routes).
+		r.Use(middleware.RateLimit(redis, "api", 300, time.Minute))
 
 		r.Get("/health", HealthCheck(database, redis))
 
@@ -401,6 +407,9 @@ func NewRouter(cfg *config.Config, database *database.Database, redis *rdb.Redis
 			AllowCredentials: true,
 			MaxAge:           300,
 		}))
+
+		// Global per-IP rate limit (abuse protection across all admin API routes).
+		r.Use(middleware.RateLimit(redis, "admin-api", 200, time.Minute))
 
 		// Public admin auth (rate-limited)
 		adminAuthRateLimit := middleware.RateLimit(redis, "admin-auth", 10, time.Minute)

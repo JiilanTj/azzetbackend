@@ -162,7 +162,6 @@ func (s *InviteService) CreateInvite(ctx context.Context, workspaceID, inviterID
 		WorkspaceID:  invite.WorkspaceID.String(),
 		InvitedEmail: invite.InvitedEmail,
 		RoleName:     role.Name,
-		Token:        invite.Token,
 		InvitedBy:    invite.InvitedBy.String(),
 		ExpiresAt:    invite.ExpiresAt.Format(time.RFC3339),
 		CreatedAt:    invite.CreatedAt.Format(time.RFC3339),

@@ -73,7 +73,7 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		AppEnv:      getEnv("APP_ENV", "development"),
+		AppEnv:      os.Getenv("APP_ENV"),
 		AppPort:     getEnv("APP_PORT", "8080"),
 		AppSecret:   getEnv("APP_SECRET", ""),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
@@ -120,6 +120,14 @@ func Load() (*Config, error) {
 		WorkerConcurrency: getEnvInt("WORKER_CONCURRENCY", 50),
 	}
 
+	switch cfg.AppEnv {
+	case "development", "staging", "production":
+		// valid, explicit environment
+	case "":
+		return nil, errors.New("APP_ENV is required and must be one of: development, staging, production")
+	default:
+		return nil, fmt.Errorf("invalid APP_ENV %q; must be one of: development, staging, production", cfg.AppEnv)
+	}
 	if cfg.AppSecret == "" {
 		return nil, errors.New("APP_SECRET is required")
 	}

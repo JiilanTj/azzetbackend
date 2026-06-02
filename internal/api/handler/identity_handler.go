@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -14,11 +15,12 @@ import (
 )
 
 type IdentityHandler struct {
-	Service *identity.Service
+	Service               *identity.Service
+	VerifyWorkspaceAccess func(ctx context.Context, workspaceID, userID string) error
 }
 
-func NewIdentityHandler(service *identity.Service) *IdentityHandler {
-	return &IdentityHandler{Service: service}
+func NewIdentityHandler(service *identity.Service, verifyWorkspaceAccess func(ctx context.Context, workspaceID, userID string) error) *IdentityHandler {
+	return &IdentityHandler{Service: service, VerifyWorkspaceAccess: verifyWorkspaceAccess}
 }
 
 // GetVerificationStatus godoc
@@ -283,6 +285,11 @@ func (h *IdentityHandler) SearchFuzzy(w http.ResponseWriter, r *http.Request) {
 	workspaceID := r.URL.Query().Get("workspace_id")
 	if workspaceID == "" {
 		shared.Error(w, r, 400, "VALIDATION_ERROR", "identity", "workspace_id parameter is required")
+		return
+	}
+	userID := middleware.GetUserID(r.Context())
+	if err := h.VerifyWorkspaceAccess(r.Context(), workspaceID, userID); err != nil {
+		shared.Error(w, r, 403, "FORBIDDEN", "identity", "not authorized")
 		return
 	}
 	query := r.URL.Query().Get("q")

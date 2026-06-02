@@ -3,6 +3,7 @@ package document
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 	"codeberg.org/azzet/azzetbe/internal/events"
 	"codeberg.org/azzet/azzetbe/internal/storage"
 )
+
+var ErrExtractionAlreadyProcessing = errors.New("document extraction already processing")
 
 type FeatureChecker interface {
 	HasFeature(ctx context.Context, workspaceID, featureKey string) (bool, error)
@@ -302,10 +305,17 @@ func (s *Service) MarkExtractionProcessing(ctx context.Context, workspaceID, doc
 	if err != nil {
 		return err
 	}
-	return s.Queries.SetDocumentExtractionProcessing(ctx, db.SetDocumentExtractionProcessingParams{
+	rows, err := s.Queries.SetDocumentExtractionProcessing(ctx, db.SetDocumentExtractionProcessingParams{
 		ID:          did,
 		WorkspaceID: wsID,
 	})
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrExtractionAlreadyProcessing
+	}
+	return nil
 }
 
 func documentToResponse(d db.Document) DocumentResponse {

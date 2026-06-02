@@ -100,16 +100,16 @@ func (h *TaxHandler) ListCalculations(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pagination := shared.ParsePagination(r)
-	if r.URL.Query().Get("page") == "" && r.URL.Query().Get("offset") != "" {
-		offset, _ := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32)
-		limit := int64(pagination.PerPage)
-		if limit > 0 && offset%limit == 0 {
-			pagination.Page = int(offset/limit) + 1
-		}
-	}
+	// Apply explicit limit first so page derivation uses the effective page size.
 	if r.URL.Query().Get("limit") != "" {
 		if lim, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && lim > 0 {
 			pagination.PerPage = lim
+		}
+	}
+	// Derive page from offset via floor division (works for any offset, aligned or not).
+	if r.URL.Query().Get("page") == "" && r.URL.Query().Get("offset") != "" {
+		if offset, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && offset >= 0 && pagination.PerPage > 0 {
+			pagination.Page = offset/pagination.PerPage + 1
 		}
 	}
 
